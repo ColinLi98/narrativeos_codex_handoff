@@ -256,9 +256,15 @@ def create_app(
         provider_routing_service=app.state.provider_routing_service,
     )
 
+    def _safe_async_job_heartbeat(job_id: str, *, requested_by: str) -> None:
+        try:
+            app.state.async_job_service.heartbeat_job(job_id, requested_by=requested_by)
+        except KeyError:
+            return
+
     def _run_learned_training_job(job: Dict[str, Any]) -> Dict[str, Any]:
         payload = dict(job.get("payload") or {})
-        app.state.async_job_service.heartbeat_job(job["job_id"], requested_by="learned_training_runner")
+        _safe_async_job_heartbeat(job["job_id"], requested_by="learned_training_runner")
         result = run_learned_training_automation(
             repository=app.state.repository,
             output_dir=BASE_DIR / "artifacts" / "learned_training_runs",
@@ -267,7 +273,7 @@ def create_app(
             world_version_id=payload.get("world_version_id"),
             limit=payload.get("limit"),
         )
-        app.state.async_job_service.heartbeat_job(job["job_id"], requested_by="learned_training_runner")
+        _safe_async_job_heartbeat(job["job_id"], requested_by="learned_training_runner")
         app.state.analytics_service.track(
             "learned_training_run_completed",
             account_id=job.get("account_id"),
@@ -281,7 +287,7 @@ def create_app(
 
     def _run_runtime_backup_job(job: Dict[str, Any]) -> Dict[str, Any]:
         payload = dict(job.get("payload") or {})
-        app.state.async_job_service.heartbeat_job(job["job_id"], requested_by="runtime_backup_runner")
+        _safe_async_job_heartbeat(job["job_id"], requested_by="runtime_backup_runner")
         result = app.state.runtime_ops_service.create_backup(
             label=payload.get("label"),
             output_dir=payload.get("output_dir"),
@@ -289,7 +295,7 @@ def create_app(
             execute_postgres=True,
             job_id=job.get("job_id"),
         )
-        app.state.async_job_service.heartbeat_job(job["job_id"], requested_by="runtime_backup_runner")
+        _safe_async_job_heartbeat(job["job_id"], requested_by="runtime_backup_runner")
         app.state.analytics_service.track(
             "runtime_backup_created",
             account_id=job.get("account_id"),
@@ -302,13 +308,13 @@ def create_app(
 
     def _run_runtime_restore_job(job: Dict[str, Any]) -> Dict[str, Any]:
         payload = dict(job.get("payload") or {})
-        app.state.async_job_service.heartbeat_job(job["job_id"], requested_by="runtime_restore_runner")
+        _safe_async_job_heartbeat(job["job_id"], requested_by="runtime_restore_runner")
         result = app.state.runtime_ops_service.execute_restore_request(
             request_id=str(payload.get("request_id") or ""),
             job_id=job.get("job_id"),
             requested_by=payload.get("requested_by") or job.get("requested_by"),
         )
-        app.state.async_job_service.heartbeat_job(job["job_id"], requested_by="runtime_restore_runner")
+        _safe_async_job_heartbeat(job["job_id"], requested_by="runtime_restore_runner")
         app.state.analytics_service.track(
             "runtime_restore_executed" if result.get("_job_status_override") != "failed" else "runtime_restore_failed",
             account_id=job.get("account_id"),

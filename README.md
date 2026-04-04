@@ -998,6 +998,7 @@ Author 主路径现在建议按这个顺序演示：
 - `python -m src.narrativeos.benchmark.runner --baseline-file tests/benchmark_baseline.json --markdown-out artifacts/cross_pack_benchmark_summary.md`：可稳定输出 JSON + markdown summary，包含 `strongest_packs / weakest_packs / top_failing_packs / delta_summary.ranking_changes`；`tests/cross_pack_benchmark_summary.md` 保存当前受版本控制的 markdown baseline
 - `python -m src.narrativeos.benchmark.runner --baseline-file tests/long_route_benchmark_baseline.json --max-chapters 36 --min-end-turn-override 30 --markdown-out artifacts/long_route_benchmark_summary.md`：可稳定输出 long-route JSON + markdown summary，包含 `long_route_summary / completion_ratio / stop_reason / mid_arc_pass_rate / late_arc_pass_rate`
 - `scripts/run_cross_pack_merge_gate.sh`：可本地执行 cross-pack merge gate；GitHub Actions 的 `cross-pack-quality` workflow 也会调用同一套 gate 逻辑
+- `cross-pack-quality` workflow 现已在 benchmark step 显式使用 `sqlite:///narrativeos_beta.db`，避免 CI 中 `DATABASE_URL` 缺失时 benchmark runner 直接失败
 - 当前 benchmark 基线：
   `cross_pack_pass_rate = 0.933`
   strongest packs（composite diagnostic）= `jade_court_exam / xianxia_forgotten_vow`

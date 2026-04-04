@@ -26,6 +26,7 @@ jobs:
           . .venv/bin/activate
           python -m src.narrativeos.benchmark.runner \
             --baseline-file tests/benchmark_baseline.json \
+            --database-url sqlite:///narrativeos_beta.db \
             --markdown-out benchmark-summary.md \
             > benchmark.json
       - name: Run phase 0 guardrails

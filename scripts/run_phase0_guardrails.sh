@@ -41,9 +41,25 @@ if ! grep -q "artifacts/cross_pack_benchmark_summary.md" README.md; then
 fi
 
 IMPORT_PATTERN="from \\.\\.worldpacks|from src\\.narrativeos\\.worldpacks|from narrativeos\\.worldpacks|import src\\.narrativeos\\.worldpacks|import narrativeos\\.worldpacks"
-if rg -n "$IMPORT_PATTERN" src/narrativeos/core src/narrativeos/rendering.py >/dev/null; then
+search_cmd() {
+  if command -v rg >/dev/null 2>&1; then
+    rg -n "$@"
+  else
+    grep -RInE "$@"
+  fi
+}
+
+fixed_search_cmd() {
+  if command -v rg >/dev/null 2>&1; then
+    rg -n --fixed-strings "$@"
+  else
+    grep -RInF "$@"
+  fi
+}
+
+if search_cmd "$IMPORT_PATTERN" src/narrativeos/core src/narrativeos/rendering.py >/dev/null; then
   echo "core_worldpacks_import_leak" >&2
-  rg -n "$IMPORT_PATTERN" src/narrativeos/core src/narrativeos/rendering.py >&2
+  search_cmd "$IMPORT_PATTERN" src/narrativeos/core src/narrativeos/rendering.py >&2
   exit 1
 fi
 
@@ -51,9 +67,9 @@ while IFS= read -r world_id; do
   if [[ -z "$world_id" ]]; then
     continue
   fi
-  if rg -n --fixed-strings "$world_id" src/narrativeos/core src/narrativeos/rendering.py >/dev/null; then
+  if fixed_search_cmd "$world_id" src/narrativeos/core src/narrativeos/rendering.py >/dev/null; then
     echo "core_pack_id_leak:$world_id" >&2
-    rg -n --fixed-strings "$world_id" src/narrativeos/core src/narrativeos/rendering.py >&2
+    fixed_search_cmd "$world_id" src/narrativeos/core src/narrativeos/rendering.py >&2
     exit 1
   fi
 done < <(
@@ -66,6 +82,7 @@ PY
 )
 
 BENCHMARK_MD="${BENCHMARK_MD:-}"
+BENCHMARK_BASELINE_MD="${BENCHMARK_BASELINE_MD:-tests/cross_pack_benchmark_summary.md}"
 if [[ -z "$BENCHMARK_MD" ]]; then
   TMP_MD="$(mktemp)"
   TMP_JSON="$(mktemp)"
@@ -79,4 +96,9 @@ if [[ -z "$BENCHMARK_MD" ]]; then
   BENCHMARK_MD="$TMP_MD"
 fi
 
-diff -u artifacts/cross_pack_benchmark_summary.md "$BENCHMARK_MD"
+if [[ ! -f "$BENCHMARK_BASELINE_MD" ]]; then
+  echo "missing_benchmark_baseline_markdown:$BENCHMARK_BASELINE_MD" >&2
+  exit 1
+fi
+
+diff -u "$BENCHMARK_BASELINE_MD" "$BENCHMARK_MD"

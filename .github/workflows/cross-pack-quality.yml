@@ -50,6 +50,14 @@ jobs:
       - name: Publish benchmark summary
         if: always()
         run: |
-          cat benchmark-summary.md >> "$GITHUB_STEP_SUMMARY"
+          if [ -f benchmark-summary.md ]; then
+            cat benchmark-summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "benchmark-summary.md missing" >> "$GITHUB_STEP_SUMMARY"
+          fi
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          cat merge-gate-summary.md >> "$GITHUB_STEP_SUMMARY"
+          if [ -f merge-gate-summary.md ]; then
+            cat merge-gate-summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "merge-gate-summary.md missing" >> "$GITHUB_STEP_SUMMARY"
+          fi

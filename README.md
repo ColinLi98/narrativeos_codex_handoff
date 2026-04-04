@@ -856,7 +856,7 @@ bash scripts/run_phase0_guardrails.sh
 - `src/narrativeos/core/` 与 `rendering.py` 不得导入 `worldpacks`
 - benchmark-enabled published `world_id` 不得硬编码进 `core/` 或 `rendering.py`
 - `README.md` 持续引用 benchmark sample
-- `artifacts/cross_pack_benchmark_summary.md` 与当前 benchmark 生成结果保持同步
+- `tests/cross_pack_benchmark_summary.md` 作为受版本控制的 benchmark markdown baseline，与当前 benchmark 生成结果保持同步
 
 benchmark `--worldpack all` 当前已改为 registry-driven：
 
@@ -995,7 +995,7 @@ Author 主路径现在建议按这个顺序演示：
 - `./.venv/bin/python -m pytest -q`：215 passed, 2 warnings
 - `python -m src.narrativeos.demo`：可稳定运行
 - `demo.py` 连跑 3 次输出稳定：默认返回 Reader Mode 章节摘要与正文预览
-- `python -m src.narrativeos.benchmark.runner --baseline-file tests/benchmark_baseline.json --markdown-out artifacts/cross_pack_benchmark_summary.md`：可稳定输出 JSON + markdown summary，包含 `strongest_packs / weakest_packs / top_failing_packs / delta_summary.ranking_changes`
+- `python -m src.narrativeos.benchmark.runner --baseline-file tests/benchmark_baseline.json --markdown-out artifacts/cross_pack_benchmark_summary.md`：可稳定输出 JSON + markdown summary，包含 `strongest_packs / weakest_packs / top_failing_packs / delta_summary.ranking_changes`；`tests/cross_pack_benchmark_summary.md` 保存当前受版本控制的 markdown baseline
 - `python -m src.narrativeos.benchmark.runner --baseline-file tests/long_route_benchmark_baseline.json --max-chapters 36 --min-end-turn-override 30 --markdown-out artifacts/long_route_benchmark_summary.md`：可稳定输出 long-route JSON + markdown summary，包含 `long_route_summary / completion_ratio / stop_reason / mid_arc_pass_rate / late_arc_pass_rate`
 - `scripts/run_cross_pack_merge_gate.sh`：可本地执行 cross-pack merge gate；GitHub Actions 的 `cross-pack-quality` workflow 也会调用同一套 gate 逻辑
 - 当前 benchmark 基线：

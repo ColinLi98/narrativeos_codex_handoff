@@ -49,6 +49,9 @@ def test_ops_navigation_smoke_workflow_wires_headless_runner_and_artifacts():
     smoke_job = payload["jobs"]["smoke"]
     steps = smoke_job["steps"]
 
+    setup_node_step = next(step for step in steps if step.get("uses") == "actions/setup-node@v4")
+    assert setup_node_step["with"]["node-version"] == "22"
+
     run_step = next(step for step in steps if step.get("name") == "Run ops navigation stale-ref smoke")
     run_script = run_step["run"]
     assert "CI_HEADLESS=1" in run_script

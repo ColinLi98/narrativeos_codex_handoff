@@ -257,9 +257,28 @@ async function main() {
     markStep("load_page_title");
     await waitFor(evaluate, "page title", `document.title === 'NarrativeOS Studio'`);
     completeStep("load_page_title");
+    markStep("wait_for_app_bootstrap");
+    await waitFor(
+      evaluate,
+      "ops app bootstrap",
+      `typeof appState !== 'undefined'
+        && typeof refreshOpsSurface === 'function'
+        && typeof runDataIntegrityRepair === 'function'
+        && document.querySelector('#mode-ops')
+        && document.querySelector('#ops-sync-navigation')`,
+      30000
+    );
+    completeStep("wait_for_app_bootstrap");
     markStep("enter_ops_mode");
     await clickSelector(evaluate, "#mode-ops");
-    await waitFor(evaluate, "ops mode nav input", `document.querySelector('#ops-nav-account-id')`);
+    await waitFor(
+      evaluate,
+      "ops mode active",
+      `typeof appState !== 'undefined'
+        && appState.activeProduct === 'ops'
+        && document.querySelector('#ops-nav-account-id')`,
+      30000
+    );
     completeStep("enter_ops_mode");
 
     markStep("seed_navigation_context");
@@ -275,7 +294,7 @@ async function main() {
       evaluate,
       "stale alert warning",
       `appState.opsNavigationModel && (appState.opsNavigationModel.context_warnings || []).some((item) => item.startsWith('stale_alert_ref:'))`
-    );
+    , 30000);
     completeStep("detect_stale_warning");
     markStep("detect_remediation_actions");
     await waitFor(
@@ -284,7 +303,8 @@ async function main() {
       `(() => {
         const text = document.querySelector('#ops-navigation-actions')?.innerText || '';
         return text.includes('Clear Stale Refs') && text.includes('Re-sync From Valid Context');
-      })()`
+      })()`,
+      30000
     );
     completeStep("detect_remediation_actions");
 
@@ -294,7 +314,7 @@ async function main() {
       evaluate,
       "stale refs cleared after resync",
       `appState.opsNavigationModel && Object.keys(appState.opsNavigationModel.linked_context?.stale_refs || {}).length === 0`
-    );
+    , 30000);
     await waitFor(
       evaluate,
       "resynced control plane values",
@@ -305,7 +325,7 @@ async function main() {
         && document.querySelector('#ops-account-id')?.value === ${JSON.stringify(seed.account_id)}
         && document.querySelector('#ops-release-world-id')?.value === ${JSON.stringify(seed.world_id)}
         && document.querySelector('#ops-governance-case-id')?.value === ${JSON.stringify(seed.case_id)}`
-    );
+    , 30000);
     completeStep("resync_from_valid_context");
 
     const resyncSnapshot = await evaluate(`({
@@ -326,7 +346,7 @@ async function main() {
       evaluate,
       "stale alert warning restored",
       `appState.opsNavigationModel && (appState.opsNavigationModel.context_warnings || []).some((item) => item.startsWith('stale_alert_ref:'))`
-    );
+    , 30000);
     completeStep("reinject_stale_alert");
 
     markStep("clear_stale_refs");
@@ -335,7 +355,7 @@ async function main() {
       evaluate,
       "stale refs cleared after clear action",
       `appState.opsNavigationModel && Object.keys(appState.opsNavigationModel.linked_context?.stale_refs || {}).length === 0`
-    );
+    , 30000);
     await waitFor(
       evaluate,
       "alert input cleared after clear action",

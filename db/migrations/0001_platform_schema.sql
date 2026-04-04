@@ -61,9 +61,12 @@ create table if not exists route_choices (
 
 create table if not exists entitlements (
   entitlement_id text primary key,
+  account_id text,
   reader_id text not null,
   world_id text,
   entitlement_type text not null,
+  wallet_type text,
+  tier_id text,
   status text not null default 'active',
   balance numeric,
   expires_at timestamptz,
@@ -72,6 +75,7 @@ create table if not exists entitlements (
 
 create table if not exists usage_meters (
   meter_id text primary key,
+  account_id text,
   reader_id text,
   session_id text,
   chapter_id text,
@@ -79,6 +83,9 @@ create table if not exists usage_meters (
   action_type text not null,
   usage_units numeric not null,
   estimated_cost numeric,
+  wallet_type text,
+  subscription_tier text,
+  provider text,
   model_policy_version text,
   created_at timestamptz not null default now()
 );

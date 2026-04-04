@@ -4,6 +4,7 @@ create table if not exists billing_checkout_sessions (
   tier_id text not null,
   provider text not null,
   provider_ref text,
+  subscription_id text,
   status text not null default 'created',
   checkout_url text,
   idempotency_key text not null,

@@ -1,0 +1,937 @@
+openapi: 3.1.0
+info:
+  title: NarrativeOS API
+  version: 0.3.0
+paths:
+  /health:
+    get:
+      responses:
+        "200":
+          description: OK
+  /v1/worlds:
+    get:
+      summary: List published worlds for the shelf
+      responses:
+        "200":
+          description: Shelf worlds
+    post:
+      summary: Create or upsert a world bundle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [world_bible, event_atoms]
+              properties:
+                world_bible:
+                  $ref: "./world_bible.schema.json"
+                event_atoms:
+                  type: array
+                  items:
+                    $ref: "./event_atom.schema.json"
+                metadata:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: World created
+  /v1/sessions:
+    get:
+      summary: List sessions
+      responses:
+        "200":
+          description: Session list
+    post:
+      summary: Create a new narrative session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [world_id, initial_state]
+              properties:
+                world_id:
+                  type: string
+                initial_state:
+                  $ref: "./narrative_state.schema.json"
+                player_profile:
+                  type: object
+                  additionalProperties: true
+                metadata:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Session created
+  /v1/sessions/{session_id}/step:
+    post:
+      summary: Advance a session by one event-selection step
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [player_input]
+              properties:
+                player_input:
+                  type: string
+                intent_override:
+                  type: object
+                  additionalProperties:
+                    type: number
+                candidate_events:
+                  type: array
+                  items:
+                    $ref: "./event_atom.schema.json"
+                beam_width:
+                  type: integer
+                depth:
+                  type: integer
+                metadata:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Step result with candidates, critic trace, and rendered prose
+  /v1/sessions/{session_id}/replay:
+    get:
+      summary: Replay a session with event, critic, and state traces
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Replay payload
+  /v1/library/worlds:
+    get:
+      summary: Reader library shelf
+      responses:
+        "200":
+          description: Library world cards
+  /v1/library/worlds/{world_id}:
+    get:
+      summary: Reader world detail with published version and manifest
+      parameters:
+        - in: path
+          name: world_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: World detail payload
+  /v1/reader/sessions:
+    post:
+      summary: Create a reader session against the latest published world version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [world_id]
+              properties:
+                world_id:
+                  type: string
+                reader_id:
+                  type: string
+      responses:
+        "200":
+          description: Reader session created
+  /v1/reader/continue:
+    post:
+      summary: Continue a story with entitlement and metering checks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id]
+              properties:
+                session_id:
+                  type: string
+                account_id:
+                  type: string
+                choice_id:
+                  type: string
+                freeform_intent:
+                  type: string
+                reader_id:
+                  type: string
+      responses:
+        "200":
+          description: Reader chapter view or paywall response
+  /v1/reader/sessions/{session_id}/quote:
+    get:
+      summary: Quote continue cost / access tier for the next chapter
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Entitlement quote
+  /v1/reader/sessions/{session_id}/prefill:
+    get:
+      summary: Build next-intent prefill for the sticky composer
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Intent prefill payload
+  /v1/reader/entitlements:
+    get:
+      summary: Reader/account entitlements and wallet balances
+      responses:
+        "200":
+          description: Entitlements and wallet snapshot
+  /v1/reader/subscription:
+    get:
+      summary: Reader/account subscription status
+      responses:
+        "200":
+          description: Subscription snapshot
+  /v1/reader/checkout/start:
+    post:
+      summary: Start a web-first checkout stub session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tier_id]
+              properties:
+                account_id:
+                  type: string
+                reader_id:
+                  type: string
+                tier_id:
+                  type: string
+                provider:
+                  type: string
+      responses:
+        "200":
+          description: Checkout session stub
+  /v1/author/drafts:
+    get:
+      summary: List author drafts
+      responses:
+        "200":
+          description: Draft list
+    post:
+      summary: Save a world pack draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [worldpack]
+              properties:
+                worldpack:
+                  $ref: "./worldpack.schema.json"
+      responses:
+        "200":
+          description: Draft saved
+  /v1/author/access:
+    get:
+      summary: Author access gating snapshot for current account
+      parameters:
+        - in: query
+          name: account_id
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: world_version_id
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Author access snapshot
+  /v1/author/drafts/validate:
+    post:
+      summary: Validate a world pack payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [worldpack]
+              properties:
+                worldpack:
+                  $ref: "./worldpack.schema.json"
+      responses:
+        "200":
+          description: Validation report
+  /v1/author/drafts/{world_version_id}/simulate:
+    post:
+      summary: Run a simulation batch for a draft
+      parameters:
+        - in: path
+          name: world_version_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: account_id
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Simulation report
+  /v1/author/drafts/{world_version_id}/submit:
+    post:
+      summary: Submit a draft for review
+      parameters:
+        - in: path
+          name: world_version_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Submission result
+  /v1/ops/review-queue:
+    get:
+      summary: Review queue for world versions
+      responses:
+        "200":
+          description: Pending review items
+  /v1/ops/worlds/{world_id}/status:
+    get:
+      summary: List world version status for ops
+      parameters:
+        - in: path
+          name: world_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: World version status with publish checklist drill-down
+  /v1/ops/worlds/{world_id}/history:
+    get:
+      summary: List review history, rollback history, and quality-trend drill-down for a world
+      parameters:
+        - in: path
+          name: world_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: World review, rollback, and quality trend drill-down payload
+  /v1/ops/world-versions/{world_version_id}/publish:
+    post:
+      summary: Publish a reviewed world version
+      parameters:
+        - in: path
+          name: world_version_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Publish result
+  /v1/ops/worlds/{world_id}/rollback:
+    post:
+      summary: Roll back a world to a previous version
+      parameters:
+        - in: path
+          name: world_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Rollback result
+  /v1/ops/meters:
+    get:
+      summary: Query usage meter records
+      responses:
+        "200":
+          description: Meter records
+  /v1/ops/schema-lifecycle:
+    get:
+      summary: Query database schema lifecycle and migration status
+      responses:
+        "200":
+          description: Schema lifecycle status
+  /v1/ops/runtime-receipts:
+    get:
+      summary: Query runtime observability receipts
+      responses:
+        "200":
+          description: Runtime receipt list
+  /v1/ops/runtime-incident-snapshot:
+    get:
+      summary: Query runtime incident snapshot
+      responses:
+        "200":
+          description: Runtime incident snapshot
+  /v1/ops/provider-runtime-metrics:
+    get:
+      summary: Query provider runtime metrics and cost trend
+      responses:
+        "200":
+          description: Provider runtime metrics payload
+  /v1/ops/deployment-runbook:
+    get:
+      summary: Query deployment runbook and backup readiness
+      responses:
+        "200":
+          description: Deployment runbook payload
+  /v1/ops/deployment-health-gate:
+    get:
+      summary: Query deployment health gate
+      responses:
+        "200":
+          description: Deployment health gate payload
+  /v1/ops/preflight-verification-bundle:
+    get:
+      summary: Query preflight verification bundle
+      responses:
+        "200":
+          description: Preflight verification bundle payload
+  /v1/ops/incident-playbook:
+    get:
+      summary: Query incident playbook from runtime incident snapshot
+      responses:
+        "200":
+          description: Incident playbook payload
+  /v1/ops/jobs:
+    get:
+      summary: Query long-running async jobs and queue summary
+      responses:
+        "200":
+          description: Async job list and summary payload
+  /v1/ops/jobs/incidents:
+    get:
+      summary: Query async job incident recovery snapshot
+      responses:
+        "200":
+          description: Async job incident recovery payload
+  /v1/ops/jobs/boot-reconcile:
+    get:
+      summary: Query boot-time async job reconcile summary
+      responses:
+        "200":
+          description: Boot-time async job reconcile payload
+  /v1/ops/jobs/artifact-retention:
+    get:
+      summary: Query async job artifact retention summary
+      responses:
+        "200":
+          description: Async job artifact retention payload
+  /v1/ops/jobs/operator-history:
+    get:
+      summary: Query operator run history for async jobs
+      responses:
+        "200":
+          description: Async job operator history payload
+  /v1/ops/jobs/notification-sinks:
+    get:
+      summary: Query async notification sink registry
+      responses:
+        "200":
+          description: Async notification sink registry payload
+  /v1/ops/jobs/adapter-config-validation:
+    get:
+      summary: Query async adapter config validation
+      responses:
+        "200":
+          description: Async adapter config validation payload
+  /v1/ops/jobs/adapter-health-probe:
+    get:
+      summary: Query async adapter health probe summary
+      responses:
+        "200":
+          description: Async adapter health probe payload
+  /v1/ops/jobs/retry-policies:
+    get:
+      summary: Query async retry policy registry
+      responses:
+        "200":
+          description: Async retry policy registry payload
+  /v1/ops/jobs/notification-delivery-receipts:
+    get:
+      summary: Query async notification delivery receipts
+      responses:
+        "200":
+          description: Async notification delivery receipt payload
+  /v1/ops/jobs/notification-retry-queue:
+    get:
+      summary: Query async notification retry queue
+      responses:
+        "200":
+          description: Async notification retry queue payload
+  /v1/ops/jobs/notification-dead-letter-queue:
+    get:
+      summary: Query async notification dead-letter queue
+      responses:
+        "200":
+          description: Async notification dead-letter queue payload
+  /v1/ops/jobs/retry-outcome-dashboard:
+    get:
+      summary: Query async notification retry outcome dashboard
+      responses:
+        "200":
+          description: Async notification retry outcome dashboard payload
+  /v1/ops/jobs/notification-retry-queue/enqueue:
+    post:
+      summary: Enqueue async notification retry
+      responses:
+        "200":
+          description: Async notification retry enqueue payload
+  /v1/ops/jobs/notification-delivery-receipts/{event_id}:
+    get:
+      summary: Query async notification delivery receipt detail
+      parameters:
+        - in: path
+          name: event_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Async notification delivery receipt detail payload
+  /v1/ops/jobs/notification-retry-queue/{retry_id}/process:
+    post:
+      summary: Process async notification retry
+      parameters:
+        - in: path
+          name: retry_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Async notification retry processing payload
+  /v1/ops/jobs/handoff-bundle:
+    get:
+      summary: Query async job handoff bundle summary
+      responses:
+        "200":
+          description: Async job handoff bundle payload
+  /v1/ops/jobs/remote-shipping:
+    get:
+      summary: Query async job remote shipping summary
+      responses:
+        "200":
+          description: Async job remote shipping payload
+  /v1/ops/jobs/handoff-sla:
+    get:
+      summary: Query async job handoff SLA summary
+      responses:
+        "200":
+          description: Async job handoff SLA payload
+  /v1/ops/jobs/handoff-bundle/export:
+    post:
+      summary: Export async job handoff bundle
+      responses:
+        "200":
+          description: Async job handoff bundle export payload
+  /v1/ops/jobs/handoff-sla/escalate:
+    post:
+      summary: Escalate overdue async job handoff SLA
+      responses:
+        "200":
+          description: Async job handoff SLA escalation payload
+  /v1/ops/jobs/enforce-retention:
+    post:
+      summary: Enforce async job artifact retention cleanup
+      responses:
+        "200":
+          description: Async job artifact retention cleanup result
+  /v1/ops/jobs/cold-start-drill:
+    post:
+      summary: Run a cold-start recovery drill for async jobs
+      responses:
+        "200":
+          description: Async job cold-start recovery drill result
+  /v1/ops/jobs/{job_id}:
+    get:
+      summary: Query long-running async job detail
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Async job detail payload
+  /v1/ops/jobs/{job_id}/acknowledge:
+    post:
+      summary: Acknowledge async job handoff
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Acknowledged async job payload
+  /v1/ops/jobs/{job_id}/ship-remote:
+    post:
+      summary: Ship async job artifacts to a remote stub target
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Async job remote shipping payload
+  /v1/ops/jobs/{job_id}/retry:
+    post:
+      summary: Retry a failed async job
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Retried async job payload
+  /v1/ops/jobs/{job_id}/resume:
+    post:
+      summary: Resume a queued or stale-running async job
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Resumed async job payload
+  /v1/ops/jobs/learned-training:
+    post:
+      summary: Enqueue learned training automation as an async job
+      responses:
+        "200":
+          description: Async learned training job payload
+  /v1/ops/jobs/runtime-backups:
+    post:
+      summary: Enqueue runtime backup creation as an async job
+      responses:
+        "200":
+          description: Async runtime backup job payload
+  /v1/ops/jobs/recover-incidents:
+    post:
+      summary: Recover queued or stale async jobs in batch
+      responses:
+        "200":
+          description: Async job incident recovery result
+  /v1/ops/runtime-backups:
+    post:
+      summary: Create a runtime backup
+      responses:
+        "200":
+          description: Runtime backup payload
+  /v1/ops/runtime-restore:
+    post:
+      summary: Restore a runtime backup
+      responses:
+        "200":
+          description: Runtime restore payload
+  /v1/ops/subscriptions:
+    get:
+      summary: Query subscription records
+      responses:
+        "200":
+          description: Subscription records
+  /v1/ops/entitlements:
+    get:
+      summary: Query account entitlements and wallets
+      responses:
+        "200":
+          description: Entitlement audit payload
+  /v1/ops/accounts/{account_id}:
+    get:
+      summary: Query account detail and full audit trail
+      parameters:
+        - in: path
+          name: account_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Account detail payload with audit trail
+  /v1/ops/accounts/{account_id}/issues:
+    get:
+      summary: Query support issue lookup for an account
+      parameters:
+        - in: path
+          name: account_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Account support issue lookup payload
+  /v1/ops/accounts/{account_id}/governance:
+    get:
+      summary: Query governance case snapshot for an account
+      parameters:
+        - in: path
+          name: account_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Account governance snapshot payload
+  /v1/ops/accounts/{account_id}/governance/escalate-support:
+    post:
+      summary: Escalate a support issue into a governance case
+      parameters:
+        - in: path
+          name: account_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Governance case detail created from support escalation
+  /v1/ops/governance/cases:
+    get:
+      summary: Query rights, moderation, and abuse cases
+      responses:
+        "200":
+          description: Governance case list payload
+    post:
+      summary: Create a governance case
+      responses:
+        "200":
+          description: Created governance case
+  /v1/ops/governance/cases/{case_id}:
+    get:
+      summary: Query governance case drill-down detail
+      parameters:
+        - in: path
+          name: case_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Governance case detail payload
+  /v1/ops/governance/restrictions:
+    get:
+      summary: Query manual governance restrictions
+      responses:
+        "200":
+          description: Governance restriction list
+    post:
+      summary: Apply a manual governance restriction
+      responses:
+        "200":
+          description: Governance case with active restriction
+  /v1/ops/governance/restrictions/{restriction_id}/release:
+    post:
+      summary: Release a manual governance restriction
+      parameters:
+        - in: path
+          name: restriction_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Governance case with released restriction
+  /v1/ops/learned-training/run:
+    post:
+      summary: Run evaluator and/or reranker training automation
+      responses:
+        "200":
+          description: Learned training automation result
+  /v1/ops/learned-promotion-evidence:
+    get:
+      summary: Build a promotion evidence pack for evaluator or reranker
+      responses:
+        "200":
+          description: Promotion evidence pack payload
+  /v1/ops/learned-rollout:
+    get:
+      summary: Query learned rollout summary and safety state
+      responses:
+        "200":
+          description: Learned rollout summary
+  /v1/ops/learned-rollout/{track}/activate:
+    post:
+      summary: Activate safe rollout for evaluator or reranker
+      parameters:
+        - in: path
+          name: track
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated learned rollout summary
+  /v1/ops/learned-rollout/{track}/rollback:
+    post:
+      summary: Roll back active learned rollout for evaluator or reranker
+      parameters:
+        - in: path
+          name: track
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated learned rollout summary
+  /v1/ops/governance/cases/{case_id}/status:
+    post:
+      summary: Update a governance case status
+      parameters:
+        - in: path
+          name: case_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated governance case
+  /v1/ops/export/governance-audit:
+    get:
+      summary: Export governance audit cases and restrictions
+      responses:
+        "200":
+          description: Governance audit export payload
+  /v1/ops/review-samples:
+    post:
+      summary: Create or upsert a review sample
+      responses:
+        "200":
+          description: Review sample payload
+    get:
+      summary: Query review samples
+      responses:
+        "200":
+          description: Review sample list
+  /v1/ops/review-sample-backlog:
+    get:
+      summary: Query review sample backlog
+      responses:
+        "200":
+          description: Review sample backlog
+  /v1/ops/issue-fix-pair-backlog:
+    get:
+      summary: Query issue-fix pair backlog
+      responses:
+        "200":
+          description: Issue-fix pair backlog
+  /v1/ops/issue-fix-pairs:
+    get:
+      summary: Query issue-fix pairs with quality and review coverage
+      responses:
+        "200":
+          description: Issue-fix pair list
+  /v1/ops/entitlements/revoke:
+    post:
+      summary: Manually revoke an entitlement by id
+      responses:
+        "200":
+          description: Revoked entitlement
+  /v1/ops/subscriptions/grant:
+    post:
+      summary: Manually grant a subscription tier
+      responses:
+        "200":
+          description: Granted subscription
+  /v1/ops/subscriptions/state:
+    post:
+      summary: Change a subscription lifecycle state
+      responses:
+        "200":
+          description: Updated subscription
+  /v1/ops/wallets/grant:
+    post:
+      summary: Manually top up a wallet
+      responses:
+        "200":
+          description: Updated entitlement wallet
+  /v1/ops/wallets/debit:
+    post:
+      summary: Manually debit a wallet
+      responses:
+        "200":
+          description: Updated entitlement wallet
+  /v1/ops/eval-metrics:
+    get:
+      summary: Aggregate NarrativeEval metrics for ops dashboards
+      responses:
+        "200":
+          description: Evaluation aggregate metrics
+  /v1/routes/preview:
+    post:
+      summary: Preview best routes for a state and candidate event set
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [world, state, candidate_events]
+              properties:
+                world:
+                  $ref: "./world_bible.schema.json"
+                state:
+                  $ref: "./narrative_state.schema.json"
+                candidate_events:
+                  type: array
+                  items:
+                    $ref: "./event_atom.schema.json"
+                beam_width:
+                  type: integer
+                depth:
+                  type: integer
+      responses:
+        "200":
+          description: Route preview result with scored candidates and critic trace

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NarrativeState",
+  "type": "object",
+  "required": [
+    "world_version_id",
+    "story_phase",
+    "chapter_index",
+    "target_chapter_count",
+    "characters",
+    "open_promises",
+    "karmic_seeds",
+    "debts",
+    "relationship_graph"
+  ],
+  "properties": {
+    "world_version_id": {
+      "type": "string"
+    },
+    "story_phase": {
+      "type": "string",
+      "enum": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ]
+    },
+    "chapter_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "target_chapter_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "min_end_turn": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "fate_pressure": {
+      "type": "number"
+    },
+    "karmic_weather": {
+      "type": "object"
+    },
+    "characters": {
+      "type": "array",
+      "items": {
+        "$ref": "character_profile.schema.json"
+      }
+    },
+    "open_promises": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "karmic_seeds": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "debts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "relationship_graph": {
+      "type": "object"
+    },
+    "world_facts": {
+      "type": "object"
+    },
+    "policy_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+# Phase 3 Summary
+
+- Ops 现在已支持：
+  - review history
+  - publish checklist
+  - rollback history
+  - quality trend
+  - publish gate 风险摘要
+- Reader 现在已支持：
+  - `subscriber / world_pass / credits`
+  - `active / expired / exhausted` entitlement 状态
+  - paywall reason 与当前世界解锁状态展示
+- metering / analytics 事件口径现已统一覆盖：
+  - `session_created`
+  - `continue_story`
+  - `payment_required`
+  - `credits_consumed`
+  - `entitlement_granted`
+  - `publish_blocked`
+  - `rollback_performed`
+- 当前结论：
+  - Phase 3 的最小商业化骨架已经不再只是“能跑”
+  - 它已经进入“可运营骨架”状态
+  - 但仍未接真实支付、auth 或完整商业化闭环

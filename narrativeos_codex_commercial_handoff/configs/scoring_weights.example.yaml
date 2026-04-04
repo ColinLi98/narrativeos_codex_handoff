@@ -1,0 +1,18 @@
+version: scoring_v1
+weights:
+  causal_consistency: 0.22
+  character_fidelity: 0.18
+  dramatic_tension_delta: 0.12
+  user_agency_alignment: 0.10
+  thematic_resonance: 0.08
+  branch_novelty: 0.08
+  poison_pull: 0.07
+  vow_pull: 0.05
+  wound_pull: 0.04
+  debt_pull: 0.03
+  karma_pull: 0.02
+  fate_pull: 0.01
+hard_constraints:
+  - no_early_ending
+  - no_engineering_leak
+  - no_world_rule_violation

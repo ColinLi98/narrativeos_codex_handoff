@@ -1,0 +1,26 @@
+[
+  {
+    "raw_input": "我先顺着家里来，但我也想给自己留后路。",
+    "intent_vector": {
+      "ambition": 0.7,
+      "loyalty": 0.6,
+      "selfhood": 0.5
+    }
+  },
+  {
+    "raw_input": "我想先试探林绾的态度，再决定要不要考。",
+    "intent_vector": {
+      "romance": 0.7,
+      "curiosity": 0.6,
+      "selfhood": 0.4
+    }
+  },
+  {
+    "raw_input": "我受够了，我要当众说出真话。",
+    "intent_vector": {
+      "honesty": 0.8,
+      "selfhood": 0.7,
+      "sacrifice": 0.4
+    }
+  }
+]

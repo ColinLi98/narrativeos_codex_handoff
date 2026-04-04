@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AuthorDraft",
+  "type": "object",
+  "required": [
+    "draft_id",
+    "author_id",
+    "world_pack"
+  ],
+  "properties": {
+    "draft_id": {
+      "type": "string"
+    },
+    "author_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "validated",
+        "simulated",
+        "submitted",
+        "published",
+        "archived"
+      ]
+    },
+    "world_pack": {
+      "$ref": "worldpack.schema.json"
+    },
+    "validation_report": {
+      "type": "object"
+    },
+    "simulation_report": {
+      "type": "object"
+    }
+  }
+}

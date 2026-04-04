@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ContentReviewRecord",
+  "type": "object",
+  "required": [
+    "review_id",
+    "asset_type",
+    "asset_id",
+    "status"
+  ],
+  "properties": {
+    "review_id": {
+      "type": "string"
+    },
+    "asset_type": {
+      "type": "string"
+    },
+    "asset_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "approved",
+        "rejected",
+        "needs_changes"
+      ]
+    },
+    "risk_rating": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "reviewer_id": {
+      "type": "string"
+    }
+  }
+}

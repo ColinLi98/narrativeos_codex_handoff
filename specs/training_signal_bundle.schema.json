@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TrainingSignalBundle",
+  "type": "object",
+  "required": [
+    "chapter_review_samples",
+    "author_revision_logs",
+    "continue_churn_events",
+    "issue_fix_pairs",
+    "manifest",
+    "pack_quality_trends",
+    "evaluator_examples",
+    "reranker_examples",
+    "analytics_examples",
+    "generated_at",
+    "filters",
+    "next_cursor"
+  ],
+  "properties": {
+    "chapter_review_samples": {
+      "type": "array",
+      "items": {
+        "$ref": "review_sample.schema.json"
+      }
+    },
+    "author_revision_logs": {
+      "type": "array",
+      "items": {
+        "$ref": "author_revision_log.schema.json"
+      }
+    },
+    "continue_churn_events": {
+      "type": "array",
+      "items": {
+        "$ref": "continue_churn_event.schema.json"
+      }
+    },
+    "issue_fix_pairs": {
+      "type": "array",
+      "items": {
+        "$ref": "issue_fix_pair.schema.json"
+      }
+    },
+    "manifest": {
+      "type": "object",
+        "required": [
+          "bundle_id",
+          "generated_at",
+          "filters",
+          "counts",
+          "source_breakdown",
+          "issue_code_histogram",
+          "inferred_event_count",
+          "warnings"
+        ],
+      "properties": {
+        "bundle_id": {"type": "string"},
+        "generated_at": {"type": "string"},
+        "filters": {"type": "object"},
+        "counts": {
+          "type": "object",
+          "required": [
+            "chapter_review_samples",
+            "author_revision_logs",
+            "continue_churn_events",
+            "issue_fix_pairs"
+          ],
+          "properties": {
+            "chapter_review_samples": {"type": "integer"},
+            "author_revision_logs": {"type": "integer"},
+            "continue_churn_events": {"type": "integer"},
+            "issue_fix_pairs": {"type": "integer"}
+          }
+        },
+        "source_breakdown": {
+          "type": "object",
+          "required": [
+            "evaluation_report_auto",
+            "human_review",
+            "inferred_session_abandoned"
+          ],
+          "properties": {
+            "evaluation_report_auto": {"type": "integer"},
+            "human_review": {"type": "integer"},
+            "inferred_session_abandoned": {"type": "integer"}
+          }
+        },
+        "issue_code_histogram": {
+          "type": "object",
+          "additionalProperties": {"type": "integer"}
+        },
+        "inferred_event_count": {"type": "integer"}
+        ,
+        "warnings": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "pack_quality_trends": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "world_id",
+          "world_version_id",
+          "pass_rate",
+          "rewrite_rate",
+          "block_rate",
+          "cross_pack_pass_rate",
+          "updated_at"
+        ],
+        "properties": {
+          "world_id": {"type": "string"},
+          "world_version_id": {"type": "string"},
+          "pass_rate": {"type": "number"},
+          "rewrite_rate": {"type": "number"},
+          "block_rate": {"type": "number"},
+          "cross_pack_pass_rate": {"type": "number"},
+          "updated_at": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "generated_at": {"type": "string"},
+    "evaluator_examples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "example_id",
+          "chapter_id",
+          "world_id",
+          "world_version_id",
+          "review_source",
+          "score_overall",
+          "issue_codes",
+          "linked_issue_codes",
+          "would_continue",
+          "would_pay",
+          "label_decision",
+          "split",
+          "text_source_ref"
+        ],
+        "properties": {
+          "example_id": {"type": "string"},
+          "chapter_id": {"type": "string"},
+          "world_id": {"type": "string"},
+          "world_version_id": {"type": "string"},
+          "review_source": {"type": "string"},
+          "score_overall": {"type": "number"},
+          "issue_codes": {"type": "array", "items": {"type": "string"}},
+          "linked_issue_codes": {"type": "array", "items": {"type": "string"}},
+          "would_continue": {"type": "boolean"},
+          "would_pay": {"type": "boolean"},
+          "label_decision": {"type": "string"},
+          "split": {"type": "string", "enum": ["train", "val", "test"]},
+          "text_source_ref": {
+            "type": "object",
+            "required": ["chapter_id", "world_version_id"],
+            "properties": {
+              "chapter_id": {"type": "string"},
+              "world_version_id": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "reranker_examples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "example_id",
+          "world_id",
+          "world_version_id",
+          "before_revision_id",
+          "after_revision_id",
+          "changed_sections",
+          "linked_issue_codes",
+          "preferred_revision_id",
+          "preference_strength",
+          "split"
+        ],
+        "properties": {
+          "example_id": {"type": "string"},
+          "world_id": {"type": "string"},
+          "world_version_id": {"type": "string"},
+          "before_revision_id": {"type": "string"},
+          "after_revision_id": {"type": "string"},
+          "changed_sections": {"type": "array", "items": {"type": "string"}},
+          "linked_issue_codes": {"type": "array", "items": {"type": "string"}},
+          "preferred_revision_id": {"type": "string"},
+          "preference_strength": {"type": "string", "enum": ["strong", "medium"]},
+          "split": {"type": "string", "enum": ["train", "val", "test"]}
+        }
+      }
+    },
+    "analytics_examples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "example_id",
+          "reader_id",
+          "session_id",
+          "world_id",
+          "world_version_id",
+          "chapter_index",
+          "access_tier",
+          "label_continue",
+          "label_churn",
+          "event_source",
+          "split"
+        ],
+        "properties": {
+          "example_id": {"type": "string"},
+          "reader_id": {"type": ["string", "null"]},
+          "session_id": {"type": "string"},
+          "world_id": {"type": "string"},
+          "world_version_id": {"type": "string"},
+          "chapter_index": {"type": ["integer", "null"]},
+          "access_tier": {"type": ["string", "null"]},
+          "label_continue": {"type": "integer", "enum": [0, 1]},
+          "label_churn": {"type": "integer", "enum": [0, 1]},
+          "event_source": {"type": "string"},
+          "split": {"type": "string", "enum": ["train", "val", "test"]}
+        }
+      }
+    },
+    "filters": {
+      "type": "object",
+      "required": ["world_id", "world_version_id", "limit", "since", "cursor", "include_inferred", "include_fix_pairs", "dataset_view"],
+      "properties": {
+        "world_id": {"type": ["string", "null"]},
+        "world_version_id": {"type": ["string", "null"]},
+        "limit": {"type": ["integer", "null"]},
+        "since": {"type": ["string", "null"]},
+        "cursor": {"type": ["string", "null"]},
+        "include_inferred": {"type": "boolean"},
+        "include_fix_pairs": {"type": "boolean"},
+        "dataset_view": {"type": "string", "enum": ["raw", "evaluator", "reranker", "analytics"]}
+      }
+    },
+    "next_cursor": {"type": ["string", "null"]}
+  }
+}

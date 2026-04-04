@@ -1,0 +1,4058 @@
+{
+  "world_id": "jade_court_exam",
+  "title": "玉阙春闱",
+  "version": "1.0.0",
+  "manifest": {
+    "author_id": "studio_demo",
+    "language": "zh-CN",
+    "genres": [
+      "court_drama",
+      "fate",
+      "romance"
+    ],
+    "risk_rating": "PG-13",
+    "monetization_policy": {
+      "trial_chapters": 1,
+      "paid_after": 3
+    }
+  },
+  "world_bible": {
+    "premise": "玉阙春闱",
+    "canon_rules": [
+      "春闱已开，荣府寄望于嫡孙入场应试。",
+      "林绾聪慧敏锐，不会轻易相信空话。",
+      "老太君最在意家门名声与府中稳定。",
+      "徐师表面重科举功名，内心仍尊重真才与真心。"
+    ],
+    "forbidden_moves": [
+      "角色不能突然拥有超自然力量。",
+      "角色不能无理由知道他未听闻的秘密。",
+      "故事不能跳过重大代价直接进入圆满结局。"
+    ]
+  },
+  "characters": [
+    {
+      "character_id": "yu_cheng",
+      "display_name": "余澄",
+      "role": "heir",
+      "destiny_contract": {
+        "life_theme": "爱能否不以牺牲自我为代价",
+        "inescapable_nodes": [
+          "被误解",
+          "公开失去体面",
+          "为愿付出代价"
+        ],
+        "fated_relations": [
+          "lin_wan",
+          "lady_rong"
+        ],
+        "forbidden_escape": "继续把顺从伪装成孝义",
+        "endgame_shapes": [
+          "awakening",
+          "fracture",
+          "false_awakening"
+        ]
+      },
+      "poison_vector": {
+        "greed": 0.22,
+        "anger": 0.18,
+        "delusion": 0.52,
+        "pride": 0.48,
+        "doubt": 0.46
+      },
+      "vow_profile": {
+        "vows": [
+          "宁可自己背负，也不让她替我受伤",
+          "不想把一生交给空洞功名"
+        ],
+        "sacrifice_capacity": 0.74,
+        "truth_tolerance": 0.41
+      },
+      "wound_profile": {
+        "core_wound": "永远要证明自己才值得被留下",
+        "public_self": "稳得住局面的继承人",
+        "shadow_desire": "想被人无条件地相信与偏爱",
+        "defense_style": "奉献与硬撑"
+      },
+      "awakening_profile": {
+        "clarity": 0.36,
+        "reflection_capacity": 0.42,
+        "repentance_threshold": 0.64,
+        "transformation_paths": [
+          "full_confession",
+          "sacrifice",
+          "mutual_truth"
+        ]
+      },
+      "speech_traits": [
+        "奉献",
+        "硬撑"
+      ],
+      "action_traits": [
+        "protect_family_reputation",
+        "survive_exam_expectation"
+      ]
+    },
+    {
+      "character_id": "lin_wan",
+      "display_name": "林绾",
+      "role": "cousin",
+      "destiny_contract": {
+        "life_theme": "真心能否在不被优先选择时仍不扭曲",
+        "inescapable_nodes": [
+          "被隐瞒",
+          "替对方站出来一次"
+        ],
+        "fated_relations": [
+          "yu_cheng"
+        ],
+        "forbidden_escape": "把失望包装成无所谓",
+        "endgame_shapes": [
+          "awakening",
+          "fracture"
+        ]
+      },
+      "poison_vector": {
+        "greed": 0.08,
+        "anger": 0.26,
+        "delusion": 0.28,
+        "pride": 0.55,
+        "doubt": 0.51
+      },
+      "vow_profile": {
+        "vows": [
+          "若他不肯说真话，我也不替他圆谎",
+          "若真要护他，先逼他看清自己"
+        ],
+        "sacrifice_capacity": 0.62,
+        "truth_tolerance": 0.78
+      },
+      "wound_profile": {
+        "core_wound": "先相信的人总是先受伤",
+        "public_self": "看得清也守得住分寸的人",
+        "shadow_desire": "想被坚定选择而不是被权衡",
+        "defense_style": "冷漠与试探"
+      },
+      "awakening_profile": {
+        "clarity": 0.49,
+        "reflection_capacity": 0.58,
+        "repentance_threshold": 0.52,
+        "transformation_paths": [
+          "mutual_truth",
+          "let_go",
+          "public_witness"
+        ]
+      },
+      "speech_traits": [
+        "冷漠",
+        "试探"
+      ],
+      "action_traits": [
+        "protect_truth",
+        "protect_yu_cheng"
+      ]
+    },
+    {
+      "character_id": "lady_rong",
+      "display_name": "荣老太君",
+      "role": "matriarch",
+      "destiny_contract": {
+        "life_theme": "控制是否真能换来庇护",
+        "inescapable_nodes": [
+          "公开承认一次自己错了"
+        ],
+        "fated_relations": [
+          "yu_cheng",
+          "lin_wan"
+        ],
+        "forbidden_escape": "继续把控制说成保护",
+        "endgame_shapes": [
+          "awakening",
+          "downfall",
+          "false_awakening"
+        ]
+      },
+      "poison_vector": {
+        "greed": 0.34,
+        "anger": 0.22,
+        "delusion": 0.44,
+        "pride": 0.82,
+        "doubt": 0.31
+      },
+      "vow_profile": {
+        "vows": [
+          "就算被怨，也要把门楣撑住"
+        ],
+        "sacrifice_capacity": 0.57,
+        "truth_tolerance": 0.33
+      },
+      "wound_profile": {
+        "core_wound": "一旦失手，整个家门都会塌",
+        "public_self": "懂得权衡全局的掌舵人",
+        "shadow_desire": "想证明自己当年的选择没有错",
+        "defense_style": "控制与体面"
+      },
+      "awakening_profile": {
+        "clarity": 0.24,
+        "reflection_capacity": 0.29,
+        "repentance_threshold": 0.81,
+        "transformation_paths": [
+          "public_concession",
+          "release_control"
+        ]
+      },
+      "speech_traits": [
+        "控制",
+        "体面"
+      ],
+      "action_traits": [
+        "stabilize_household",
+        "secure_exam_success"
+      ]
+    },
+    {
+      "character_id": "tutor_xu",
+      "display_name": "徐师",
+      "role": "tutor",
+      "destiny_contract": {
+        "life_theme": "公道能否在寄人篱下时仍被守住",
+        "inescapable_nodes": [
+          "替学生违逆一次权势"
+        ],
+        "fated_relations": [
+          "yu_cheng",
+          "lady_rong"
+        ],
+        "forbidden_escape": "继续做一个只提醒不承担的人",
+        "endgame_shapes": [
+          "awakening",
+          "fracture"
+        ]
+      },
+      "poison_vector": {
+        "greed": 0.05,
+        "anger": 0.17,
+        "delusion": 0.19,
+        "pride": 0.37,
+        "doubt": 0.29
+      },
+      "vow_profile": {
+        "vows": [
+          "若见空名压人，就该替真正的人说一句公道话"
+        ],
+        "sacrifice_capacity": 0.66,
+        "truth_tolerance": 0.82
+      },
+      "wound_profile": {
+        "core_wound": "见过太多被体面毁掉的人",
+        "public_self": "守礼而克制的师长",
+        "shadow_desire": "想亲手纠正一次旧秩序的错",
+        "defense_style": "克制与旁敲侧击"
+      },
+      "awakening_profile": {
+        "clarity": 0.63,
+        "reflection_capacity": 0.72,
+        "repentance_threshold": 0.36,
+        "transformation_paths": [
+          "public_witness",
+          "truth_testimony",
+          "sacrifice"
+        ]
+      },
+      "speech_traits": [
+        "克制",
+        "旁敲侧击"
+      ],
+      "action_traits": [
+        "prepare_yu_cheng_for_exam"
+      ]
+    }
+  ],
+  "scene_blueprints": [
+    {
+      "scene_id": "scene_false_peace",
+      "scene_function": "false_peace",
+      "phase_support": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ],
+      "required_roles": [
+        "heir",
+        "matriarch"
+      ],
+      "beats_template": [
+        "余澄当众接下春闱之命",
+        "余澄在花厅当众应下应试，表面顺从，实则将自己推进",
+        "余波未散"
+      ],
+      "wound_triggers": [
+        "永远要证明自己才值得被留下"
+      ],
+      "vow_tests": [
+        "keep_house_intact"
+      ],
+      "seed_templates": [
+        "suppressed_self"
+      ],
+      "ending_gate": {}
+    },
+    {
+      "scene_id": "scene_temptation",
+      "scene_function": "temptation",
+      "phase_support": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ],
+      "required_roles": [
+        "heir",
+        "cousin"
+      ],
+      "beats_template": [
+        "余澄夜访林绾试探真心",
+        "余澄在回廊暗处与林绾相见，试图探口风，也暴露了自",
+        "余波未散"
+      ],
+      "wound_triggers": [
+        "先相信的人总是先受伤",
+        "永远要证明自己才值得被留下"
+      ],
+      "vow_tests": [
+        "tell_lin_wan_the_whole_truth"
+      ],
+      "seed_templates": [
+        "concealed_truth"
+      ],
+      "ending_gate": {}
+    },
+    {
+      "scene_id": "scene_confession_window",
+      "scene_function": "confession_window",
+      "phase_support": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ],
+      "required_roles": [
+        "heir",
+        "tutor"
+      ],
+      "beats_template": [
+        "余澄向徐师吐露对科举的怀疑",
+        "余澄在书房向徐师吐露心事，请他给出不损家门又不违",
+        "余波未散"
+      ],
+      "wound_triggers": [
+        "永远要证明自己才值得被留下"
+      ],
+      "vow_tests": [
+        "speak_plainly_once"
+      ],
+      "seed_templates": [
+        "mercy"
+      ],
+      "ending_gate": {}
+    },
+    {
+      "scene_id": "scene_truth_trial",
+      "scene_function": "truth_trial",
+      "phase_support": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ],
+      "required_roles": [
+        "cousin",
+        "heir"
+      ],
+      "beats_template": [
+        "林绾逼问余澄：你到底是为谁去考",
+        "林绾不再接受含混试探，逼问余澄究竟是为名声、为家",
+        "余波未散"
+      ],
+      "wound_triggers": [
+        "先相信的人总是先受伤",
+        "想被人无条件地相信与偏爱"
+      ],
+      "vow_tests": [
+        "tell_lin_wan_the_whole_truth"
+      ],
+      "seed_templates": [],
+      "ending_gate": {}
+    },
+    {
+      "scene_id": "scene_mask_crack",
+      "scene_function": "mask_crack",
+      "phase_support": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ],
+      "required_roles": [
+        "heir",
+        "tutor"
+      ],
+      "beats_template": [
+        "余澄得知自己的名额并不干净",
+        "一封被压下的荐书浮出水面，余澄意识到自己的应试资",
+        "余波未散"
+      ],
+      "wound_triggers": [
+        "见过太多被体面毁掉的人",
+        "一旦失手，整个家门都会塌"
+      ],
+      "vow_tests": [
+        "stop_hiding_behind_merit"
+      ],
+      "seed_templates": [
+        "control_disguised_as_protection"
+      ],
+      "ending_gate": {}
+    },
+    {
+      "scene_id": "scene_humiliation",
+      "scene_function": "humiliation",
+      "phase_support": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ],
+      "required_roles": [
+        "heir"
+      ],
+      "beats_template": [
+        "余澄真正步入考棚",
+        "余澄终于坐进考棚，在纸笔与喧嚣中面对自己到底要成",
+        "余波未散"
+      ],
+      "wound_triggers": [
+        "永远要证明自己才值得被留下"
+      ],
+      "vow_tests": [
+        "endure_false_path"
+      ],
+      "seed_templates": [
+        "humiliation"
+      ],
+      "ending_gate": {}
+    },
+    {
+      "scene_id": "scene_vow_payment",
+      "scene_function": "vow_payment",
+      "phase_support": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ],
+      "required_roles": [
+        "heir",
+        "matriarch",
+        "cousin"
+      ],
+      "beats_template": [
+        "余澄在众目睽睽下当场拒考",
+        "余澄在家宴中当众拒绝赴考，等于亲手撕开家门期待与",
+        "余波未散"
+      ],
+      "wound_triggers": [
+        "一旦失手，整个家门都会塌"
+      ],
+      "vow_tests": [
+        "keep_truth_above_face",
+        "protect_lin_wan_without_hiding"
+      ],
+      "seed_templates": [
+        "sacrifice"
+      ],
+      "ending_gate": {}
+    },
+    {
+      "scene_id": "scene_debt_exchange",
+      "scene_function": "debt_exchange",
+      "phase_support": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ],
+      "required_roles": [
+        "heir",
+        "matriarch"
+      ],
+      "beats_template": [
+        "余澄主动揽下污名以保全家门",
+        "面对风声日急，余澄选择把错揽到自己身上，用个人名",
+        "余波未散"
+      ],
+      "wound_triggers": [
+        "永远要证明自己才值得被留下",
+        "一旦失手，整个家门都会塌"
+      ],
+      "vow_tests": [
+        "carry_cost_without_resentment"
+      ],
+      "seed_templates": [
+        "martyrdom"
+      ],
+      "ending_gate": {}
+    },
+    {
+      "scene_id": "scene_karma_ripening",
+      "scene_function": "karma_ripening",
+      "phase_support": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ],
+      "required_roles": [
+        "heir",
+        "tutor"
+      ],
+      "beats_template": [
+        "徐师拿出那封被烧过一角的旧荐书",
+        "徐师在书房深处拿出一封被烧过一角的旧荐书，让余澄",
+        "余波未散"
+      ],
+      "wound_triggers": [
+        "见过太多被体面毁掉的人"
+      ],
+      "vow_tests": [
+        "witness_truth_publicly"
+      ],
+      "seed_templates": [],
+      "ending_gate": {}
+    },
+    {
+      "scene_id": "scene_misrecognition",
+      "scene_function": "misrecognition",
+      "phase_support": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ],
+      "required_roles": [
+        "cousin",
+        "heir"
+      ],
+      "beats_template": [
+        "林绾读完那封荐书，终于明白余澄为什么退无可退",
+        "林绾在烛下读完荐书残页，第一次明白余澄面对的不只",
+        "余波未散"
+      ],
+      "wound_triggers": [
+        "先相信的人总是先受伤"
+      ],
+      "vow_tests": [
+        "do_not_turn_hurt_into_contempt"
+      ],
+      "seed_templates": [
+        "misrecognition"
+      ],
+      "ending_gate": {}
+    },
+    {
+      "scene_id": "scene_mercy_vs_control",
+      "scene_function": "mercy_vs_control",
+      "phase_support": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ],
+      "required_roles": [
+        "matriarch",
+        "heir"
+      ],
+      "beats_template": [
+        "荣老太君在深夜里给出一桩沉默交易",
+        "荣老太君在深夜里把余澄唤进内室，提出只要他肯继续",
+        "余波未散"
+      ],
+      "wound_triggers": [
+        "一旦失手，整个家门都会塌",
+        "永远要证明自己才值得被留下"
+      ],
+      "vow_tests": [
+        "distinguish_protection_from_control"
+      ],
+      "seed_templates": [
+        "control"
+      ],
+      "ending_gate": {}
+    }
+  ],
+  "style_pack": {
+    "mode": "novel_lush",
+    "pov": "limited_third",
+    "dialogue_density": "medium"
+  },
+  "risk_policy": {
+    "shareable": true,
+    "requires_manual_review": false
+  },
+  "runtime_world_bible": {
+    "world_id": "jade_court_exam",
+    "title": "玉阙春闱",
+    "source_type": "original",
+    "themes": [
+      "duty",
+      "love",
+      "selfhood",
+      "reputation",
+      "destiny"
+    ],
+    "canon_anchors": [
+      "春闱已开，荣府寄望于嫡孙入场应试。",
+      "林绾聪慧敏锐，不会轻易相信空话。",
+      "老太君最在意家门名声与府中稳定。",
+      "徐师表面重科举功名，内心仍尊重真才与真心。"
+    ],
+    "forbidden_moves": [
+      "角色不能突然拥有超自然力量。",
+      "角色不能无理由知道他未听闻的秘密。",
+      "故事不能跳过重大代价直接进入圆满结局。"
+    ],
+    "characters": [
+      "yu_cheng",
+      "lin_wan",
+      "lady_rong",
+      "tutor_xu"
+    ],
+    "locations": [
+      "荣府",
+      "书房",
+      "花厅",
+      "考棚",
+      "渡口"
+    ],
+    "creator_controls": {
+      "merge_policy": "allow_dag_with_scars",
+      "darkness_ceiling": "PG13",
+      "theme_targets": [
+        "duty",
+        "selfhood",
+        "love"
+      ],
+      "payoff_style": "bittersweet_or_earned"
+    }
+  },
+  "runtime_initial_state": {
+    "state_id": "state_0001",
+    "world_id": "jade_court_exam",
+    "turn_index": 0,
+    "story_phase": "setup",
+    "chapter_index": 0,
+    "min_end_turn": 8,
+    "fate_pressure": 0.18,
+    "karmic_weather": {
+      "suspicion": 0.22,
+      "grief": 0.08,
+      "temptation": 0.26,
+      "shame": 0.18,
+      "mercy": 0.1
+    },
+    "unresolved_debts": [],
+    "world_facts": [
+      "spring_exam_announced",
+      "family_reputation_fragile",
+      "yu_cheng_nominated",
+      "lin_wan_trusts_yu_cheng",
+      "tutor_xu_observes_yu_cheng"
+    ],
+    "timeline": [],
+    "characters": {
+      "yu_cheng": {
+        "name": "余澄",
+        "role": "heir",
+        "public_goals": [
+          "protect_family_reputation",
+          "survive_exam_expectation"
+        ],
+        "hidden_goals": [
+          "seek_selfhood",
+          "remain_true_to_lin_wan"
+        ],
+        "constraints": [
+          "avoid_public_humiliation",
+          "cannot_directly_defy_matriarch_without_cost"
+        ],
+        "beliefs_true": [
+          "family_reputation_fragile"
+        ],
+        "beliefs_false": [],
+        "emotions": {
+          "anxiety": 0.7,
+          "defiance": 0.4,
+          "tenderness": 0.5
+        },
+        "trust": {
+          "lin_wan": 0.8,
+          "lady_rong": 0.6,
+          "tutor_xu": 0.5
+        },
+        "poisons": {
+          "greed": 0.22,
+          "anger": 0.18,
+          "delusion": 0.52,
+          "pride": 0.48,
+          "doubt": 0.46
+        },
+        "vows": {
+          "vows": [
+            "宁可自己背负，也不让她替我受伤",
+            "不想把一生交给空洞功名"
+          ],
+          "sacrifice_capacity": 0.74,
+          "truth_tolerance": 0.41
+        },
+        "wound": {
+          "core_wound": "永远要证明自己才值得被留下",
+          "public_self": "稳得住局面的继承人",
+          "shadow_desire": "想被人无条件地相信与偏爱",
+          "defense_style": "奉献与硬撑"
+        },
+        "awakening": {
+          "clarity": 0.36,
+          "reflection_capacity": 0.42,
+          "repentance_threshold": 0.64,
+          "transformation_paths": [
+            "full_confession",
+            "sacrifice",
+            "mutual_truth"
+          ]
+        },
+        "destiny": {
+          "life_theme": "爱能否不以牺牲自我为代价",
+          "inescapable_nodes": [
+            "被误解",
+            "公开失去体面",
+            "为愿付出代价"
+          ],
+          "fated_relations": [
+            "lin_wan",
+            "lady_rong"
+          ],
+          "forbidden_escape": [
+            "继续把顺从伪装成孝义"
+          ],
+          "endgame_shapes": [
+            "awakening",
+            "fracture",
+            "false_awakening"
+          ]
+        },
+        "debts": [],
+        "karmic_seeds": []
+      },
+      "lin_wan": {
+        "name": "林绾",
+        "role": "cousin",
+        "public_goals": [
+          "protect_truth",
+          "protect_yu_cheng"
+        ],
+        "hidden_goals": [
+          "test_yu_cheng_sincerity"
+        ],
+        "constraints": [
+          "will_not_reward_cowardice"
+        ],
+        "beliefs_true": [
+          "family_reputation_fragile"
+        ],
+        "beliefs_false": [],
+        "emotions": {
+          "concern": 0.7,
+          "doubt": 0.3
+        },
+        "trust": {
+          "yu_cheng": 0.8,
+          "lady_rong": 0.3,
+          "tutor_xu": 0.4
+        },
+        "poisons": {
+          "greed": 0.08,
+          "anger": 0.26,
+          "delusion": 0.28,
+          "pride": 0.55,
+          "doubt": 0.51
+        },
+        "vows": {
+          "vows": [
+            "若他不肯说真话，我也不替他圆谎",
+            "若真要护他，先逼他看清自己"
+          ],
+          "sacrifice_capacity": 0.62,
+          "truth_tolerance": 0.78
+        },
+        "wound": {
+          "core_wound": "先相信的人总是先受伤",
+          "public_self": "看得清也守得住分寸的人",
+          "shadow_desire": "想被坚定选择而不是被权衡",
+          "defense_style": "冷漠与试探"
+        },
+        "awakening": {
+          "clarity": 0.49,
+          "reflection_capacity": 0.58,
+          "repentance_threshold": 0.52,
+          "transformation_paths": [
+            "mutual_truth",
+            "let_go",
+            "public_witness"
+          ]
+        },
+        "destiny": {
+          "life_theme": "真心能否在不被优先选择时仍不扭曲",
+          "inescapable_nodes": [
+            "被隐瞒",
+            "替对方站出来一次"
+          ],
+          "fated_relations": [
+            "yu_cheng"
+          ],
+          "forbidden_escape": [
+            "把失望包装成无所谓"
+          ],
+          "endgame_shapes": [
+            "awakening",
+            "fracture"
+          ]
+        },
+        "debts": [],
+        "karmic_seeds": []
+      },
+      "lady_rong": {
+        "name": "荣老太君",
+        "role": "matriarch",
+        "public_goals": [
+          "stabilize_household",
+          "secure_exam_success"
+        ],
+        "hidden_goals": [
+          "preserve_authority"
+        ],
+        "constraints": [
+          "must_appear_fair"
+        ],
+        "beliefs_true": [
+          "yu_cheng_nominated"
+        ],
+        "beliefs_false": [],
+        "emotions": {
+          "control": 0.9,
+          "worry": 0.5
+        },
+        "trust": {
+          "yu_cheng": 0.6,
+          "lin_wan": 0.4,
+          "tutor_xu": 0.7
+        },
+        "poisons": {
+          "greed": 0.34,
+          "anger": 0.22,
+          "delusion": 0.44,
+          "pride": 0.82,
+          "doubt": 0.31
+        },
+        "vows": {
+          "vows": [
+            "就算被怨，也要把门楣撑住"
+          ],
+          "sacrifice_capacity": 0.57,
+          "truth_tolerance": 0.33
+        },
+        "wound": {
+          "core_wound": "一旦失手，整个家门都会塌",
+          "public_self": "懂得权衡全局的掌舵人",
+          "shadow_desire": "想证明自己当年的选择没有错",
+          "defense_style": "控制与体面"
+        },
+        "awakening": {
+          "clarity": 0.24,
+          "reflection_capacity": 0.29,
+          "repentance_threshold": 0.81,
+          "transformation_paths": [
+            "public_concession",
+            "release_control"
+          ]
+        },
+        "destiny": {
+          "life_theme": "控制是否真能换来庇护",
+          "inescapable_nodes": [
+            "公开承认一次自己错了"
+          ],
+          "fated_relations": [
+            "yu_cheng",
+            "lin_wan"
+          ],
+          "forbidden_escape": [
+            "继续把控制说成保护"
+          ],
+          "endgame_shapes": [
+            "awakening",
+            "downfall",
+            "false_awakening"
+          ]
+        },
+        "debts": [],
+        "karmic_seeds": []
+      },
+      "tutor_xu": {
+        "name": "徐师",
+        "role": "tutor",
+        "public_goals": [
+          "prepare_yu_cheng_for_exam"
+        ],
+        "hidden_goals": [
+          "avoid_empty_merit",
+          "protect_real_talent"
+        ],
+        "constraints": [
+          "cannot_publicly_shame_patron_house"
+        ],
+        "beliefs_true": [
+          "yu_cheng_nominated"
+        ],
+        "beliefs_false": [],
+        "emotions": {
+          "patience": 0.6,
+          "skepticism": 0.4
+        },
+        "trust": {
+          "yu_cheng": 0.5,
+          "lady_rong": 0.6,
+          "lin_wan": 0.5
+        },
+        "poisons": {
+          "greed": 0.05,
+          "anger": 0.17,
+          "delusion": 0.19,
+          "pride": 0.37,
+          "doubt": 0.29
+        },
+        "vows": {
+          "vows": [
+            "若见空名压人，就该替真正的人说一句公道话"
+          ],
+          "sacrifice_capacity": 0.66,
+          "truth_tolerance": 0.82
+        },
+        "wound": {
+          "core_wound": "见过太多被体面毁掉的人",
+          "public_self": "守礼而克制的师长",
+          "shadow_desire": "想亲手纠正一次旧秩序的错",
+          "defense_style": "克制与旁敲侧击"
+        },
+        "awakening": {
+          "clarity": 0.63,
+          "reflection_capacity": 0.72,
+          "repentance_threshold": 0.36,
+          "transformation_paths": [
+            "public_witness",
+            "truth_testimony",
+            "sacrifice"
+          ]
+        },
+        "destiny": {
+          "life_theme": "公道能否在寄人篱下时仍被守住",
+          "inescapable_nodes": [
+            "替学生违逆一次权势"
+          ],
+          "fated_relations": [
+            "yu_cheng",
+            "lady_rong"
+          ],
+          "forbidden_escape": [
+            "继续做一个只提醒不承担的人"
+          ],
+          "endgame_shapes": [
+            "awakening",
+            "fracture"
+          ]
+        },
+        "debts": [],
+        "karmic_seeds": []
+      }
+    },
+    "relationship_graph": [
+      {
+        "source": "yu_cheng",
+        "target": "lin_wan",
+        "attachment": 0.82,
+        "resentment": 0.06,
+        "shame": 0.12,
+        "obligation": 0.28,
+        "projection": 0.18,
+        "possession": 0.14,
+        "gratitude": 0.42,
+        "fear": 0.44,
+        "debts": [],
+        "notes": [
+          "说不出口的情意压得太久"
+        ]
+      },
+      {
+        "source": "lin_wan",
+        "target": "yu_cheng",
+        "attachment": 0.78,
+        "resentment": 0.18,
+        "shame": 0.08,
+        "obligation": 0.12,
+        "projection": 0.24,
+        "possession": 0.05,
+        "gratitude": 0.22,
+        "fear": 0.49,
+        "debts": [],
+        "notes": [
+          "越在意越不肯先示弱"
+        ]
+      },
+      {
+        "source": "yu_cheng",
+        "target": "lady_rong",
+        "attachment": 0.41,
+        "resentment": 0.22,
+        "shame": 0.31,
+        "obligation": 0.73,
+        "projection": 0.12,
+        "possession": 0.0,
+        "gratitude": 0.37,
+        "fear": 0.54,
+        "debts": [],
+        "notes": [
+          "孝义与窒息并存"
+        ]
+      },
+      {
+        "source": "lady_rong",
+        "target": "yu_cheng",
+        "attachment": 0.52,
+        "resentment": 0.04,
+        "shame": 0.0,
+        "obligation": 0.58,
+        "projection": 0.35,
+        "possession": 0.46,
+        "gratitude": 0.12,
+        "fear": 0.43,
+        "debts": [],
+        "notes": [
+          "把控制误当成庇护"
+        ]
+      },
+      {
+        "source": "tutor_xu",
+        "target": "yu_cheng",
+        "attachment": 0.36,
+        "resentment": 0.0,
+        "shame": 0.0,
+        "obligation": 0.27,
+        "projection": 0.18,
+        "possession": 0.0,
+        "gratitude": 0.0,
+        "fear": 0.12,
+        "debts": [],
+        "notes": [
+          "带着惜才的师生之义"
+        ]
+      },
+      {
+        "source": "yu_cheng",
+        "target": "tutor_xu",
+        "attachment": 0.25,
+        "resentment": 0.0,
+        "shame": 0.11,
+        "obligation": 0.33,
+        "projection": 0.1,
+        "possession": 0.0,
+        "gratitude": 0.34,
+        "fear": 0.16,
+        "debts": [],
+        "notes": [
+          "把徐师当成少数能说真话的人"
+        ]
+      }
+    ],
+    "open_promises": [],
+    "tension": 0.42,
+    "themes": {
+      "duty": 0.6,
+      "love": 0.4,
+      "selfhood": 0.3,
+      "reputation": 0.7,
+      "destiny": 0.5
+    },
+    "player_intent": {
+      "ambition": 0.75,
+      "loyalty": 0.55,
+      "honesty": 0.4,
+      "romance": 0.2,
+      "selfhood": 0.55
+    },
+    "recent_scene_functions": [],
+    "visited_event_ids": [],
+    "route_fingerprint": [],
+    "rating_ceiling": "PG13",
+    "metadata": {
+      "source_type": "original"
+    }
+  },
+  "runtime_event_atoms": [
+    {
+      "event_id": "accept_exam_nomination",
+      "title": "余澄当众接下春闱之命",
+      "summary": "余澄在花厅当众应下应试，表面顺从，实则将自己推进更深的命运轨道。",
+      "actors": [
+        "yu_cheng",
+        "lady_rong"
+      ],
+      "scene_function": "false_peace",
+      "tags": [
+        "duty",
+        "ambition",
+        "reputation"
+      ],
+      "preconditions_all": [
+        "spring_exam_announced",
+        "yu_cheng_nominated"
+      ],
+      "forbidden_if_any": [
+        "yu_refused_exam_publicly"
+      ],
+      "world_fact_deltas_add": [
+        "yu_cheng_commits_exam"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "anxiety",
+          "delta": 0.08
+        },
+        {
+          "character": "lady_rong",
+          "emotion": "worry",
+          "delta": -0.05
+        }
+      ],
+      "promises_open": [
+        {
+          "promise_id": "must_sit_first_exam",
+          "description": "余澄既已应下春闱，就必须在后续面对真正入场或公开反悔的代价。",
+          "opened_at_turn": 0,
+          "due_by_turn": 3,
+          "holders": [
+            "yu_cheng",
+            "lady_rong"
+          ],
+          "fulfillment_modes": [
+            "sit_the_exam",
+            "refuse_the_exam_publicly"
+          ],
+          "status": "open",
+          "stakes": "family_reputation_and_selfhood",
+          "tags": [
+            "exam",
+            "duty",
+            "public_commitment"
+          ]
+        }
+      ],
+      "promises_close": [],
+      "tension_delta": 0.1,
+      "theme_impacts": {
+        "duty": 0.08,
+        "reputation": 0.06
+      },
+      "agency_affordances": [
+        "ambition",
+        "loyalty",
+        "duty"
+      ],
+      "rating_ceiling": "PG",
+      "temptation_vector": {
+        "pride": 0.16,
+        "doubt": 0.08,
+        "delusion": 0.14
+      },
+      "vow_tests": [
+        "keep_house_intact"
+      ],
+      "wound_triggers": [
+        "永远要证明自己才值得被留下"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "lady_rong",
+          "debt_type": "obedience",
+          "magnitude": 0.34,
+          "obligation": 0.12,
+          "shame": 0.08,
+          "note": "当众接命，欠下门楣一笔顺从债"
+        }
+      ],
+      "karmic_seed_creations": [
+        {
+          "seed_id": "seed_accept_exam_face",
+          "source_event_id": "accept_exam_nomination",
+          "actor": "yu_cheng",
+          "target": "lady_rong",
+          "seed_type": "suppressed_self",
+          "charge": 0.58,
+          "tags": [
+            "duty",
+            "reputation",
+            "concealment"
+          ],
+          "created_at_turn": 0,
+          "ripening_conditions": [
+            "truth_trial",
+            "karma_ripening",
+            "public_crisis"
+          ],
+          "earliest_turn": 2,
+          "latest_turn": 8,
+          "status": "dormant",
+          "transformable_by": [
+            "full_confession",
+            "vow_payment"
+          ]
+        }
+      ],
+      "karmic_seed_resolutions": [],
+      "awakening_affordances": [],
+      "concealment_level": 0.72,
+      "consequence_delay_hint": 2,
+      "location": "花厅",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "secret_meet_lin_wan",
+      "title": "余澄夜访林绾试探真心",
+      "summary": "余澄在回廊暗处与林绾相见，试图探口风，也暴露了自己的犹豫与软弱。",
+      "actors": [
+        "yu_cheng",
+        "lin_wan"
+      ],
+      "scene_function": "temptation",
+      "tags": [
+        "love",
+        "secrecy",
+        "curiosity",
+        "selfhood"
+      ],
+      "preconditions_all": [
+        "spring_exam_announced"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "yu_cheng_secretly_met_lin_wan"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "lin_wan",
+          "target": "yu_cheng",
+          "delta": 0.03
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "lin_wan",
+          "emotion": "doubt",
+          "delta": 0.05
+        }
+      ],
+      "promises_open": [
+        {
+          "promise_id": "truth_between_yu_and_lin",
+          "description": "余澄与林绾之间必须就真实意图有一次不可回避的坦白或决裂。",
+          "opened_at_turn": 0,
+          "due_by_turn": 3,
+          "holders": [
+            "yu_cheng",
+            "lin_wan"
+          ],
+          "fulfillment_modes": [
+            "lin_wan_asks_for_truth",
+            "leave_manor_with_lin",
+            "win_honors_but_lose_lin"
+          ],
+          "status": "open",
+          "stakes": "love_and_trust",
+          "tags": [
+            "romance",
+            "honesty",
+            "secrecy"
+          ]
+        }
+      ],
+      "promises_close": [],
+      "tension_delta": 0.08,
+      "theme_impacts": {
+        "love": 0.1,
+        "selfhood": 0.05
+      },
+      "agency_affordances": [
+        "romance",
+        "curiosity",
+        "selfhood",
+        "secrecy"
+      ],
+      "rating_ceiling": "PG",
+      "temptation_vector": {
+        "greed": 0.12,
+        "doubt": 0.16,
+        "delusion": 0.18
+      },
+      "vow_tests": [
+        "tell_lin_wan_the_whole_truth"
+      ],
+      "wound_triggers": [
+        "先相信的人总是先受伤",
+        "永远要证明自己才值得被留下"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "lin_wan",
+          "debt_type": "half_truth",
+          "magnitude": 0.41,
+          "attachment": 0.08,
+          "projection": 0.1,
+          "fear": 0.08,
+          "note": "试探真心却仍说了半句假话"
+        }
+      ],
+      "karmic_seed_creations": [
+        {
+          "seed_id": "seed_half_truth_lin",
+          "source_event_id": "secret_meet_lin_wan",
+          "actor": "yu_cheng",
+          "target": "lin_wan",
+          "seed_type": "concealed_truth",
+          "charge": 0.72,
+          "tags": [
+            "love",
+            "secrecy",
+            "doubt"
+          ],
+          "created_at_turn": 0,
+          "ripening_conditions": [
+            "truth_trial",
+            "karma_ripening",
+            "third_party_reveal"
+          ],
+          "earliest_turn": 2,
+          "latest_turn": 9,
+          "status": "dormant",
+          "transformable_by": [
+            "full_confession",
+            "mutual_truth",
+            "sacrifice"
+          ]
+        }
+      ],
+      "karmic_seed_resolutions": [],
+      "awakening_affordances": [],
+      "concealment_level": 0.84,
+      "consequence_delay_hint": 3,
+      "location": "回廊",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "confide_in_tutor_xu",
+      "title": "余澄向徐师吐露对科举的怀疑",
+      "summary": "余澄在书房向徐师吐露心事，请他给出不损家门又不违本心的路。",
+      "actors": [
+        "yu_cheng",
+        "tutor_xu"
+      ],
+      "scene_function": "confession_window",
+      "tags": [
+        "honesty",
+        "mentorship",
+        "duty",
+        "selfhood"
+      ],
+      "preconditions_all": [
+        "spring_exam_announced",
+        "tutor_xu_observes_yu_cheng"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "tutor_knows_yu_doubts"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {
+        "tutor_xu": {
+          "add_true": [
+            "yu_cheng_doubts_exam"
+          ],
+          "add_false": []
+        }
+      },
+      "trust_deltas": [
+        {
+          "source": "tutor_xu",
+          "target": "yu_cheng",
+          "delta": 0.08
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "anxiety",
+          "delta": -0.06
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [],
+      "tension_delta": 0.04,
+      "theme_impacts": {
+        "selfhood": 0.07,
+        "duty": 0.04
+      },
+      "agency_affordances": [
+        "honesty",
+        "selfhood",
+        "discipline"
+      ],
+      "rating_ceiling": "PG",
+      "temptation_vector": {
+        "doubt": 0.06,
+        "delusion": -0.04,
+        "pride": 0.02
+      },
+      "vow_tests": [
+        "speak_plainly_once"
+      ],
+      "wound_triggers": [
+        "永远要证明自己才值得被留下"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "tutor_xu",
+          "debt_type": "gratitude",
+          "magnitude": 0.18,
+          "gratitude": 0.12,
+          "obligation": 0.06,
+          "note": "把心事托给徐师，也欠下一份愿被看见的情"
+        }
+      ],
+      "karmic_seed_creations": [
+        {
+          "seed_id": "seed_confession_xu",
+          "source_event_id": "confide_in_tutor_xu",
+          "actor": "yu_cheng",
+          "target": "tutor_xu",
+          "seed_type": "mercy",
+          "charge": 0.32,
+          "tags": [
+            "truth",
+            "mentorship",
+            "mercy"
+          ],
+          "created_at_turn": 0,
+          "ripening_conditions": [
+            "truth_trial",
+            "public_witness"
+          ],
+          "earliest_turn": 2,
+          "latest_turn": 8,
+          "status": "dormant",
+          "transformable_by": [
+            "truth_testimony",
+            "public_witness"
+          ]
+        }
+      ],
+      "karmic_seed_resolutions": [],
+      "awakening_affordances": [
+        "admit_fear"
+      ],
+      "concealment_level": 0.34,
+      "consequence_delay_hint": 2,
+      "location": "书房",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "lin_wan_asks_for_truth",
+      "title": "林绾逼问余澄：你到底是为谁去考",
+      "summary": "林绾不再接受含混试探，逼问余澄究竟是为名声、为家门，还是为自己。",
+      "actors": [
+        "lin_wan",
+        "yu_cheng"
+      ],
+      "scene_function": "truth_trial",
+      "tags": [
+        "honesty",
+        "love",
+        "duty",
+        "selfhood"
+      ],
+      "preconditions_all": [
+        "yu_cheng_secretly_met_lin_wan"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "lin_wan_demands_truth"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "lin_wan",
+          "target": "yu_cheng",
+          "delta": -0.05
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "defiance",
+          "delta": 0.06
+        },
+        {
+          "character": "lin_wan",
+          "emotion": "concern",
+          "delta": 0.05
+        }
+      ],
+      "promises_open": [
+        {
+          "promise_id": "choose_love_or_exam",
+          "description": "余澄必须在爱情、家门与自我之间作出至少一次不可逆选择。",
+          "opened_at_turn": 1,
+          "due_by_turn": 4,
+          "holders": [
+            "yu_cheng",
+            "lin_wan"
+          ],
+          "fulfillment_modes": [
+            "leave_manor_with_lin",
+            "sit_the_exam",
+            "refuse_the_exam_publicly"
+          ],
+          "status": "open",
+          "stakes": "love_duty_selfhood",
+          "tags": [
+            "choice",
+            "romance",
+            "duty"
+          ]
+        }
+      ],
+      "promises_close": [
+        "truth_between_yu_and_lin"
+      ],
+      "tension_delta": 0.18,
+      "theme_impacts": {
+        "love": 0.08,
+        "duty": 0.05,
+        "selfhood": 0.09
+      },
+      "agency_affordances": [
+        "honesty",
+        "romance",
+        "duty",
+        "selfhood"
+      ],
+      "rating_ceiling": "PG",
+      "temptation_vector": {
+        "anger": 0.1,
+        "doubt": 0.18,
+        "pride": 0.08
+      },
+      "vow_tests": [
+        "tell_lin_wan_the_whole_truth"
+      ],
+      "wound_triggers": [
+        "先相信的人总是先受伤",
+        "想被人无条件地相信与偏爱"
+      ],
+      "debt_deltas": [
+        {
+          "source": "lin_wan",
+          "target": "yu_cheng",
+          "debt_type": "demand_truth",
+          "magnitude": 0.24,
+          "attachment": 0.06,
+          "resentment": 0.08,
+          "note": "她把最后的耐心压成一次逼问"
+        }
+      ],
+      "karmic_seed_creations": [],
+      "karmic_seed_resolutions": [
+        "seed_half_truth_lin"
+      ],
+      "awakening_affordances": [
+        "mutual_truth",
+        "ask_for_truth"
+      ],
+      "concealment_level": 0.18,
+      "consequence_delay_hint": 1,
+      "location": "花园",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "rigged_recommendation_exposed",
+      "title": "余澄得知自己的名额并不干净",
+      "summary": "一封被压下的荐书浮出水面，余澄意识到自己的应试资格掺了家门权势的手。",
+      "actors": [
+        "yu_cheng",
+        "tutor_xu"
+      ],
+      "scene_function": "mask_crack",
+      "tags": [
+        "reputation",
+        "truth",
+        "system",
+        "selfhood"
+      ],
+      "preconditions_all": [
+        "yu_cheng_commits_exam",
+        "tutor_knows_yu_doubts"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "exam_recommendation_tainted",
+        "family_scandal_risk"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {
+        "yu_cheng": {
+          "add_true": [
+            "exam_path_tainted"
+          ],
+          "add_false": []
+        }
+      },
+      "trust_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "lady_rong",
+          "delta": -0.08
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "defiance",
+          "delta": 0.12
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [],
+      "tension_delta": 0.22,
+      "theme_impacts": {
+        "reputation": 0.1,
+        "selfhood": 0.08,
+        "destiny": 0.06
+      },
+      "agency_affordances": [
+        "honesty",
+        "selfhood",
+        "loyalty"
+      ],
+      "rating_ceiling": "PG13",
+      "temptation_vector": {
+        "anger": 0.14,
+        "delusion": 0.12,
+        "pride": 0.08
+      },
+      "vow_tests": [
+        "stop_hiding_behind_merit"
+      ],
+      "wound_triggers": [
+        "见过太多被体面毁掉的人",
+        "一旦失手，整个家门都会塌"
+      ],
+      "debt_deltas": [
+        {
+          "source": "lady_rong",
+          "target": "yu_cheng",
+          "debt_type": "manipulation",
+          "magnitude": 0.42,
+          "possession": 0.12,
+          "shame": 0.12,
+          "note": "被揭开的不是手段，而是控制"
+        }
+      ],
+      "karmic_seed_creations": [
+        {
+          "seed_id": "seed_rigged_merit",
+          "source_event_id": "rigged_recommendation_exposed",
+          "actor": "lady_rong",
+          "target": "yu_cheng",
+          "seed_type": "control_disguised_as_protection",
+          "charge": 0.67,
+          "tags": [
+            "reputation",
+            "control",
+            "truth"
+          ],
+          "created_at_turn": 0,
+          "ripening_conditions": [
+            "karma_ripening",
+            "public_crisis",
+            "truth_trial"
+          ],
+          "earliest_turn": 3,
+          "latest_turn": 10,
+          "status": "dormant",
+          "transformable_by": [
+            "public_concession",
+            "release_control"
+          ]
+        }
+      ],
+      "karmic_seed_resolutions": [],
+      "awakening_affordances": [
+        "admit_corruption"
+      ],
+      "concealment_level": 0.12,
+      "consequence_delay_hint": 3,
+      "location": "书房",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "sit_the_exam",
+      "title": "余澄真正步入考棚",
+      "summary": "余澄终于坐进考棚，在纸笔与喧嚣中面对自己到底要成为什么样的人。",
+      "actors": [
+        "yu_cheng"
+      ],
+      "scene_function": "humiliation",
+      "tags": [
+        "duty",
+        "ambition",
+        "discipline",
+        "destiny"
+      ],
+      "preconditions_all": [
+        "yu_cheng_commits_exam"
+      ],
+      "forbidden_if_any": [
+        "yu_refused_exam_publicly"
+      ],
+      "world_fact_deltas_add": [
+        "exam_completed"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "anxiety",
+          "delta": 0.03
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [
+        "must_sit_first_exam"
+      ],
+      "tension_delta": 0.16,
+      "theme_impacts": {
+        "duty": 0.09,
+        "destiny": 0.07
+      },
+      "agency_affordances": [
+        "ambition",
+        "discipline",
+        "loyalty"
+      ],
+      "rating_ceiling": "PG",
+      "temptation_vector": {
+        "pride": 0.1,
+        "doubt": 0.12,
+        "delusion": 0.12
+      },
+      "vow_tests": [
+        "endure_false_path"
+      ],
+      "wound_triggers": [
+        "永远要证明自己才值得被留下"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "yu_cheng",
+          "debt_type": "self_betrayal",
+          "magnitude": 0.35,
+          "shame": 0.22,
+          "fear": 0.09,
+          "note": "踏进去的那一步像在替别人活"
+        }
+      ],
+      "karmic_seed_creations": [
+        {
+          "seed_id": "seed_exam_humiliation",
+          "source_event_id": "sit_the_exam",
+          "actor": "yu_cheng",
+          "target": null,
+          "seed_type": "humiliation",
+          "charge": 0.48,
+          "tags": [
+            "shame",
+            "reputation",
+            "selfhood"
+          ],
+          "created_at_turn": 0,
+          "ripening_conditions": [
+            "karma_ripening",
+            "public_crisis"
+          ],
+          "earliest_turn": 4,
+          "latest_turn": 10,
+          "status": "dormant",
+          "transformable_by": [
+            "sacrifice",
+            "leave"
+          ]
+        }
+      ],
+      "karmic_seed_resolutions": [],
+      "awakening_affordances": [],
+      "concealment_level": 0.4,
+      "consequence_delay_hint": 3,
+      "location": "考棚",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "refuse_the_exam_publicly",
+      "title": "余澄在众目睽睽下当场拒考",
+      "summary": "余澄在家宴中当众拒绝赴考，等于亲手撕开家门期待与个人命运之间的最后遮布。",
+      "actors": [
+        "yu_cheng",
+        "lady_rong",
+        "lin_wan"
+      ],
+      "scene_function": "vow_payment",
+      "tags": [
+        "selfhood",
+        "honesty",
+        "rebellion",
+        "reputation"
+      ],
+      "preconditions_all": [
+        "yu_cheng_commits_exam"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "yu_refused_exam_publicly",
+        "family_scandal_public"
+      ],
+      "world_fact_deltas_remove": [
+        "yu_cheng_commits_exam"
+      ],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "lady_rong",
+          "target": "yu_cheng",
+          "delta": -0.18
+        },
+        {
+          "source": "lin_wan",
+          "target": "yu_cheng",
+          "delta": 0.08
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "defiance",
+          "delta": 0.2
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [
+        "must_sit_first_exam",
+        "choose_love_or_exam"
+      ],
+      "tension_delta": 0.23,
+      "theme_impacts": {
+        "selfhood": 0.15,
+        "reputation": 0.1,
+        "love": 0.03
+      },
+      "agency_affordances": [
+        "selfhood",
+        "honesty",
+        "sacrifice"
+      ],
+      "rating_ceiling": "PG13",
+      "temptation_vector": {
+        "anger": 0.12,
+        "pride": 0.14,
+        "delusion": -0.05
+      },
+      "vow_tests": [
+        "keep_truth_above_face",
+        "protect_lin_wan_without_hiding"
+      ],
+      "wound_triggers": [
+        "一旦失手，整个家门都会塌"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "lady_rong",
+          "debt_type": "public_defiance",
+          "magnitude": 0.44,
+          "resentment": 0.12,
+          "obligation": -0.08,
+          "note": "为了不再装作顺从，公开欠下家门一笔反叛债"
+        }
+      ],
+      "karmic_seed_creations": [
+        {
+          "seed_id": "seed_public_refusal",
+          "source_event_id": "refuse_the_exam_publicly",
+          "actor": "yu_cheng",
+          "target": "lady_rong",
+          "seed_type": "sacrifice",
+          "charge": 0.64,
+          "tags": [
+            "selfhood",
+            "duty",
+            "reputation"
+          ],
+          "created_at_turn": 0,
+          "ripening_conditions": [
+            "debt_exchange",
+            "public_crisis",
+            "karma_ripening"
+          ],
+          "earliest_turn": 5,
+          "latest_turn": 12,
+          "status": "dormant",
+          "transformable_by": [
+            "vow_payment",
+            "mutual_truth"
+          ]
+        }
+      ],
+      "karmic_seed_resolutions": [
+        "seed_accept_exam_face"
+      ],
+      "awakening_affordances": [
+        "public_confession",
+        "sacrifice"
+      ],
+      "concealment_level": 0.05,
+      "consequence_delay_hint": 2,
+      "location": "家宴",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "protect_family_and_take_blame",
+      "title": "余澄主动揽下污名以保全家门",
+      "summary": "面对风声日急，余澄选择把错揽到自己身上，用个人名声堵住外界对荣府更深的窥探。",
+      "actors": [
+        "yu_cheng",
+        "lady_rong"
+      ],
+      "scene_function": "debt_exchange",
+      "tags": [
+        "loyalty",
+        "sacrifice",
+        "reputation"
+      ],
+      "preconditions_all": [
+        "family_scandal_public"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "yu_takes_blame"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "lady_rong",
+          "target": "yu_cheng",
+          "delta": 0.1
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "anxiety",
+          "delta": 0.1
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [],
+      "tension_delta": 0.12,
+      "theme_impacts": {
+        "loyalty": 0.12,
+        "reputation": 0.09
+      },
+      "agency_affordances": [
+        "loyalty",
+        "sacrifice"
+      ],
+      "rating_ceiling": "PG13",
+      "temptation_vector": {
+        "greed": 0.02,
+        "anger": 0.04,
+        "delusion": 0.18,
+        "pride": 0.16,
+        "doubt": 0.08
+      },
+      "vow_tests": [
+        "carry_cost_without_resentment"
+      ],
+      "wound_triggers": [
+        "永远要证明自己才值得被留下",
+        "一旦失手，整个家门都会塌"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "lady_rong",
+          "debt_type": "shame",
+          "magnitude": 0.38,
+          "shame": 0.18,
+          "obligation": 0.09,
+          "note": "替家门受责，反而让亏欠更深"
+        },
+        {
+          "source": "yu_cheng",
+          "target": "lin_wan",
+          "debt_type": "unspoken_hurt",
+          "magnitude": 0.22,
+          "attachment": 0.04,
+          "fear": 0.08,
+          "note": "她看见他又一次替所有人吞下去"
+        }
+      ],
+      "karmic_seed_creations": [
+        {
+          "seed_id": "seed_take_blame",
+          "source_event_id": "protect_family_and_take_blame",
+          "actor": "yu_cheng",
+          "target": "lin_wan",
+          "seed_type": "martyrdom",
+          "charge": 0.59,
+          "tags": [
+            "sacrifice",
+            "shame",
+            "love"
+          ],
+          "created_at_turn": 0,
+          "ripening_conditions": [
+            "debt_exchange",
+            "truth_trial",
+            "karma_ripening"
+          ],
+          "earliest_turn": 5,
+          "latest_turn": 12,
+          "status": "dormant",
+          "transformable_by": [
+            "mutual_truth",
+            "release_burden"
+          ]
+        }
+      ],
+      "karmic_seed_resolutions": [],
+      "awakening_affordances": [
+        "take_responsibility"
+      ],
+      "concealment_level": 0.46,
+      "consequence_delay_hint": 2,
+      "location": "花厅",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "tutor_xu_reveals_burned_memorial",
+      "title": "徐师拿出那封被烧过一角的旧荐书",
+      "summary": "徐师在书房深处拿出一封被烧过一角的旧荐书，让余澄第一次看见这场科举安排背后更久远的手。",
+      "actors": [
+        "yu_cheng",
+        "tutor_xu"
+      ],
+      "scene_function": "karma_ripening",
+      "tags": [
+        "truth",
+        "reputation",
+        "selfhood",
+        "system"
+      ],
+      "preconditions_all": [
+        "tutor_knows_yu_doubts",
+        "exam_recommendation_tainted"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "old_case_record_found",
+        "exam_recommendation_tainted"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {
+        "yu_cheng": {
+          "add_true": [
+            "exam_path_tainted"
+          ],
+          "add_false": []
+        }
+      },
+      "trust_deltas": [
+        {
+          "source": "tutor_xu",
+          "target": "yu_cheng",
+          "delta": 0.08
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "defiance",
+          "delta": 0.1
+        }
+      ],
+      "promises_open": [
+        {
+          "promise_id": "must_choose_new_future",
+          "description": "余澄在看清旧荐书之弊后，必须决定自己要继续与体制交易，还是另开一条新的路。",
+          "opened_at_turn": -1,
+          "due_by_turn": -1,
+          "holders": [
+            "yu_cheng",
+            "tutor_xu",
+            "lin_wan"
+          ],
+          "fulfillment_modes": [
+            "build_riverside_school",
+            "public_testimony_at_ancestral_hall"
+          ],
+          "status": "open",
+          "stakes": "future_identity_and_family_fate",
+          "tags": [
+            "future",
+            "selfhood",
+            "reform"
+          ]
+        }
+      ],
+      "promises_close": [],
+      "tension_delta": 0.16,
+      "theme_impacts": {
+        "selfhood": 0.1,
+        "reputation": 0.07,
+        "destiny": 0.06
+      },
+      "agency_affordances": [
+        "honesty",
+        "selfhood",
+        "curiosity"
+      ],
+      "rating_ceiling": "PG13",
+      "temptation_vector": {
+        "anger": 0.08,
+        "delusion": -0.08,
+        "pride": 0.04
+      },
+      "vow_tests": [
+        "witness_truth_publicly"
+      ],
+      "wound_triggers": [
+        "见过太多被体面毁掉的人"
+      ],
+      "debt_deltas": [
+        {
+          "source": "tutor_xu",
+          "target": "yu_cheng",
+          "debt_type": "witness",
+          "magnitude": 0.18,
+          "gratitude": 0.1,
+          "obligation": 0.08,
+          "note": "徐师替余澄把旧因揭开"
+        }
+      ],
+      "karmic_seed_creations": [],
+      "karmic_seed_resolutions": [
+        "seed_rigged_merit"
+      ],
+      "awakening_affordances": [
+        "truth_testimony"
+      ],
+      "concealment_level": 0.02,
+      "consequence_delay_hint": 1,
+      "location": "书房",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "lin_wan_reads_the_memorial",
+      "title": "林绾读完那封荐书，终于明白余澄为什么退无可退",
+      "summary": "林绾在烛下读完荐书残页，第一次明白余澄面对的不只是家门期待，而是一整套拿人前程做筹码的旧秩序。",
+      "actors": [
+        "lin_wan",
+        "yu_cheng"
+      ],
+      "scene_function": "misrecognition",
+      "tags": [
+        "love",
+        "truth",
+        "selfhood"
+      ],
+      "preconditions_all": [
+        "old_case_record_found",
+        "lin_wan_demands_truth"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "lin_wan_knows_full_corruption"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {
+        "lin_wan": {
+          "add_true": [
+            "exam_path_tainted"
+          ],
+          "add_false": []
+        }
+      },
+      "trust_deltas": [
+        {
+          "source": "lin_wan",
+          "target": "yu_cheng",
+          "delta": 0.12
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "lin_wan",
+          "emotion": "concern",
+          "delta": 0.08
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [],
+      "tension_delta": 0.09,
+      "theme_impacts": {
+        "love": 0.09,
+        "selfhood": 0.08
+      },
+      "agency_affordances": [
+        "romance",
+        "honesty",
+        "selfhood"
+      ],
+      "rating_ceiling": "PG",
+      "temptation_vector": {
+        "doubt": 0.2,
+        "anger": 0.1,
+        "pride": 0.1
+      },
+      "vow_tests": [
+        "do_not_turn_hurt_into_contempt"
+      ],
+      "wound_triggers": [
+        "先相信的人总是先受伤"
+      ],
+      "debt_deltas": [
+        {
+          "source": "lin_wan",
+          "target": "yu_cheng",
+          "debt_type": "misread_pity",
+          "magnitude": 0.26,
+          "projection": 0.16,
+          "resentment": 0.08,
+          "note": "她以为自己终于看清，实际却把伤口看歪了一寸"
+        }
+      ],
+      "karmic_seed_creations": [
+        {
+          "seed_id": "seed_memorial_misread",
+          "source_event_id": "lin_wan_reads_the_memorial",
+          "actor": "lin_wan",
+          "target": "yu_cheng",
+          "seed_type": "misrecognition",
+          "charge": 0.53,
+          "tags": [
+            "love",
+            "truth",
+            "doubt"
+          ],
+          "created_at_turn": 0,
+          "ripening_conditions": [
+            "truth_trial",
+            "confession_window",
+            "karma_ripening"
+          ],
+          "earliest_turn": 5,
+          "latest_turn": 12,
+          "status": "dormant",
+          "transformable_by": [
+            "mutual_truth",
+            "public_witness"
+          ]
+        }
+      ],
+      "karmic_seed_resolutions": [],
+      "awakening_affordances": [],
+      "concealment_level": 0.28,
+      "consequence_delay_hint": 2,
+      "location": "回廊",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "lady_rong_offers_silent_bargain",
+      "title": "荣老太君在深夜里给出一桩沉默交易",
+      "summary": "荣老太君在深夜里把余澄唤进内室，提出只要他肯继续替荣府承担沉默，就可以悄悄替他留一条退身的路。",
+      "actors": [
+        "lady_rong",
+        "yu_cheng"
+      ],
+      "scene_function": "mercy_vs_control",
+      "tags": [
+        "reputation",
+        "loyalty",
+        "power"
+      ],
+      "preconditions_all": [
+        "yu_takes_blame",
+        "family_scandal_public"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "lady_rong_offers_bargain"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "lady_rong",
+          "target": "yu_cheng",
+          "delta": 0.05
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "anxiety",
+          "delta": 0.06
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [],
+      "tension_delta": 0.1,
+      "theme_impacts": {
+        "reputation": 0.08,
+        "duty": 0.06
+      },
+      "agency_affordances": [
+        "loyalty",
+        "selfhood",
+        "honesty"
+      ],
+      "rating_ceiling": "PG13",
+      "temptation_vector": {
+        "greed": 0.06,
+        "delusion": 0.24,
+        "pride": 0.18,
+        "doubt": 0.1
+      },
+      "vow_tests": [
+        "distinguish_protection_from_control"
+      ],
+      "wound_triggers": [
+        "一旦失手，整个家门都会塌",
+        "永远要证明自己才值得被留下"
+      ],
+      "debt_deltas": [
+        {
+          "source": "lady_rong",
+          "target": "yu_cheng",
+          "debt_type": "control",
+          "magnitude": 0.37,
+          "obligation": 0.14,
+          "possession": 0.1,
+          "note": "保护的名义越来越像勒索"
+        }
+      ],
+      "karmic_seed_creations": [
+        {
+          "seed_id": "seed_silent_bargain",
+          "source_event_id": "lady_rong_offers_silent_bargain",
+          "actor": "lady_rong",
+          "target": "yu_cheng",
+          "seed_type": "control",
+          "charge": 0.62,
+          "tags": [
+            "control",
+            "duty",
+            "family"
+          ],
+          "created_at_turn": 0,
+          "ripening_conditions": [
+            "truth_trial",
+            "karma_ripening",
+            "public_crisis"
+          ],
+          "earliest_turn": 5,
+          "latest_turn": 12,
+          "status": "dormant",
+          "transformable_by": [
+            "release_control",
+            "public_concession"
+          ]
+        }
+      ],
+      "karmic_seed_resolutions": [],
+      "awakening_affordances": [],
+      "concealment_level": 0.74,
+      "consequence_delay_hint": 3,
+      "location": "内室",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "yu_cheng_visits_riverside_school",
+      "title": "余澄走进河岸边那间破旧义学",
+      "summary": "余澄沿河走进一间破旧义学，看见那些本该被科举之外抛下的人，也第一次认真想象一条不靠门第与荐书的路。",
+      "actors": [
+        "yu_cheng",
+        "tutor_xu"
+      ],
+      "scene_function": "mask_crack",
+      "tags": [
+        "selfhood",
+        "reform",
+        "destiny"
+      ],
+      "preconditions_all": [
+        "old_case_record_found"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "yu_cheng_commits_new_path"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "tutor_xu",
+          "delta": 0.08
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "anxiety",
+          "delta": -0.08
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [],
+      "tension_delta": 0.08,
+      "theme_impacts": {
+        "selfhood": 0.12,
+        "destiny": 0.08
+      },
+      "agency_affordances": [
+        "selfhood",
+        "curiosity",
+        "sacrifice"
+      ],
+      "rating_ceiling": "PG",
+      "temptation_vector": {
+        "delusion": -0.06,
+        "doubt": -0.04,
+        "greed": 0.04
+      },
+      "vow_tests": [
+        "remember_what_kind_of_life_you_want"
+      ],
+      "wound_triggers": [
+        "永远要证明自己才值得被留下"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "yu_cheng",
+          "debt_type": "remembered_vow",
+          "magnitude": 0.14,
+          "gratitude": 0.08,
+          "note": "看见另一条路之后，再装作没看见就更难"
+        }
+      ],
+      "karmic_seed_creations": [
+        {
+          "seed_id": "seed_riverside_call",
+          "source_event_id": "yu_cheng_visits_riverside_school",
+          "actor": "yu_cheng",
+          "target": null,
+          "seed_type": "calling",
+          "charge": 0.36,
+          "tags": [
+            "selfhood",
+            "mercy",
+            "hope"
+          ],
+          "created_at_turn": 0,
+          "ripening_conditions": [
+            "vow_payment",
+            "public_crisis"
+          ],
+          "earliest_turn": 6,
+          "latest_turn": 13,
+          "status": "dormant",
+          "transformable_by": [
+            "vow_payment"
+          ]
+        }
+      ],
+      "karmic_seed_resolutions": [],
+      "awakening_affordances": [
+        "see_clearly"
+      ],
+      "concealment_level": 0.06,
+      "consequence_delay_hint": 2,
+      "location": "渡口",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "lin_wan_stands_in_public",
+      "title": "林绾第一次在众人面前站到余澄这边",
+      "summary": "林绾在花厅里当众承认自己看过荐书残页，也承认余澄不是怯懦退场，而是在替一整个失衡的秩序承担后果。",
+      "actors": [
+        "lin_wan",
+        "yu_cheng",
+        "lady_rong"
+      ],
+      "scene_function": "vow_payment",
+      "tags": [
+        "love",
+        "truth",
+        "reputation"
+      ],
+      "preconditions_all": [
+        "lin_wan_knows_full_corruption",
+        "lady_rong_offers_bargain"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "lin_wan_public_supports_yu"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "lin_wan",
+          "delta": 0.1
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "lady_rong",
+          "emotion": "worry",
+          "delta": 0.08
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [],
+      "tension_delta": 0.14,
+      "theme_impacts": {
+        "love": 0.08,
+        "reputation": 0.08,
+        "selfhood": 0.06
+      },
+      "agency_affordances": [
+        "honesty",
+        "romance",
+        "loyalty"
+      ],
+      "rating_ceiling": "PG13",
+      "temptation_vector": {
+        "anger": 0.08,
+        "pride": 0.1,
+        "doubt": -0.04
+      },
+      "vow_tests": [
+        "stand_with_truth_even_if_humiliated"
+      ],
+      "wound_triggers": [
+        "先相信的人总是先受伤"
+      ],
+      "debt_deltas": [
+        {
+          "source": "lin_wan",
+          "target": "yu_cheng",
+          "debt_type": "public_shelter",
+          "magnitude": 0.29,
+          "attachment": 0.1,
+          "obligation": 0.12,
+          "note": "她终于替他挡了一次风声"
+        }
+      ],
+      "karmic_seed_creations": [
+        {
+          "seed_id": "seed_public_stand",
+          "source_event_id": "lin_wan_stands_in_public",
+          "actor": "lin_wan",
+          "target": "yu_cheng",
+          "seed_type": "mercy",
+          "charge": 0.48,
+          "tags": [
+            "love",
+            "reputation",
+            "sacrifice"
+          ],
+          "created_at_turn": 0,
+          "ripening_conditions": [
+            "debt_exchange",
+            "karma_ripening"
+          ],
+          "earliest_turn": 6,
+          "latest_turn": 12,
+          "status": "dormant",
+          "transformable_by": [
+            "mutual_truth",
+            "vow_payment"
+          ]
+        }
+      ],
+      "karmic_seed_resolutions": [
+        "seed_memorial_misread"
+      ],
+      "awakening_affordances": [
+        "public_witness"
+      ],
+      "concealment_level": 0.03,
+      "consequence_delay_hint": 1,
+      "location": "花厅",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "public_testimony_at_ancestral_hall",
+      "title": "余澄在祠堂前公开念出那封荐书残页",
+      "summary": "余澄最终还是站到祠堂前，把那封荐书残页一字一句念给众人听，让所有人都无法继续装作旧规矩只是体面。",
+      "actors": [
+        "yu_cheng",
+        "lady_rong",
+        "tutor_xu"
+      ],
+      "scene_function": "karma_ripening",
+      "tags": [
+        "truth",
+        "reputation",
+        "reform",
+        "selfhood"
+      ],
+      "preconditions_all": [
+        "old_case_record_found",
+        "lin_wan_public_supports_yu"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "ancestral_hall_testimony_done",
+        "system_exposed"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "tutor_xu",
+          "target": "yu_cheng",
+          "delta": 0.08
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "lady_rong",
+          "emotion": "worry",
+          "delta": 0.1
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [],
+      "tension_delta": 0.12,
+      "theme_impacts": {
+        "reputation": 0.09,
+        "selfhood": 0.08,
+        "destiny": 0.05
+      },
+      "agency_affordances": [
+        "honesty",
+        "selfhood",
+        "loyalty"
+      ],
+      "rating_ceiling": "PG13",
+      "temptation_vector": {
+        "anger": 0.12,
+        "pride": 0.06,
+        "delusion": -0.08
+      },
+      "vow_tests": [
+        "tell_whole_truth_before_it_chooses_for_you"
+      ],
+      "wound_triggers": [
+        "一旦失手，整个家门都会塌",
+        "见过太多被体面毁掉的人"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "lady_rong",
+          "debt_type": "ancestral_shame",
+          "magnitude": 0.4,
+          "shame": 0.18,
+          "resentment": 0.09,
+          "note": "祖堂一证，把所有人都逼到门楣之前"
+        }
+      ],
+      "karmic_seed_creations": [],
+      "karmic_seed_resolutions": [
+        "seed_half_truth_lin",
+        "seed_public_refusal",
+        "seed_silent_bargain"
+      ],
+      "awakening_affordances": [
+        "full_confession",
+        "truth_testimony"
+      ],
+      "concealment_level": 0.0,
+      "consequence_delay_hint": 1,
+      "location": "祠堂",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "children_gather_at_riverside",
+      "title": "河岸义学第一次等来了真正想读书的孩子们",
+      "summary": "河岸义学那间摇摇欲坠的旧屋里第一次坐满了想读书的孩子，也让余澄真正看见自己若留下，会改变的并不只是自己一人。",
+      "actors": [
+        "yu_cheng",
+        "lin_wan"
+      ],
+      "scene_function": "false_peace",
+      "tags": [
+        "selfhood",
+        "reform",
+        "hope"
+      ],
+      "preconditions_all": [
+        "yu_cheng_commits_new_path"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "riverside_children_arrive"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "lin_wan",
+          "delta": 0.08
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "anxiety",
+          "delta": -0.06
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [],
+      "tension_delta": 0.06,
+      "theme_impacts": {
+        "selfhood": 0.1,
+        "love": 0.04,
+        "destiny": 0.07
+      },
+      "agency_affordances": [
+        "selfhood",
+        "romance",
+        "curiosity"
+      ],
+      "rating_ceiling": "PG",
+      "temptation_vector": {
+        "greed": 0.0,
+        "anger": -0.04,
+        "delusion": -0.05,
+        "pride": -0.02,
+        "doubt": -0.03
+      },
+      "vow_tests": [
+        "remember_for_whom_to_choose"
+      ],
+      "wound_triggers": [
+        "见过太多被体面毁掉的人"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "lin_wan",
+          "debt_type": "shared_future",
+          "magnitude": 0.18,
+          "attachment": 0.08,
+          "gratitude": 0.08,
+          "note": "他们第一次看见若选择另一条路，会护住谁"
+        }
+      ],
+      "karmic_seed_creations": [
+        {
+          "seed_id": "seed_riverside_future",
+          "source_event_id": "children_gather_at_riverside",
+          "actor": "yu_cheng",
+          "target": "lin_wan",
+          "seed_type": "mercy",
+          "charge": 0.27,
+          "tags": [
+            "hope",
+            "mercy",
+            "future"
+          ],
+          "created_at_turn": 0,
+          "ripening_conditions": [
+            "vow_payment",
+            "false_peace"
+          ],
+          "earliest_turn": 7,
+          "latest_turn": 13,
+          "status": "dormant",
+          "transformable_by": [
+            "vow_payment"
+          ]
+        }
+      ],
+      "karmic_seed_resolutions": [],
+      "awakening_affordances": [
+        "see_clearly"
+      ],
+      "concealment_level": 0.02,
+      "consequence_delay_hint": 2,
+      "location": "渡口",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "lady_rong_breaks_silence",
+      "title": "荣老太君第一次在众人面前承认自己也有错",
+      "summary": "荣老太君终于在众人面前松开了那口气，承认自己曾默许不干净的举荐，也承认余澄并不是唯一该背这口锅的人。",
+      "actors": [
+        "lady_rong",
+        "yu_cheng",
+        "lin_wan"
+      ],
+      "scene_function": "truth_trial",
+      "tags": [
+        "reputation",
+        "truth",
+        "family"
+      ],
+      "preconditions_all": [
+        "ancestral_hall_testimony_done",
+        "riverside_children_arrive"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "lady_rong_public_concedes"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "lady_rong",
+          "target": "yu_cheng",
+          "delta": 0.06
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "defiance",
+          "delta": -0.08
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [],
+      "tension_delta": 0.05,
+      "theme_impacts": {
+        "reputation": 0.08,
+        "love": 0.03,
+        "destiny": 0.04
+      },
+      "agency_affordances": [
+        "loyalty",
+        "honesty",
+        "selfhood"
+      ],
+      "rating_ceiling": "PG13",
+      "temptation_vector": {
+        "pride": -0.04,
+        "delusion": -0.08,
+        "anger": 0.04
+      },
+      "vow_tests": [
+        "admit_control_was_not_love"
+      ],
+      "wound_triggers": [
+        "一旦失手，整个家门都会塌"
+      ],
+      "debt_deltas": [
+        {
+          "source": "lady_rong",
+          "target": "yu_cheng",
+          "debt_type": "late_concession",
+          "magnitude": 0.22,
+          "gratitude": 0.06,
+          "obligation": -0.08,
+          "note": "她终于承认自己把控制说成了保护"
+        }
+      ],
+      "karmic_seed_creations": [],
+      "karmic_seed_resolutions": [
+        "seed_rigged_merit",
+        "seed_silent_bargain"
+      ],
+      "awakening_affordances": [
+        "public_concession",
+        "release_control"
+      ],
+      "concealment_level": 0.0,
+      "consequence_delay_hint": 1,
+      "location": "花厅",
+      "convergence_key": "",
+      "metadata": {}
+    },
+    {
+      "event_id": "build_riverside_school",
+      "title": "余澄与林绾决定在河岸义学留下来",
+      "summary": "余澄与林绾最终没有回到旧秩序里索取体面，而是以放下门第与名声余温为代价，决定把河岸那间义学撑起来，让这场风波第一次真正改写别人的命运。",
+      "actors": [
+        "yu_cheng",
+        "lin_wan",
+        "tutor_xu"
+      ],
+      "scene_function": "vow_payment",
+      "tags": [
+        "selfhood",
+        "reform",
+        "love",
+        "earned_peace",
+        "cost"
+      ],
+      "preconditions_all": [
+        "yu_cheng_commits_new_path",
+        "lin_wan_public_supports_yu",
+        "riverside_children_arrive",
+        "lady_rong_public_concedes"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "riverside_school_begins",
+        "yu_and_lin_choose_new_life"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "lin_wan",
+          "target": "yu_cheng",
+          "delta": 0.12
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "anxiety",
+          "delta": -0.14
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [
+        "must_choose_new_future"
+      ],
+      "tension_delta": -0.08,
+      "theme_impacts": {
+        "selfhood": 0.14,
+        "love": 0.1,
+        "destiny": 0.08
+      },
+      "agency_affordances": [
+        "selfhood",
+        "romance",
+        "honesty"
+      ],
+      "rating_ceiling": "PG",
+      "temptation_vector": {
+        "greed": -0.05,
+        "anger": -0.03,
+        "delusion": -0.12,
+        "pride": -0.04,
+        "doubt": -0.06
+      },
+      "vow_tests": [
+        "live_the_vow_openly"
+      ],
+      "wound_triggers": [
+        "永远要证明自己才值得被留下"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "lin_wan",
+          "debt_type": "kept_vow",
+          "magnitude": -0.2,
+          "attachment": 0.12,
+          "gratitude": 0.12,
+          "note": "愿终于落地，不再只是嘴上的真心"
+        }
+      ],
+      "karmic_seed_creations": [],
+      "karmic_seed_resolutions": [
+        "seed_take_blame",
+        "seed_riverside_call",
+        "seed_riverside_future"
+      ],
+      "awakening_affordances": [
+        "vow_payment",
+        "mutual_truth"
+      ],
+      "concealment_level": 0.0,
+      "consequence_delay_hint": 0,
+      "location": "渡口",
+      "convergence_key": "ending_new_life",
+      "metadata": {
+        "terminal": true,
+        "endgame_shape": "awakening",
+        "required_fate_pressure": 0.52,
+        "required_inescapable_nodes": [
+          "为愿付出代价"
+        ],
+        "ending_gate": {
+          "min_turn": 8,
+          "required_scene_functions": [
+            "mask_crack",
+            "truth_trial",
+            "debt_exchange"
+          ],
+          "required_closed_promises": [
+            "must_sit_first_exam",
+            "choose_love_or_exam"
+          ],
+          "required_tension_min": 0.55
+        }
+      }
+    },
+    {
+      "event_id": "leave_manor_with_lin",
+      "title": "余澄与林绾离府而去",
+      "summary": "余澄放下春闱与门第秩序，和林绾趁夜离府，选择一条以失去换自由的路。",
+      "actors": [
+        "yu_cheng",
+        "lin_wan"
+      ],
+      "scene_function": "vow_payment",
+      "tags": [
+        "love",
+        "selfhood",
+        "sacrifice"
+      ],
+      "preconditions_all": [
+        "lin_wan_demands_truth"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "yu_left_manor",
+        "lin_wan_left_manor"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "lin_wan",
+          "target": "yu_cheng",
+          "delta": 0.1
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "anxiety",
+          "delta": -0.12
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [
+        "choose_love_or_exam",
+        "truth_between_yu_and_lin"
+      ],
+      "tension_delta": -0.08,
+      "theme_impacts": {
+        "love": 0.14,
+        "selfhood": 0.14
+      },
+      "agency_affordances": [
+        "romance",
+        "selfhood",
+        "sacrifice"
+      ],
+      "rating_ceiling": "PG13",
+      "temptation_vector": {
+        "greed": -0.02,
+        "anger": 0.02,
+        "delusion": -0.08,
+        "pride": -0.03,
+        "doubt": -0.03
+      },
+      "vow_tests": [
+        "choose_love_without_hiding"
+      ],
+      "wound_triggers": [
+        "把失望包装成无所谓"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "lady_rong",
+          "debt_type": "fracture",
+          "magnitude": 0.3,
+          "resentment": 0.1,
+          "fear": 0.08,
+          "note": "他选择离开，也切断了门内那条旧绳"
+        }
+      ],
+      "karmic_seed_creations": [],
+      "karmic_seed_resolutions": [
+        "seed_half_truth_lin",
+        "seed_take_blame"
+      ],
+      "awakening_affordances": [
+        "mutual_truth",
+        "let_go"
+      ],
+      "concealment_level": 0.0,
+      "consequence_delay_hint": 0,
+      "location": "渡口",
+      "convergence_key": "ending_elopement",
+      "metadata": {
+        "terminal": true,
+        "endgame_shape": "fracture",
+        "required_fate_pressure": 0.46,
+        "required_inescapable_nodes": [
+          "被误解"
+        ],
+        "ending_gate": {
+          "min_turn": 8,
+          "required_scene_functions": [
+            "truth_trial",
+            "vow_payment"
+          ],
+          "required_closed_promises": [
+            "choose_love_or_exam"
+          ],
+          "required_tension_min": 0.45
+        }
+      }
+    },
+    {
+      "event_id": "win_honors_but_lose_lin",
+      "title": "余澄得中而林绾远去",
+      "summary": "余澄终究走完科举之路，名声到手，却亲眼看着林绾对这份胜利失去最后的认同。",
+      "actors": [
+        "yu_cheng",
+        "lin_wan",
+        "lady_rong"
+      ],
+      "scene_function": "false_peace",
+      "tags": [
+        "duty",
+        "reputation",
+        "loss",
+        "destiny"
+      ],
+      "preconditions_all": [
+        "exam_completed",
+        "lin_wan_demands_truth"
+      ],
+      "forbidden_if_any": [
+        "yu_left_manor"
+      ],
+      "world_fact_deltas_add": [
+        "yu_wins_honors",
+        "lin_wan_withdraws"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "lin_wan",
+          "target": "yu_cheng",
+          "delta": -0.2
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "anxiety",
+          "delta": -0.04
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [
+        "choose_love_or_exam",
+        "truth_between_yu_and_lin"
+      ],
+      "tension_delta": -0.03,
+      "theme_impacts": {
+        "duty": 0.16,
+        "love": -0.06,
+        "reputation": 0.12
+      },
+      "agency_affordances": [
+        "ambition",
+        "duty",
+        "loyalty"
+      ],
+      "rating_ceiling": "PG",
+      "temptation_vector": {
+        "greed": 0.18,
+        "anger": 0.02,
+        "delusion": 0.22,
+        "pride": 0.2,
+        "doubt": 0.05
+      },
+      "vow_tests": [
+        "keep_choosing_face"
+      ],
+      "wound_triggers": [
+        "想被坚定选择而不是被权衡"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "lin_wan",
+          "debt_type": "betrayal",
+          "magnitude": 0.46,
+          "resentment": 0.16,
+          "shame": 0.12,
+          "note": "他赢了体面，却把关系输成了旧债"
+        }
+      ],
+      "karmic_seed_creations": [],
+      "karmic_seed_resolutions": [
+        "seed_accept_exam_face"
+      ],
+      "awakening_affordances": [],
+      "concealment_level": 0.3,
+      "consequence_delay_hint": 0,
+      "location": "荣府",
+      "convergence_key": "ending_honors",
+      "metadata": {
+        "terminal": true,
+        "endgame_shape": "false_awakening",
+        "required_fate_pressure": 0.44,
+        "required_inescapable_nodes": [
+          "公开失去体面"
+        ],
+        "ending_gate": {
+          "min_turn": 8,
+          "required_scene_functions": [
+            "false_peace",
+            "truth_trial"
+          ],
+          "required_closed_promises": [
+            "must_sit_first_exam"
+          ],
+          "required_tension_min": 0.4
+        }
+      }
+    },
+    {
+      "event_id": "expose_system_and_reform",
+      "title": "余澄公开揭出荐书之弊",
+      "summary": "余澄联合徐师公开揭出不干净的荐书，放弃捷径，也把府中权势逼到阳光下。",
+      "actors": [
+        "yu_cheng",
+        "tutor_xu",
+        "lady_rong"
+      ],
+      "scene_function": "karma_ripening",
+      "tags": [
+        "truth",
+        "selfhood",
+        "reform",
+        "reputation"
+      ],
+      "preconditions_all": [
+        "exam_recommendation_tainted",
+        "tutor_knows_yu_doubts"
+      ],
+      "forbidden_if_any": [],
+      "world_fact_deltas_add": [
+        "system_exposed",
+        "earned_reputation"
+      ],
+      "world_fact_deltas_remove": [],
+      "belief_updates": {},
+      "trust_deltas": [
+        {
+          "source": "tutor_xu",
+          "target": "yu_cheng",
+          "delta": 0.1
+        },
+        {
+          "source": "lady_rong",
+          "target": "yu_cheng",
+          "delta": -0.08
+        }
+      ],
+      "emotion_deltas": [
+        {
+          "character": "yu_cheng",
+          "emotion": "defiance",
+          "delta": -0.05
+        }
+      ],
+      "promises_open": [],
+      "promises_close": [
+        "must_sit_first_exam"
+      ],
+      "tension_delta": -0.01,
+      "theme_impacts": {
+        "selfhood": 0.12,
+        "reputation": 0.1,
+        "destiny": 0.06
+      },
+      "agency_affordances": [
+        "honesty",
+        "selfhood",
+        "loyalty"
+      ],
+      "rating_ceiling": "PG13",
+      "temptation_vector": {
+        "anger": 0.06,
+        "delusion": -0.12,
+        "pride": 0.04,
+        "doubt": -0.04,
+        "greed": 0.0
+      },
+      "vow_tests": [
+        "tell_truth_even_when_all_positions_break"
+      ],
+      "wound_triggers": [
+        "见过太多被体面毁掉的人",
+        "一旦失手，整个家门都会塌"
+      ],
+      "debt_deltas": [
+        {
+          "source": "yu_cheng",
+          "target": "tutor_xu",
+          "debt_type": "shared_reform",
+          "magnitude": 0.12,
+          "gratitude": 0.06,
+          "obligation": 0.04,
+          "note": "这一次公道不再只停在书房里"
+        }
+      ],
+      "karmic_seed_creations": [],
+      "karmic_seed_resolutions": [
+        "seed_rigged_merit",
+        "seed_public_refusal"
+      ],
+      "awakening_affordances": [
+        "truth_testimony",
+        "public_witness",
+        "vow_payment"
+      ],
+      "concealment_level": 0.0,
+      "consequence_delay_hint": 0,
+      "location": "花厅",
+      "convergence_key": "ending_reform",
+      "metadata": {
+        "terminal": true,
+        "endgame_shape": "awakening",
+        "required_fate_pressure": 0.5,
+        "required_inescapable_nodes": [
+          "替学生违逆一次权势"
+        ],
+        "ending_gate": {
+          "min_turn": 8,
+          "required_scene_functions": [
+            "mask_crack",
+            "karma_ripening",
+            "truth_trial"
+          ],
+          "required_closed_promises": [
+            "must_sit_first_exam"
+          ],
+          "required_tension_min": 0.5
+        }
+      }
+    }
+  ],
+  "runtime_player_inputs": [
+    {
+      "raw_input": "我先顺着家里来，但我也想给自己留后路。",
+      "intent_vector": {
+        "ambition": 0.7,
+        "loyalty": 0.6,
+        "selfhood": 0.5
+      }
+    },
+    {
+      "raw_input": "我想先试探林绾的态度，再决定要不要考。",
+      "intent_vector": {
+        "romance": 0.7,
+        "curiosity": 0.6,
+        "selfhood": 0.4
+      }
+    },
+    {
+      "raw_input": "我受够了，我要当众说出真话。",
+      "intent_vector": {
+        "honesty": 0.8,
+        "selfhood": 0.7,
+        "sacrifice": 0.4
+      }
+    }
+  ],
+  "metadata": {
+    "source": "alpha_migrated",
+    "world_version_id": "jade_court_exam@1.0.0"
+  },
+  "dialogue_realism_policy": {
+    "policy_id": "jade_court_exam_dialogue",
+    "require_turn_taking": true,
+    "require_counter_reaction": true,
+    "min_turns": 2,
+    "max_turns": 3,
+    "turn_pattern": [
+      "speaker",
+      "reaction",
+      "reply"
+    ],
+    "minimum_exchanges": 1
+  },
+  "voice_profiles": {
+    "yu_cheng": {
+      "profile_id": "heir",
+      "cadence": "measured",
+      "directness": 0.46,
+      "bluntness": 0.42,
+      "restraint": 0.62,
+      "social_rank_awareness": 0.78,
+      "hesitation_style": "把更难听的话先咽半口",
+      "direct_address_style": "先看对方，再把话送出去",
+      "opening_style": [
+        "我知道这一步迟早得走，只是没想到会压得这样快。"
+      ],
+      "pressure_style": [
+        "你若真要逼我回答，我也不能再把自己缩回去。"
+      ],
+      "pivot_style": [
+        "真正难的不是选路，而是承认自己早就被逼到了墙角。"
+      ],
+      "aftermath_style": [
+        "话虽然停了，可谁都知道，这事不会就这样过去。"
+      ],
+      "echo_style": [
+        "等风声追上来时，我总得先替自己说一句真话。"
+      ]
+    },
+    "lin_wan": {
+      "profile_id": "cousin",
+      "cadence": "cool",
+      "directness": 0.66,
+      "bluntness": 0.68,
+      "restraint": 0.58,
+      "social_rank_awareness": 0.64,
+      "hesitation_style": "把更难听的话先咽半口",
+      "direct_address_style": "先看对方，再把话送出去",
+      "opening_style": [
+        "你若只是来试探，我宁可你现在就别开口。"
+      ],
+      "pressure_style": [
+        "你总替旁人找退路，可你自己的心，到底准备放在哪里？"
+      ],
+      "pivot_style": [
+        "你不是不会选，只是不肯承认自己已经偏向了谁。"
+      ],
+      "aftermath_style": [
+        "我不是催你给答案，只是不想看你再把沉默说成体面。"
+      ],
+      "echo_style": [
+        "等你真肯来时，就别再只带着一半真话。"
+      ]
+    },
+    "lady_rong": {
+      "profile_id": "matriarch",
+      "cadence": "formal",
+      "directness": 0.62,
+      "bluntness": 0.55,
+      "restraint": 0.82,
+      "social_rank_awareness": 0.92,
+      "hesitation_style": "把更难听的话先咽半口",
+      "direct_address_style": "先看对方，再把话送出去",
+      "opening_style": [
+        "你既坐在这里，就该知道自己背后站着的不只你一个人。"
+      ],
+      "pressure_style": [
+        "你可以怨我，可门楣真塌下来时，砸中的从来不止一个人。"
+      ],
+      "pivot_style": [
+        "你真以为把真相摊开，所有人就都能活得更轻一些？"
+      ],
+      "aftermath_style": [
+        "今日这句话你尽可以记恨，可等风声压下来时，你自然会明白。"
+      ],
+      "echo_style": [
+        "等这阵风过后，你若还只看见我的狠，那也随你。"
+      ]
+    },
+    "tutor_xu": {
+      "profile_id": "tutor",
+      "cadence": "measured",
+      "directness": 0.52,
+      "bluntness": 0.58,
+      "restraint": 0.72,
+      "social_rank_awareness": 0.7,
+      "hesitation_style": "把更难听的话先咽半口",
+      "direct_address_style": "先看对方，再把话送出去",
+      "opening_style": [
+        "肯把话说出来，总比把自己活成规矩强。"
+      ],
+      "pressure_style": [
+        "旁人替你铺再多路，也不能替你决定这一步要不要昧着心走。"
+      ],
+      "pivot_style": [
+        "人最怕的不是路难走，是明知它脏了还逼自己装作能走。"
+      ],
+      "aftermath_style": [
+        "你若只是听懂了道理，下一次照样会退。"
+      ],
+      "echo_style": [
+        "事情真压到门前时，你总得先替自己开口。"
+      ]
+    }
+  },
+  "response_cadence_profiles": {
+    "yu_cheng": {
+      "cadence_id": "heir",
+      "reaction_tempo": "measured",
+      "reaction_lines": {
+        "entry": [
+          "他没有立刻接话，只让那句意思先在心里过了一遍。"
+        ],
+        "pressure": [
+          "他手上的细小动作先停住了，像终于不打算再替谁留余地。"
+        ],
+        "pivot": [
+          "他这才抬起眼来，语气仍不见急，可越平，越像逼人。"
+        ],
+        "aftermath": [
+          "他临到收声时反而更轻了些，可那点轻偏偏更重。"
+        ],
+        "echo": [
+          "他没有再追，可沉默已经替下一次相见留了一道裂口。"
+        ]
+      },
+      "reply_lines": {
+        "entry": [
+          "这句话既然出口，我就不再往回收。"
+        ],
+        "pressure": [
+          "你要我认，我就认，但别逼我装作从来没迟疑过。"
+        ],
+        "pivot": [
+          "再退半步，我也还是要把这句真话顶出来。"
+        ],
+        "aftermath": [
+          "事情不会就这样过去，我知道。"
+        ],
+        "echo": [
+          "等我再来时，我会把剩下那半句也带来。"
+        ]
+      }
+    },
+    "lin_wan": {
+      "cadence_id": "cousin",
+      "reaction_tempo": "measured",
+      "reaction_lines": {
+        "entry": [
+          "她没有立刻接话，只让那句意思先在心里过了一遍。"
+        ],
+        "pressure": [
+          "她手上的细小动作先停住了，像终于不打算再替谁留余地。"
+        ],
+        "pivot": [
+          "她这才抬起眼来，语气仍不见急，可越平，越像逼人。"
+        ],
+        "aftermath": [
+          "她临到收声时反而更轻了些，可那点轻偏偏更重。"
+        ],
+        "echo": [
+          "她没有再追，可沉默已经替下一次相见留了一道裂口。"
+        ]
+      },
+      "reply_lines": {
+        "entry": [
+          "既然已经说了，就别只给我半句。"
+        ],
+        "pressure": [
+          "你要真想护谁，就别总拿沉默糊弄过去。"
+        ],
+        "pivot": [
+          "我不怕难听，只怕你还要继续绕。"
+        ],
+        "aftermath": [
+          "这话先记在这里，迟早还要回来。"
+        ],
+        "echo": [
+          "下次见我时，你最好别再拿旧话搪塞。"
+        ]
+      }
+    },
+    "lady_rong": {
+      "cadence_id": "matriarch",
+      "reaction_tempo": "measured",
+      "reaction_lines": {
+        "entry": [
+          "他没有立刻接话，只让那句意思先在心里过了一遍。"
+        ],
+        "pressure": [
+          "他手上的细小动作先停住了，像终于不打算再替谁留余地。"
+        ],
+        "pivot": [
+          "他这才抬起眼来，语气仍不见急，可越平，越像逼人。"
+        ],
+        "aftermath": [
+          "他临到收声时反而更轻了些，可那点轻偏偏更重。"
+        ],
+        "echo": [
+          "他没有再追，可沉默已经替下一次相见留了一道裂口。"
+        ]
+      },
+      "reply_lines": {
+        "entry": [
+          "话既然到了台面上，就该按台面上的规矩说。"
+        ],
+        "pressure": [
+          "你若连自己都不肯承认，又拿什么撑住这一局。"
+        ],
+        "pivot": [
+          "该挑明的时候，拖得越久，越伤体面。"
+        ],
+        "aftermath": [
+          "人可以先散，账却不会跟着散。"
+        ],
+        "echo": [
+          "等你再来回话时，记得把分寸和真话一起带来。"
+        ]
+      }
+    },
+    "tutor_xu": {
+      "cadence_id": "tutor",
+      "reaction_tempo": "measured",
+      "reaction_lines": {
+        "entry": [
+          "他没有立刻接话，只让那句意思先在心里过了一遍。"
+        ],
+        "pressure": [
+          "他手上的细小动作先停住了，像终于不打算再替谁留余地。"
+        ],
+        "pivot": [
+          "他这才抬起眼来，语气仍不见急，可越平，越像逼人。"
+        ],
+        "aftermath": [
+          "他临到收声时反而更轻了些，可那点轻偏偏更重。"
+        ],
+        "echo": [
+          "他没有再追，可沉默已经替下一次相见留了一道裂口。"
+        ]
+      },
+      "reply_lines": {
+        "entry": [
+          "既然肯开口，就别让这句真话半路折回去。"
+        ],
+        "pressure": [
+          "读书人最怕的不是输，而是明知心里有裂口还要装平。"
+        ],
+        "pivot": [
+          "你若连这一句都不敢认，后面的路只会更窄。"
+        ],
+        "aftermath": [
+          "先把这话放下，回头你还是要自己接住。"
+        ],
+        "echo": [
+          "等下一回再说时，别让我只听见你留给自己的余地。"
+        ]
+      }
+    }
+  },
+  "pressure_response_styles": {
+    "yu_cheng": {
+      "style_id": "heir",
+      "under_pressure": "嘴上更轻，动作更硬",
+      "when_cornered": "先沉默，再把难听的话说实",
+      "when_softening": "语气微松，但不立刻退让",
+      "when_deflecting": "把真正的心事往旁处挪半寸"
+    },
+    "lin_wan": {
+      "style_id": "cousin",
+      "under_pressure": "嘴上更轻，动作更硬",
+      "when_cornered": "先沉默，再把难听的话说实",
+      "when_softening": "语气微松，但不立刻退让",
+      "when_deflecting": "把真正的心事往旁处挪半寸"
+    },
+    "lady_rong": {
+      "style_id": "matriarch",
+      "under_pressure": "嘴上更轻，动作更硬",
+      "when_cornered": "先沉默，再把难听的话说实",
+      "when_softening": "语气微松，但不立刻退让",
+      "when_deflecting": "把真正的心事往旁处挪半寸"
+    },
+    "tutor_xu": {
+      "style_id": "tutor",
+      "under_pressure": "嘴上更轻，动作更硬",
+      "when_cornered": "先沉默，再把难听的话说实",
+      "when_softening": "语气微松，但不立刻退让",
+      "when_deflecting": "把真正的心事往旁处挪半寸"
+    }
+  },
+  "emotion_action_policies": {
+    "default": {
+      "policy_id": "jade_court_exam_default_action",
+      "action_map": {
+        "false_peace": {
+          "entry": [
+            "袖角拂过案沿，只一点轻响，厅里的分寸就全绷紧了。"
+          ],
+          "pressure": [
+            "茶盏还温着，谁也没先碰，倒像先把规矩摆到了人心上。"
+          ],
+          "pivot": [
+            "那一点极轻的停顿和改口，让场面从还能周旋，变成了不得不选边。"
+          ],
+          "aftermath": [
+            "人散得不快，沉默却先压了下来。"
+          ],
+          "echo": [
+            "越到后面，越能听见那些没说尽的话慢慢回身。"
+          ],
+          "repeat": [
+            "动作并不大，可谁都知道事情已经换了味道。"
+          ]
+        },
+        "truth_trial": {
+          "entry": [
+            "先动的不是声音，而是目光沿着席间一寸寸压过去。"
+          ],
+          "pressure": [
+            "灯影压在杯沿上，连换气都像先过了一道门槛。"
+          ],
+          "pivot": [
+            "风从门缝里钻进来，把场里的沉默一下子吹偏了方向。"
+          ],
+          "aftermath": [
+            "茶香已经淡了，场里的气却还迟迟不肯散开。"
+          ],
+          "echo": [
+            "等人散尽以后，连空下来的位置都还像留着刚才那句重话。"
+          ],
+          "repeat": [
+            "动作不大，可谁都知道这句真话已经绕不过去了。"
+          ]
+        }
+      }
+    }
+  },
+  "sensory_grounding_policies": {
+    "default": {
+      "policy_id": "jade_court_exam_default_sensory",
+      "location_slots": {
+        "荣府": {
+          "atmosphere": [
+            "荣府里并不安静，连空气都像压着一句没说完的话。"
+          ],
+          "detail": [
+            "荣府里的光线、器物和衣袖摩擦声，都把场里的情绪衬得更清。"
+          ],
+          "repeat_detail": [
+            "荣府里最轻的一点动静，反而把话里的分量又压重了一层。"
+          ]
+        },
+        "书房": {
+          "atmosphere": [
+            "书房里纸页和旧墨混在一起的味道有些发沉。"
+          ],
+          "detail": [
+            "案角压着的纸页微微一翘，像替谁先揭开了遮掩。"
+          ],
+          "repeat_detail": [
+            "灯火更低一寸，屋里的静反而比刚才更重。"
+          ]
+        },
+        "花厅": {
+          "atmosphere": [
+            "花厅里檀香还没散尽，窗外的天色却已经压低下来。"
+          ],
+          "detail": [
+            "杯沿上一点冷光轻轻一闪，把谁都不肯退的那层心思照了出来。"
+          ],
+          "repeat_detail": [
+            "檐下风声掠过去，连袖口轻轻一抖都像破绽。"
+          ]
+        },
+        "考棚": {
+          "atmosphere": [
+            "考棚里并不安静，连空气都像压着一句没说完的话。"
+          ],
+          "detail": [
+            "考棚里的光线、器物和衣袖摩擦声，都把场里的情绪衬得更清。"
+          ],
+          "repeat_detail": [
+            "考棚里最轻的一点动静，反而把话里的分量又压重了一层。"
+          ]
+        },
+        "渡口": {
+          "atmosphere": [
+            "渡口的风把水气一阵阵推过来，像连去路和退路都混成了一线。"
+          ],
+          "detail": [
+            "水面反起的冷光落在衣角上，像把所有迟疑都照得更薄。"
+          ],
+          "repeat_detail": [
+            "等船声远下去时，话里的余波却反而更近了。"
+          ]
+        },
+        "回廊": {
+          "atmosphere": [
+            "回廊里的风比屋内更直，把灯影吹得一晃一晃。"
+          ],
+          "detail": [
+            "脚步踩过木板时，回声轻得像不肯认输的心跳。"
+          ],
+          "repeat_detail": [
+            "风再掠过一遍时，原先没说尽的话反而更清了。"
+          ]
+        },
+        "花园": {
+          "atmosphere": [
+            "花园深处的湿气贴在衣袖上，连一句轻声试探都像带着凉意。"
+          ],
+          "detail": [
+            "夜色压低后，枝影落在地上像一层不肯散开的心事。"
+          ],
+          "repeat_detail": [
+            "风声轻轻翻过去，连沉默都像被擦亮了一层。"
+          ]
+        }
+      },
+      "generic_slots": {
+        "atmosphere": [
+          "场里并不安静，连空气都像在替谁压住一口没说完的话。"
+        ],
+        "detail": [
+          "细小的声响和光线变化，把场里的情绪压得更清了一层。"
+        ],
+        "repeat_detail": [
+          "越到后面，越能听见那些没说尽的话慢慢回身。"
+        ]
+      }
+    }
+  },
+  "scene_realization_contracts": {
+    "default": {
+      "contract_id": "jade_court_exam_scene_realizer",
+      "dialogue_policy_id": "jade_court_exam_dialogue",
+      "default_voice_profile_id": "yu_cheng",
+      "default_cadence_id": "yu_cheng",
+      "default_pressure_style_id": "yu_cheng",
+      "default_emotion_action_policy_id": "default",
+      "default_sensory_policy_id": "default",
+      "narrative_style_pack_id": "default",
+      "scene_openings": {},
+      "scene_hooks": {},
+      "scene_pressures": {}
+    }
+  },
+  "narrative_style_pack": {
+    "style_pack_id": "default",
+    "tonal_lexicon": [
+      "court_drama",
+      "fate",
+      "romance"
+    ],
+    "thematic_axis_labels": {
+      "duty": "家门与责任",
+      "ambition": "前途与求胜",
+      "reputation": "名声与体面",
+      "love": "情意与靠近",
+      "selfhood": "自我与抉择",
+      "truth": "真相与揭露",
+      "reform": "改写旧秩序",
+      "destiny": "命运的去向"
+    },
+    "hook_templates": [
+      "等人声慢慢静下去时，真正要追上来的，往往才刚刚露出影子。",
+      "这口气先落下去，门里门外的余波却都还没有散。"
+    ],
+    "goal_labels": {},
+    "tag_labels": {
+      "court_drama": "court drama",
+      "fate": "fate",
+      "romance": "romance",
+      "duty": "家门与责任",
+      "reputation": "名声与体面",
+      "love": "情意与靠近"
+    },
+    "dialogue": {
+      "policy_id": "jade_court_exam_dialogue",
+      "require_turn_taking": true,
+      "require_counter_reaction": true,
+      "min_turns": 2,
+      "max_turns": 3,
+      "turn_pattern": [
+        "speaker",
+        "reaction",
+        "reply"
+      ],
+      "minimum_exchanges": 1
+    },
+    "emotion_actions": {
+      "policy_id": "jade_court_exam_default_action",
+      "action_map": {
+        "false_peace": {
+          "entry": [
+            "桌上的器物轻轻一碰，谁都知道这一步已经走出去，很难再收回来。"
+          ],
+          "pressure": [
+            "最细小的抬眼和换气都带上了掂量，像谁先多动一下，谁就会先露底。"
+          ],
+          "pivot": [
+            "那一点极轻的停顿和改口，让场面从还能周旋，变成了不得不选边。"
+          ],
+          "aftermath": [
+            "人散得不快，沉默却先压了下来。"
+          ],
+          "echo": [
+            "越到后面，越能听见那些没说尽的话慢慢回身。"
+          ],
+          "repeat": [
+            "动作并不大，可谁都知道事情已经换了味道。"
+          ]
+        },
+        "truth_trial": {
+          "entry": [
+            "先动的不是声音，而是视线和手指那一点收紧。"
+          ],
+          "pressure": [
+            "杯沿上那一点冷光轻轻一闪，连呼吸都像被逼慢了半拍。"
+          ],
+          "pivot": [
+            "风从门缝里钻进来，把场里的沉默一下子吹偏了方向。"
+          ],
+          "aftermath": [
+            "茶香已经淡了，场里的气却还迟迟不肯散开。"
+          ],
+          "echo": [
+            "等人散尽以后，连空下来的位置都还像留着刚才那句重话。"
+          ],
+          "repeat": [
+            "动作不大，可谁都知道这句真话已经绕不过去了。"
+          ]
+        }
+      }
+    },
+    "sensory_grounding": {
+      "policy_id": "jade_court_exam_default_sensory",
+      "location_slots": {
+        "generic": {
+          "atmosphere": [
+            "generic里并不安静，连空气都像压着一句没说完的话。"
+          ],
+          "detail": [
+            "generic里的光线、器物和衣袖摩擦声，都把场里的情绪衬得更清。"
+          ],
+          "repeat_detail": [
+            "generic里最轻的一点动静，反而把话里的分量又压重了一层。"
+          ]
+        }
+      },
+      "generic_slots": {
+        "atmosphere": [
+          "场里并不安静，连空气都像在替谁压住一口没说完的话。"
+        ],
+        "detail": [
+          "细小的声响和光线变化，把场里的情绪压得更清了一层。"
+        ],
+        "repeat_detail": [
+          "越到后面，越能听见那些没说尽的话慢慢回身。"
+        ]
+      }
+    },
+    "scene_realization": {
+      "contract_id": "jade_court_exam_scene_realizer",
+      "dialogue_policy_id": "jade_court_exam_dialogue",
+      "default_voice_profile_id": "default",
+      "default_cadence_id": "default",
+      "default_pressure_style_id": "default",
+      "default_emotion_action_policy_id": "default",
+      "default_sensory_policy_id": "default",
+      "narrative_style_pack_id": "default",
+      "scene_openings": {},
+      "scene_hooks": {},
+      "scene_pressures": {}
+    }
+  }
+}

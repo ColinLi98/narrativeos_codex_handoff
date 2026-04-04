@@ -1,0 +1,138 @@
+{
+  "config_version": "entitlement_matrix_v1",
+  "author_access_levels": {
+    "none": 0,
+    "basic": 1,
+    "advanced": 2
+  },
+  "tiers": [
+    {
+      "tier_id": "play_pass",
+      "display_name": "Play Pass",
+      "description": "面向 Reader 的基础订阅，提供继续阅读权限与 story credits。",
+      "price_usd_monthly": 10,
+      "reader_access": true,
+      "author_access": "none",
+      "monthly_story_credits": 30,
+      "monthly_studio_credits": 0,
+      "capabilities": {
+        "reader_continue": true,
+        "author_draft_manual": false,
+        "author_draft_update": false,
+        "author_validate": false,
+        "author_submit": false,
+        "author_draft_from_brief": false,
+        "author_simulate": false
+      }
+    },
+    {
+      "tier_id": "creator_pass",
+      "display_name": "Creator Pass",
+      "description": "面向独立作者，提供 Reader 权益与基础 Author Studio 能力。",
+      "price_usd_monthly": 20,
+      "reader_access": true,
+      "author_access": "basic",
+      "monthly_story_credits": 60,
+      "monthly_studio_credits": 40,
+      "capabilities": {
+        "reader_continue": true,
+        "author_draft_manual": true,
+        "author_draft_update": true,
+        "author_validate": true,
+        "author_submit": true,
+        "author_draft_from_brief": true,
+        "author_simulate": true
+      }
+    },
+    {
+      "tier_id": "studio_pass",
+      "display_name": "Studio Pass",
+      "description": "面向工作室团队，提供更高额度与更高 Author Studio 权限。",
+      "price_usd_monthly": 60,
+      "reader_access": true,
+      "author_access": "advanced",
+      "monthly_story_credits": 150,
+      "monthly_studio_credits": 150,
+      "capabilities": {
+        "reader_continue": true,
+        "author_draft_manual": true,
+        "author_draft_update": true,
+        "author_validate": true,
+        "author_submit": true,
+        "author_draft_from_brief": true,
+        "author_simulate": true
+      }
+    }
+  ],
+  "credit_policy": {
+    "rollover": "none",
+    "refill_on_state": "active"
+  },
+  "entitlement_matrix": {
+    "reader": {
+      "continue_story": {
+        "required_tier": "play_pass",
+        "subscription_capability": "reader_continue",
+        "wallet_type": "story_credits",
+        "metering_rule": "reader_continue_story_credits",
+        "meter_action_type": "continue_story",
+        "quote_tier_id": "play_pass"
+      }
+    },
+    "author": {
+      "save_draft": {
+        "required_tier": "creator_pass",
+        "minimum_author_access": "basic",
+        "subscription_capability": "author_draft_manual",
+        "wallet_type": null,
+        "metering_rule": null,
+        "meter_action_type": "author_save_draft"
+      },
+      "update_draft": {
+        "required_tier": "creator_pass",
+        "minimum_author_access": "basic",
+        "subscription_capability": "author_draft_update",
+        "wallet_type": null,
+        "metering_rule": null,
+        "meter_action_type": "author_update_draft"
+      },
+      "validate_draft": {
+        "required_tier": "creator_pass",
+        "minimum_author_access": "basic",
+        "subscription_capability": "author_validate",
+        "wallet_type": null,
+        "metering_rule": null,
+        "meter_action_type": "author_validate_draft"
+      },
+      "submit_draft": {
+        "required_tier": "creator_pass",
+        "minimum_author_access": "basic",
+        "subscription_capability": "author_submit",
+        "wallet_type": null,
+        "metering_rule": null,
+        "meter_action_type": "author_submit_draft"
+      },
+      "draft_from_brief": {
+        "required_tier": "creator_pass",
+        "minimum_author_access": "basic",
+        "subscription_capability": "author_draft_from_brief",
+        "wallet_type": "studio_credits",
+        "metering_rule": "author_from_brief_studio_credits",
+        "meter_action_type": "author_from_brief"
+      },
+      "simulate": {
+        "required_tier": "creator_pass",
+        "minimum_author_access": "basic",
+        "subscription_capability": "author_simulate",
+        "wallet_type": "studio_credits",
+        "metering_rule": "author_simulate_studio_credits",
+        "meter_action_type": "author_simulate"
+      }
+    }
+  },
+  "metering": {
+    "reader_continue_story_credits": 1,
+    "author_from_brief_studio_credits": 2,
+    "author_simulate_studio_credits": 1
+  }
+}

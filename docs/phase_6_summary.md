@@ -1,0 +1,29 @@
+# Phase 6 Summary
+
+- 新增 `src/narrativeos/eval/learned_reranker_baseline.py`
+- 新增 learned reranker baseline CLI：
+  - `python -m src.narrativeos.eval.learned_reranker_baseline`
+- 第一版 reranker 仅做离线 baseline：
+  - 不接 generation pipeline
+  - 不接 publish / simulation gate
+- 第二轮 reranker 已加入 shadow candidate summary：
+  - 不接 generation pipeline
+  - 不接 publish / simulation gate
+  - 只做 artifact readiness + world/issue 误差摘要
+- 当前 baseline 使用：
+  - `scikit-learn`
+  - `DictVectorizer`
+  - `LogisticRegression`
+  - 单标签时回退 `DummyClassifier`
+- 训练输出 artifact：
+  - `reranker_model.joblib`
+  - `reranker_metrics.json`
+  - `reranker_feature_manifest.json`
+  - `reranker_training_manifest.json`
+- 新增 `src/narrativeos/eval/learned_reranker_shadow.py`
+- Ops `eval-metrics` / `world status` 现可返回：
+  - `learned_reranker_shadow_summary`
+- 当前结论：
+  - NarrativeOS 已从 learned evaluator baseline 扩展到 learned reranker baseline
+  - reranker 现在也有了和 evaluator 对应的 shadow candidate 层
+  - 但 learned 结果仍然不影响线上决策

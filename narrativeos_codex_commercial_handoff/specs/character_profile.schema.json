@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CharacterProfile",
+  "type": "object",
+  "required": [
+    "character_id",
+    "display_name",
+    "destiny_contract",
+    "poison_vector",
+    "vow_profile",
+    "wound_profile",
+    "awakening_profile"
+  ],
+  "properties": {
+    "character_id": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string"
+    },
+    "destiny_contract": {
+      "type": "object",
+      "properties": {
+        "life_theme": {
+          "type": "string"
+        },
+        "inescapable_nodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fated_relations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbidden_escape": {
+          "type": "string"
+        },
+        "endgame_shapes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "life_theme"
+      ]
+    },
+    "poison_vector": {
+      "type": "object",
+      "properties": {
+        "greed": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "anger": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "delusion": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "pride": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "doubt": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "greed",
+        "anger",
+        "delusion",
+        "pride",
+        "doubt"
+      ]
+    },
+    "vow_profile": {
+      "type": "object",
+      "properties": {
+        "vows": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sacrifice_capacity": {
+          "type": "number"
+        },
+        "truth_tolerance": {
+          "type": "number"
+        }
+      }
+    },
+    "wound_profile": {
+      "type": "object",
+      "properties": {
+        "core_wound": {
+          "type": "string"
+        },
+        "public_self": {
+          "type": "string"
+        },
+        "shadow_desire": {
+          "type": "string"
+        },
+        "defense_style": {
+          "type": "string"
+        }
+      }
+    },
+    "awakening_profile": {
+      "type": "object",
+      "properties": {
+        "clarity": {
+          "type": "number"
+        },
+        "reflection_capacity": {
+          "type": "number"
+        },
+        "repentance_threshold": {
+          "type": "number"
+        },
+        "transformation_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "speech_traits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "action_traits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

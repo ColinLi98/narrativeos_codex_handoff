@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReviewSample",
+  "type": "object",
+  "required": [
+    "sample_id",
+    "chapter_id",
+    "world_id",
+    "world_version_id",
+    "session_id",
+    "reviewer_id",
+    "score_overall",
+    "issue_codes",
+    "freeform_notes",
+    "would_continue",
+    "would_pay",
+    "created_at",
+    "source"
+  ],
+  "properties": {
+    "sample_id": {"type": "string"},
+    "chapter_id": {"type": "string"},
+    "world_id": {"type": "string"},
+    "world_version_id": {"type": "string"},
+    "session_id": {"type": ["string", "null"]},
+    "reviewer_id": {"type": "string"},
+    "score_overall": {"type": "number"},
+    "issue_codes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "freeform_notes": {"type": "string"},
+    "would_continue": {"type": "boolean"},
+    "would_pay": {"type": "boolean"},
+    "created_at": {"type": "string"},
+    "source": {
+      "type": "string",
+      "enum": ["evaluation_report_auto", "human_review"]
+    },
+    "revision_id": {
+      "type": ["string", "null"]
+    },
+    "linked_issue_codes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "source_ref": {
+      "type": "object",
+      "required": ["kind", "chapter_id"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["evaluation_report", "manual_entry"]
+        },
+        "chapter_id": {"type": "string"}
+      }
+    },
+    "ingestion_meta": {
+      "type": "object",
+      "properties": {
+        "ingestion_key": {"type": "string"},
+        "reference_status": {"type": "string"},
+        "ingested_at": {"type": "string"},
+        "storage_mode": {"type": "string"},
+        "ingestion_warnings": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    }
+  }
+}

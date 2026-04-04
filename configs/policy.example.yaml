@@ -1,0 +1,21 @@
+ratings:
+  free_tier_max: "G"
+  paid_tier_max: "PG13"
+  creator_tier_max: "R"
+
+hard_constraints:
+  disallow_unresolved_time_travel: true
+  disallow_actor_omniscience: true
+  disallow_duplicate_scene_function_window: 2
+
+rights:
+  allowed_sources:
+    - public_domain
+    - original
+    - licensed
+  disallowed_sources:
+    - unlicensed_fanfic_for_monetization
+
+creator_controls:
+  canon_anchor_required: true
+  forbidden_moves_required: false

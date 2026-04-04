@@ -1,0 +1,26 @@
+[
+  {
+    "raw_input": "我想先试探林绾的态度，再决定要不要考。",
+    "intent_vector": {
+      "romance": 0.7,
+      "curiosity": 0.6,
+      "selfhood": 0.4
+    }
+  },
+  {
+    "raw_input": "我愿意先坦白自己的犹豫，再看看她是否愿意相信我。",
+    "intent_vector": {
+      "honesty": 0.7,
+      "romance": 0.6,
+      "selfhood": 0.5
+    }
+  },
+  {
+    "raw_input": "如果家门和真心冲突，我想先守住她，再想别的办法。",
+    "intent_vector": {
+      "romance": 0.8,
+      "loyalty": 0.5,
+      "sacrifice": 0.45
+    }
+  }
+]

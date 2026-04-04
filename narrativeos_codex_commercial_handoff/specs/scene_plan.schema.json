@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SceneBlueprint",
+  "type": "object",
+  "required": [
+    "scene_id",
+    "scene_function",
+    "phase_support",
+    "required_roles",
+    "beats_template"
+  ],
+  "properties": {
+    "scene_id": {
+      "type": "string"
+    },
+    "scene_function": {
+      "type": "string"
+    },
+    "phase_support": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "required_roles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "wound_triggers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "vow_tests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "seed_templates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "beats_template": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ending_gate": {
+      "type": "object"
+    }
+  }
+}

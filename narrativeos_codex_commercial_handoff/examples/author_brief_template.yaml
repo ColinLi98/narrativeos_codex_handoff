@@ -1,0 +1,27 @@
+world_title: ""
+target_audience: ""
+genres: []
+core_premise: ""
+life_theme: ""
+target_route_count: 2
+target_chapter_range: [8, 12]
+non_negotiable_canon:
+  - ""
+forbidden_moves:
+  - ""
+lead_characters:
+  - name: ""
+    core_wound: ""
+    public_self: ""
+    shadow_desire: ""
+    vows: []
+    poisons:
+      greed: 0.0
+      anger: 0.0
+      delusion: 0.0
+      pride: 0.0
+      doubt: 0.0
+monetization:
+  trial_chapters: 2
+  paid_after: 3
+risk_rating: PG-13

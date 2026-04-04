@@ -1,0 +1,51 @@
+{
+  "world_id": "jade_court_romance",
+  "title": "玉阙春闱·绮情版",
+  "source_type": "original",
+  "themes": [
+    "love",
+    "selfhood",
+    "destiny",
+    "reputation"
+  ],
+  "canon_anchors": [
+    "林绾不会接受没有代价的甜言蜜语。",
+    "余澄必须在真心与家门之间承受可见代价。",
+    "任何情感进展都不能越过角色知识边界。"
+  ],
+  "forbidden_moves": [
+    "角色不能突然拥有超自然力量。",
+    "故事不能跳过重大代价直接进入圆满结局。"
+  ],
+  "characters": [
+    "yu_cheng",
+    "lin_wan",
+    "lady_rong",
+    "tutor_xu"
+  ],
+  "locations": [
+    "荣府",
+    "书房",
+    "花厅",
+    "考棚",
+    "渡口"
+  ],
+  "creator_controls": {
+    "merge_policy": "discourage_early_merge",
+    "darkness_ceiling": "PG",
+    "theme_targets": [
+      "love",
+      "selfhood"
+    ],
+    "scoring_weights": {
+      "causal_consistency": 0.18,
+      "character_fidelity": 0.14,
+      "dramatic_tension_delta": 0.12,
+      "user_agency_alignment": 0.28,
+      "thematic_resonance": 0.2,
+      "branch_novelty": 0.05,
+      "pacing_quality": 0.03
+    }
+  },
+  "capability_assets": {}
+}

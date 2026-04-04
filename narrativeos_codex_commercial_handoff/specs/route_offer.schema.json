@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RouteOffer",
+  "type": "object",
+  "required": [
+    "choice_id",
+    "surface_text",
+    "inner_motive",
+    "risk_tags",
+    "access_tier"
+  ],
+  "properties": {
+    "choice_id": {
+      "type": "string"
+    },
+    "surface_text": {
+      "type": "string"
+    },
+    "inner_motive": {
+      "type": "string"
+    },
+    "emotional_cost": {
+      "type": "string"
+    },
+    "risk_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "access_tier": {
+      "type": "string"
+    },
+    "price_hint": {
+      "type": "number"
+    }
+  }
+}

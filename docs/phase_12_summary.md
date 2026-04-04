@@ -1,0 +1,24 @@
+# Phase 12 Summary
+
+- 新增 evaluator promotion workflow：
+  - `src/narrativeos/eval/learned_promotion_workflow.py`
+- 扩展 Ops API：
+  - `GET /v1/ops/learned-promotion`
+  - `POST /v1/ops/learned-promotion/approve`
+  - `POST /v1/ops/learned-promotion/revoke`
+- 当前 `/app` 的 Ops 区新增：
+  - `Approve Evaluator`
+  - `Revoke Evaluator`
+- promotion workflow summary 会统一输出：
+  - `recommendation_status`
+  - `approval_status`
+  - `reconfirm_required`
+  - `latest_approval_record`
+  - `blockers`
+  - `advisories`
+  - `checklist`
+  - `evidence`
+- 当前结论：
+  - NarrativeOS 已从 recommendation-only promotion gate，推进到 evaluator-first 的人工批准 workflow
+  - stale approval 不会自动撤销历史记录，只会要求 Ops 重新确认
+  - 这层仍然不影响线上 gate

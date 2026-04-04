@@ -1,0 +1,595 @@
+{
+  "world_id": "synthetic_min_pack",
+  "title": "Synthetic Minimal Pack",
+  "version": "0.1.0",
+  "manifest": {
+    "author_id": "system",
+    "language": "zh-CN",
+    "genres": [
+      "synthetic",
+      "benchmark"
+    ],
+    "risk_rating": "PG-13",
+    "monetization_policy": {
+      "trial_chapters": 1,
+      "paid_after": 2
+    }
+  },
+  "world_bible": {
+    "premise": "用于验证 kernel 是否真正不依赖特定世界设定。",
+    "canon_rules": [
+      "所有能力应依赖 contract 与 pack assets，而不是人物名。"
+    ],
+    "forbidden_moves": [
+      "依赖任何特定礼法与家门语汇。"
+    ],
+    "locations": [
+      "中庭",
+      "长廊",
+      "窗边"
+    ]
+  },
+  "characters": [
+    {
+      "character_id": "lead_a",
+      "display_name": "甲",
+      "role": "lead",
+      "destiny_contract": {
+        "life_theme": "如何在压力里说真话"
+      },
+      "poison_vector": {
+        "greed": 0.2,
+        "anger": 0.2,
+        "delusion": 0.4,
+        "pride": 0.5,
+        "doubt": 0.4
+      },
+      "vow_profile": {
+        "vows": [
+          "不再退后"
+        ],
+        "sacrifice_capacity": 0.5,
+        "truth_tolerance": 0.5
+      },
+      "wound_profile": {
+        "core_wound": "被替自己决定",
+        "public_self": "我很稳",
+        "shadow_desire": "被认真听见",
+        "defense_style": "迟疑"
+      },
+      "awakening_profile": {
+        "clarity": 0.3,
+        "reflection_capacity": 0.4,
+        "repentance_threshold": 0.7,
+        "transformation_paths": [
+          "坦白"
+        ]
+      },
+      "speech_traits": [
+        "迟疑"
+      ],
+      "action_traits": [
+        "试探"
+      ]
+    },
+    {
+      "character_id": "lead_b",
+      "display_name": "乙",
+      "role": "counterpart",
+      "destiny_contract": {
+        "life_theme": "如何在失望里保持边界"
+      },
+      "poison_vector": {
+        "greed": 0.1,
+        "anger": 0.3,
+        "delusion": 0.3,
+        "pride": 0.5,
+        "doubt": 0.5
+      },
+      "vow_profile": {
+        "vows": [
+          "不替别人圆谎"
+        ],
+        "sacrifice_capacity": 0.4,
+        "truth_tolerance": 0.7
+      },
+      "wound_profile": {
+        "core_wound": "被隐瞒",
+        "public_self": "我不在乎",
+        "shadow_desire": "被平等对待",
+        "defense_style": "冷处理"
+      },
+      "awakening_profile": {
+        "clarity": 0.4,
+        "reflection_capacity": 0.5,
+        "repentance_threshold": 0.6,
+        "transformation_paths": [
+          "直问"
+        ]
+      },
+      "speech_traits": [
+        "冷处理"
+      ],
+      "action_traits": [
+        "逼问"
+      ]
+    }
+  ],
+  "scene_blueprints": [
+    {
+      "scene_id": "synthetic_setup",
+      "scene_function": "setup",
+      "phase_support": [
+        "setup"
+      ],
+      "required_roles": [
+        "lead",
+        "counterpart"
+      ],
+      "beats_template": [
+        "入场",
+        "试探",
+        "沉默余波"
+      ]
+    }
+  ],
+  "style_pack": {
+    "mode": "novel_light",
+    "pov": "limited_third",
+    "dialogue_density": "medium"
+  },
+  "risk_policy": {
+    "shareable": true,
+    "requires_manual_review": false
+  },
+  "dialogue_realism_policy": {
+    "policy_id": "synthetic_dialogue",
+    "require_turn_taking": true,
+    "require_counter_reaction": true,
+    "min_turns": 2,
+    "max_turns": 3,
+    "turn_pattern": [
+      "speaker",
+      "reaction",
+      "reply"
+    ],
+    "minimum_exchanges": 1
+  },
+  "voice_profiles": {
+    "lead_a": {
+      "profile_id": "lead_a",
+      "cadence": "measured",
+      "directness": 0.56,
+      "bluntness": 0.34,
+      "restraint": 0.66,
+      "social_rank_awareness": 0.18,
+      "opening_style": [
+        "我不是没想退，只是退到这里已经不算没选。"
+      ],
+      "pressure_style": [
+        "你要我认，我可以认，但别逼我装作从没动摇过。"
+      ],
+      "pivot_style": [
+        "既然已经看见这一层，我就不想再把它塞回去。"
+      ],
+      "aftermath_style": [
+        "这句话先落在这里，后面的代价我自己接。"
+      ],
+      "echo_style": [
+        "等下一次再说时，我不会再只带着沉默过来。"
+      ],
+      "signature_replies": [
+        "我先把这句认下，剩下的我不再推给局势。"
+      ]
+    },
+    "lead_b": {
+      "profile_id": "lead_b",
+      "cadence": "tight",
+      "directness": 0.81,
+      "bluntness": 0.63,
+      "restraint": 0.44,
+      "social_rank_awareness": 0.12,
+      "opening_style": [
+        "你要是不肯把话说明白，我就只能把它一路追到最里面。"
+      ],
+      "pressure_style": [
+        "我可以听难听的话，但不会再替你把裂口遮回去。"
+      ],
+      "pivot_style": [
+        "再绕半步，这件事只会换个地方继续裂。"
+      ],
+      "aftermath_style": [
+        "我先不替你收场，等你自己把后半句带回来。"
+      ],
+      "echo_style": [
+        "下次再来时，别只带着更圆的借口。"
+      ],
+      "signature_replies": [
+        "我可以先不走，但你别指望我继续替你圆这层假平静。"
+      ]
+    }
+  },
+  "response_cadence_profiles": {
+    "lead_a": {
+      "cadence_id": "lead_a",
+      "reaction_tempo": "measured",
+      "reaction_lines": {
+        "entry": [
+          "没有立刻接，只把那点迟疑在心里又压了一遍。"
+        ],
+        "pressure": [
+          "呼吸很轻地顿了一下，像解释已经挤到喉间却又被他自己按住。"
+        ],
+        "pivot": [
+          "这才抬眼，明明还在犹豫，语气却已经不想再退。"
+        ],
+        "aftermath": [
+          "到收声时反而更慢，像是在替后面的代价先让出位置。"
+        ],
+        "echo": [
+          "没再追着补话，可那点未尽之意还挂在肩背上。"
+        ]
+      },
+      "reply_lines": {
+        "entry": [
+          "既然都走到这里了，我不想再把这句收回去。"
+        ],
+        "pressure": [
+          "我不是不肯认，只是不想再拿沉默糊弄过去。"
+        ],
+        "pivot": [
+          "再往后退，我也还是得自己把这句真话接住。"
+        ],
+        "aftermath": [
+          "这层后果先记在我这里。"
+        ],
+        "echo": [
+          "等下一次再说时，我会把后半句一起带来。"
+        ]
+      }
+    },
+    "lead_b": {
+      "cadence_id": "lead_b",
+      "reaction_tempo": "tight",
+      "reaction_lines": {
+        "entry": [
+          "没有立刻发作，只把那句没说透的话牢牢按在视线里。"
+        ],
+        "pressure": [
+          "指尖在桌沿轻轻一停，像先替那句真话占了个位置。"
+        ],
+        "pivot": [
+          "这才开口，字不多，却每个都卡在最难回避的地方。"
+        ],
+        "aftermath": [
+          "没有继续逼，可那种不肯圆谎的态度反而更重。"
+        ],
+        "echo": [
+          "先收了声，留下来的却是更明确的一层边界。"
+        ]
+      },
+      "reply_lines": {
+        "entry": [
+          "既然要说，就别只给我半句。"
+        ],
+        "pressure": [
+          "你要是真想往前走，就别总把退路藏在沉默后面。"
+        ],
+        "pivot": [
+          "我可以听真话，但不会再替你把代价吞回去。"
+        ],
+        "aftermath": [
+          "这句先放在这里，回头你还是得自己来认。"
+        ],
+        "echo": [
+          "下次见我时，最好带着真相来。"
+        ]
+      }
+    }
+  },
+  "pressure_response_styles": {
+    "lead_a": {
+      "style_id": "lead",
+      "under_pressure": "嘴上更轻，动作更硬",
+      "when_cornered": "先沉默，再把难听的话说实",
+      "when_softening": "语气微松，但不立刻退让",
+      "when_deflecting": "把真正的心事往旁处挪半寸"
+    },
+    "lead_b": {
+      "style_id": "counterpart",
+      "under_pressure": "嘴上更轻，动作更硬",
+      "when_cornered": "先沉默，再把难听的话说实",
+      "when_softening": "语气微松，但不立刻退让",
+      "when_deflecting": "把真正的心事往旁处挪半寸"
+    }
+  },
+  "emotion_action_policies": {
+    "default": {
+      "policy_id": "synthetic_action",
+      "action_map": {
+        "false_peace": {
+          "entry": [
+            "桌边的纸页被人轻轻推正，屋里一下子只剩呼吸和钟声。"
+          ],
+          "pressure": [
+            "椅脚轻擦地面，那点干涩的响动反而把彼此的试探拉得更清。"
+          ],
+          "pivot": [
+            "谁先移开目光，谁就像先把底牌从手里滑出去半截。"
+          ],
+          "aftermath": [
+            "话虽停住，场里却比刚才更像有人把门从里面顶住了。"
+          ],
+          "echo": [
+            "等静下来以后，最先回来的反而是那句没有说完的话。"
+          ],
+          "repeat": [
+            "动作很轻，可谁都知道假平静已经开始起皱。"
+          ]
+        },
+        "truth_trial": {
+          "entry": [
+            "先起变化的是视线，不是声音，像谁都在等对方先把真话放下。"
+          ],
+          "pressure": [
+            "窗边的风碰了一下空杯，细响在屋里绕开，又折回来。"
+          ],
+          "pivot": [
+            "那一点短促的停顿，把还能周旋的场面一下子压成了选择。"
+          ],
+          "aftermath": [
+            "谁也没有立刻转身，像都在等更难听的后半句。"
+          ],
+          "echo": [
+            "越到后面，越能听见那点试探在屋里慢慢回身。"
+          ],
+          "repeat": [
+            "谁先开口，谁就像先把最重的一层后果认了下来。"
+          ]
+        },
+        "mask_crack": {
+          "entry": [
+            "嘴上还稳着，真正先露出来的是指尖那一点没藏住的停顿。"
+          ],
+          "pressure": [
+            "对面的人不再追问，反而把那层遮掩衬得更薄。"
+          ],
+          "pivot": [
+            "一句话没拐过去，连站姿都跟着露了怯。"
+          ],
+          "aftermath": [
+            "表面上谁都没失态，可真正的裂口已经落在心里。"
+          ],
+          "echo": [
+            "等下一次再开口时，谁也回不到刚才那副还能装稳的样子。"
+          ]
+        },
+        "confession_window": {
+          "entry": [
+            "屋里忽然安静下来，像所有杂音都先给这句真话让了地方。"
+          ],
+          "pressure": [
+            "那口气被人压了又压，最后还是没能把话咽回去。"
+          ],
+          "pivot": [
+            "对面的人没有替他补台阶，只把空白留成最逼人的催促。"
+          ],
+          "aftermath": [
+            "真话一落下来，连停在原地都比刚才更像一种表态。"
+          ],
+          "echo": [
+            "这一回先说到这里，可下一次见面时谁也不可能装作没发生。"
+          ]
+        }
+      }
+    }
+  },
+  "sensory_grounding_policies": {
+    "default": {
+      "policy_id": "synthetic_sensory",
+      "location_slots": {
+        "中庭": {
+          "atmosphere": [
+            "中庭空得发亮，连人说话前那口气都像会先落在地上。"
+          ],
+          "detail": [
+            "风从廊檐底下穿过去，把纸页角和衣摆都掀起一点轻响。"
+          ],
+          "repeat_detail": [
+            "越到后面，中庭里那点回声越像把没说完的话一遍遍推回来。"
+          ]
+        },
+        "长廊": {
+          "atmosphere": [
+            "长廊里脚步声拖得很长，像任何迟疑都会被放大。"
+          ],
+          "detail": [
+            "窗纸上挂着一点灰白的亮，连转身时衣料摩擦都显得分外清楚。"
+          ],
+          "repeat_detail": [
+            "长廊越静，那点不肯说透的心思就越像贴在身后。"
+          ]
+        },
+        "窗边": {
+          "atmosphere": [
+            "窗边的光线斜斜落下来，把每个人脸上的犹豫都照得更薄。"
+          ],
+          "detail": [
+            "风碰着空杯边沿，发出一下极轻的响，倒像替谁先开了口。"
+          ],
+          "repeat_detail": [
+            "越靠近窗边，那点停不下来的回响越像逼人把话说完。"
+          ]
+        }
+      },
+      "generic_slots": {
+        "atmosphere": [
+          "屋里没有真正的安静，连空气都像在替人记着一句没说完的话。"
+        ],
+        "detail": [
+          "最轻的一点光线和声响，都把场里的试探照得更清。"
+        ],
+        "repeat_detail": [
+          "等沉默拖长以后，最小的动静反而成了最重的提醒。"
+        ]
+      }
+    }
+  },
+  "scene_realization_contracts": {
+    "default": {
+      "contract_id": "synthetic_scene_realization",
+      "scene_openings": {
+        "false_peace": [
+          "表面平静下的暗潮。中庭里空得过分，像连空气都在等谁先把真话放下来。"
+        ],
+        "truth_trial": [
+          "真正开始逼近的不是答案，而是那句谁都不肯先认下来的真话。"
+        ],
+        "mask_crack": [
+          "表面还稳着，可真正先裂开的，往往是那一点不肯承认的迟疑。"
+        ],
+        "confession_window": [
+          "有些话只有在所有杂音都退开以后，才会自己浮到嘴边。"
+        ]
+      },
+      "scene_hooks": {
+        "false_peace": [
+          "这层平静撑不了太久，真正要追上来的，是那句被按回去的真话。"
+        ],
+        "truth_trial": [
+          "话先停在这里，可真正让人退不回去的，是下一次见面时还要不要继续问下去。"
+        ],
+        "mask_crack": [
+          "等下一次再开口时，谁都回不到刚才还能装稳的那一侧。"
+        ],
+        "confession_window": [
+          "这一回先说到这里，可真正决定走向的，是谁会带着后半句回来。"
+        ]
+      }
+    }
+  },
+  "narrative_style_pack": {
+    "style_pack_id": "default",
+    "tonal_lexicon": [
+      "synthetic",
+      "benchmark"
+    ],
+    "thematic_axis_labels": {
+      "duty": "家门与责任",
+      "ambition": "前途与求胜",
+      "reputation": "名声与体面",
+      "love": "情意与靠近",
+      "selfhood": "自我与抉择",
+      "truth": "真相与揭露",
+      "reform": "改写旧秩序",
+      "destiny": "命运的去向"
+    },
+    "hook_templates": [
+      "等人声慢慢静下去时，真正要追上来的往往才刚刚露出影子。",
+      "这句话先落下去，真正的余波还在后面等着。"
+    ],
+    "goal_labels": {},
+    "tag_labels": {
+      "synthetic": "synthetic",
+      "benchmark": "benchmark"
+    },
+    "dialogue": {
+      "policy_id": "synthetic_min_pack_dialogue",
+      "require_turn_taking": true,
+      "require_counter_reaction": true,
+      "min_turns": 2,
+      "max_turns": 3,
+      "turn_pattern": [
+        "speaker",
+        "reaction",
+        "reply"
+      ],
+      "minimum_exchanges": 1
+    },
+    "emotion_actions": {
+      "policy_id": "synthetic_min_pack_default_action",
+      "action_map": {
+        "false_peace": {
+          "entry": [
+            "桌上的器物轻轻一碰，谁都知道这一步已经走出去，很难再收回来。"
+          ],
+          "pressure": [
+            "最细小的抬眼和换气都带上了掂量，像谁先多动一下，谁就会先露底。"
+          ],
+          "pivot": [
+            "那一点极轻的停顿和改口，让场面从还能周旋，变成了不得不选边。"
+          ],
+          "aftermath": [
+            "人散得不快，沉默却先压了下来。"
+          ],
+          "echo": [
+            "越到后面，越能听见那些没说尽的话慢慢回身。"
+          ],
+          "repeat": [
+            "动作并不大，可谁都知道事情已经换了味道。"
+          ]
+        },
+        "truth_trial": {
+          "entry": [
+            "先动的不是声音，而是视线和手指那一点收紧。"
+          ],
+          "pressure": [
+            "杯沿上那一点冷光轻轻一闪，连呼吸都像被逼慢了半拍。"
+          ],
+          "pivot": [
+            "风从门缝里钻进来，把场里的沉默一下子吹偏了方向。"
+          ],
+          "aftermath": [
+            "茶香已经淡了，场里的气却还迟迟不肯散开。"
+          ],
+          "echo": [
+            "等人散尽以后，连空下来的位置都还像留着刚才那句重话。"
+          ],
+          "repeat": [
+            "动作不大，可谁都知道这句真话已经绕不过去了。"
+          ]
+        }
+      }
+    },
+    "sensory_grounding": {
+      "policy_id": "synthetic_min_pack_default_sensory",
+      "location_slots": {
+        "generic": {
+          "atmosphere": [
+            "generic里并不安静，连空气都像压着一句没说完的话。"
+          ],
+          "detail": [
+            "generic里的光线、器物和衣袖摩擦声，都把场里的情绪衬得更清。"
+          ],
+          "repeat_detail": [
+            "generic里最轻的一点动静，反而把话里的分量又压重了一层。"
+          ]
+        }
+      },
+      "generic_slots": {
+        "atmosphere": [
+          "场里并不安静，连空气都像在替谁压住一口没说完的话。"
+        ],
+        "detail": [
+          "细小的声响和光线变化，把场里的情绪压得更清了一层。"
+        ],
+        "repeat_detail": [
+          "越到后面，越能听见那些没说尽的话慢慢回身。"
+        ]
+      }
+    },
+    "scene_realization": {
+      "contract_id": "synthetic_min_pack_scene_realizer",
+      "dialogue_policy_id": "synthetic_min_pack_dialogue",
+      "default_voice_profile_id": "default",
+      "default_cadence_id": "default",
+      "default_pressure_style_id": "default",
+      "default_emotion_action_policy_id": "default",
+      "default_sensory_policy_id": "default",
+      "narrative_style_pack_id": "default",
+      "scene_openings": {},
+      "scene_hooks": {},
+      "scene_pressures": {}
+    }
+  }
+}

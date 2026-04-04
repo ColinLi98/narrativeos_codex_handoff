@@ -1,0 +1,55 @@
+name: cross-pack-quality
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          . .venv/bin/activate
+          python -m pytest -q
+      - name: Run cross-pack benchmark
+        run: |
+          . .venv/bin/activate
+          python -m src.narrativeos.benchmark.runner \
+            --baseline-file tests/benchmark_baseline.json \
+            --markdown-out benchmark-summary.md \
+            > benchmark.json
+      - name: Run phase 0 guardrails
+        run: BENCHMARK_MD=benchmark-summary.md bash scripts/run_phase0_guardrails.sh
+      - name: Prepare PR body
+        if: github.event_name == 'pull_request'
+        run: printf '%s' '${{ github.event.pull_request.body }}' > pr-body.md
+      - name: Run cross-pack merge gate
+        run: |
+          . .venv/bin/activate
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            python -m src.narrativeos.benchmark.merge_gate \
+              --benchmark-file benchmark.json \
+              --pr-body-file pr-body.md \
+              --require-pr-evidence \
+              --summary-out merge-gate-summary.md
+          else
+            python -m src.narrativeos.benchmark.merge_gate \
+              --benchmark-file benchmark.json \
+              --summary-out merge-gate-summary.md
+          fi
+      - name: Publish benchmark summary
+        if: always()
+        run: |
+          cat benchmark-summary.md >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat merge-gate-summary.md >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,24 @@
+# Phase 14 Summary
+
+- 新增 reranker promotion workflow：
+  - `src/narrativeos/eval/learned_reranker_promotion_workflow.py`
+- 扩展 Ops API：
+  - `GET /v1/ops/learned-reranker-promotion`
+  - `POST /v1/ops/learned-reranker-promotion/approve`
+  - `POST /v1/ops/learned-reranker-promotion/revoke`
+- 当前 `/app` 的 Ops 区新增：
+  - `Approve Reranker`
+  - `Revoke Reranker`
+- reranker promotion workflow summary 会统一输出：
+  - `recommendation_status`
+  - `approval_status`
+  - `reconfirm_required`
+  - `latest_approval_record`
+  - `blockers`
+  - `advisories`
+  - `checklist`
+  - `evidence`
+- 当前结论：
+  - NarrativeOS 已把 evaluator / reranker 两条 learned 线都推进到人工 approval workflow 层
+  - 两条线都支持 stale/reconfirm 语义
+  - 这层仍然只影响治理，不影响线上 gate

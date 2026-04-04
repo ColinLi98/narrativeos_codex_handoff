@@ -1,0 +1,19 @@
+version: mp_v1
+planner:
+  tier: small_structured
+  max_tokens: 1200
+simulator:
+  tier: medium_structured
+  max_tokens: 1800
+renderer:
+  tier: high_quality
+  max_tokens: 2600
+critics:
+  consistency: small_structured
+  immersion: medium
+  diversity: small_structured
+moderation:
+  mode: rule_plus_classifier
+budgets:
+  chapter_soft_cost: 0.08
+  chapter_hard_cost: 0.15

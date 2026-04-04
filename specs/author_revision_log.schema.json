@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AuthorRevisionLog",
+  "type": "object",
+  "required": [
+    "world_id",
+    "world_version_id",
+    "revision_id",
+    "source",
+    "label",
+    "changed_sections",
+    "summary",
+    "simulation_delta",
+    "timestamp"
+  ],
+  "properties": {
+    "world_id": {"type": "string"},
+    "world_version_id": {"type": "string"},
+    "revision_id": {"type": "string"},
+    "source": {"type": "string"},
+    "label": {"type": "string"},
+    "changed_sections": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "summary": {"type": "string"},
+    "simulation_delta": {
+      "type": ["object", "null"]
+    },
+    "timestamp": {"type": "string"}
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EntitlementAccountSnapshot",
+  "type": "object",
+  "required": ["account_id", "wallets"],
+  "properties": {
+    "account_id": {"type": "string"},
+    "reader_id": {"type": ["string", "null"]},
+    "world_id": {"type": ["string", "null"]},
+    "config_version": {"type": ["string", "null"]},
+    "subscription": {
+      "type": ["object", "null"]
+    },
+    "wallets": {
+      "type": "object"
+    },
+    "entitlements": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "audit_summary": {
+      "type": ["object", "null"]
+    },
+    "audit_timeline": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "audit_trail": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "audit_breakdown": {
+      "type": ["object", "null"]
+    },
+    "timeline_cursor": {
+      "type": ["object", "null"]
+    },
+    "revoke_candidates": {
+      "type": "array",
+      "items": {"type": "object"}
+    }
+  }
+}

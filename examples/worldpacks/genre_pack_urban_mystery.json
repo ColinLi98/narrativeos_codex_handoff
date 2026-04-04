@@ -1,0 +1,644 @@
+{
+  "world_id": "urban_mystery_lotus_lane",
+  "title": "莲巷夜话",
+  "version": "0.1.0",
+  "manifest": {
+    "author_id": "studio_demo",
+    "language": "zh-CN",
+    "genres": [
+      "urban_mystery",
+      "romance",
+      "suspense"
+    ],
+    "risk_rating": "PG-13",
+    "monetization_policy": {
+      "trial_chapters": 2,
+      "paid_after": 3
+    }
+  },
+  "world_bible": {
+    "premise": "一条旧巷里，越想隐瞒的事越会以另一种方式回来收债。",
+    "canon_rules": [
+      "任何隐瞒都会留下因果种子",
+      "关系推进必须伴随代价或误解"
+    ],
+    "forbidden_moves": [
+      "神力直接解决问题",
+      "无根由的完美和解"
+    ],
+    "locations": [
+      "旧巷",
+      "便利店门口",
+      "天桥下"
+    ]
+  },
+  "characters": [
+    {
+      "character_id": "jiang_yi",
+      "display_name": "江屹",
+      "role": "lead",
+      "destiny_contract": {
+        "life_theme": "真话是否值得承担失去",
+        "inescapable_nodes": [
+          "坦白",
+          "失去一次信任"
+        ]
+      },
+      "poison_vector": {
+        "greed": 0.28,
+        "anger": 0.22,
+        "delusion": 0.46,
+        "pride": 0.52,
+        "doubt": 0.61
+      },
+      "vow_profile": {
+        "vows": [
+          "不再让重要的人从别人那里知道真相"
+        ],
+        "sacrifice_capacity": 0.72,
+        "truth_tolerance": 0.52
+      },
+      "wound_profile": {
+        "core_wound": "被误解与被抛下",
+        "public_self": "我能把残局收干净",
+        "shadow_desire": "有人能先站在我这边一次",
+        "defense_style": "嘴硬与拖延"
+      },
+      "awakening_profile": {
+        "clarity": 0.34,
+        "reflection_capacity": 0.62,
+        "repentance_threshold": 0.76,
+        "transformation_paths": [
+          "坦白",
+          "让渡控制"
+        ]
+      },
+      "speech_traits": [
+        "压着说",
+        "嘴硬",
+        "先挡再认"
+      ],
+      "action_traits": [
+        "试探",
+        "遮掩",
+        "强撑"
+      ]
+    },
+    {
+      "character_id": "zhou_lan",
+      "display_name": "周岚",
+      "role": "counterpart",
+      "destiny_contract": {
+        "life_theme": "爱与边界如何共存",
+        "inescapable_nodes": [
+          "追问",
+          "拒绝一次越界保护"
+        ]
+      },
+      "poison_vector": {
+        "greed": 0.12,
+        "anger": 0.24,
+        "delusion": 0.28,
+        "pride": 0.48,
+        "doubt": 0.54
+      },
+      "vow_profile": {
+        "vows": [
+          "不再被半真半假的温柔说服"
+        ],
+        "sacrifice_capacity": 0.46,
+        "truth_tolerance": 0.78
+      },
+      "wound_profile": {
+        "core_wound": "被替自己决定命运",
+        "public_self": "我不在乎",
+        "shadow_desire": "被平等地对待",
+        "defense_style": "冷问与收口"
+      },
+      "awakening_profile": {
+        "clarity": 0.46,
+        "reflection_capacity": 0.66,
+        "repentance_threshold": 0.68,
+        "transformation_paths": [
+          "直问",
+          "离开",
+          "共担"
+        ]
+      },
+      "speech_traits": [
+        "冷问",
+        "短句",
+        "不替人圆谎"
+      ],
+      "action_traits": [
+        "逼问",
+        "收手",
+        "观察"
+      ]
+    }
+  ],
+  "scene_blueprints": [
+    {
+      "scene_id": "alley_meet",
+      "scene_function": "setup",
+      "phase_support": [
+        "setup"
+      ],
+      "required_roles": [
+        "lead",
+        "counterpart"
+      ],
+      "beats_template": [
+        "夜巷相遇",
+        "试探",
+        "藏而不说",
+        "留下钩子"
+      ]
+    },
+    {
+      "scene_id": "truth_request",
+      "scene_function": "trust_test",
+      "phase_support": [
+        "early_rising",
+        "midpoint"
+      ],
+      "required_roles": [
+        "lead",
+        "counterpart"
+      ],
+      "wound_triggers": [
+        "被替自己决定命运"
+      ],
+      "vow_tests": [
+        "不再被半真半假的温柔说服"
+      ],
+      "beats_template": [
+        "追问",
+        "回避",
+        "情绪升级",
+        "沉默余波"
+      ]
+    }
+  ],
+  "style_pack": {
+    "mode": "novel_lush",
+    "pov": "limited_third",
+    "dialogue_density": "medium_high"
+  },
+  "risk_policy": {
+    "shareable": true,
+    "requires_manual_review": false
+  },
+  "dialogue_realism_policy": {
+    "policy_id": "urban_mystery_lotus_lane_dialogue",
+    "require_turn_taking": true,
+    "require_counter_reaction": true,
+    "min_turns": 2,
+    "max_turns": 3,
+    "turn_pattern": [
+      "speaker",
+      "reaction",
+      "reply"
+    ],
+    "minimum_exchanges": 1
+  },
+  "voice_profiles": {
+    "jiang_yi": {
+      "profile_id": "jiang_yi",
+      "cadence": "measured",
+      "directness": 0.58,
+      "bluntness": 0.37,
+      "restraint": 0.71,
+      "social_rank_awareness": 0.28,
+      "opening_style": [
+        "这条路我不是没想退过，只是退到这里已经来不及了。"
+      ],
+      "pressure_style": [
+        "你要我认，我可以认，可别逼我装作这一切从没发生。"
+      ],
+      "pivot_style": [
+        "我不是不怕失去，只是不想再靠沉默把人推远。"
+      ],
+      "aftermath_style": [
+        "话先落在这里，后面的亏欠我自己去补。"
+      ],
+      "echo_style": [
+        "等我下次再来，就不会只带着一句半真半假的话。"
+      ],
+      "signature_replies": [
+        "我先把这句认下，剩下的账我不会再赖给局势。"
+      ]
+    },
+    "zhou_lan": {
+      "profile_id": "zhou_lan",
+      "cadence": "cool",
+      "directness": 0.82,
+      "bluntness": 0.69,
+      "restraint": 0.48,
+      "social_rank_awareness": 0.22,
+      "opening_style": [
+        "你要是不肯把话说透，我就只能把它一层层逼出来。"
+      ],
+      "pressure_style": [
+        "我不怕难听，只怕你又拿沉默当成温柔。"
+      ],
+      "pivot_style": [
+        "再绕半步，这件事只会在更坏的时候反咬回来。"
+      ],
+      "aftermath_style": [
+        "我先记着，等你想清楚了再来把剩下那句说完。"
+      ],
+      "echo_style": [
+        "下次见我时，别再拿旧说辞来试探我的耐心。"
+      ],
+      "signature_replies": [
+        "我可以先不走，但你别指望我继续替你圆这层假平静。"
+      ]
+    }
+  },
+  "response_cadence_profiles": {
+    "jiang_yi": {
+      "cadence_id": "jiang_yi",
+      "reaction_tempo": "measured",
+      "reaction_lines": {
+        "entry": [
+          "没有立刻接话，只先把手机扣回掌心，像在替自己压住那点慌。"
+        ],
+        "pressure": [
+          "喉结很轻地动了一下，像那些解释已经挤到了嘴边，却又被他硬压回去。"
+        ],
+        "pivot": [
+          "这才抬起眼来，眼底的迟疑没退干净，语气却已经不肯再软。"
+        ],
+        "aftermath": [
+          "到收声时，他反而把呼吸放慢了，像是在替后面的代价腾位置。"
+        ],
+        "echo": [
+          "他没再追着解释，可那点没说完的话还在肩背上绷着。"
+        ]
+      },
+      "reply_lines": {
+        "entry": [
+          "你先别急着定我，我至少得把这一层说完。"
+        ],
+        "pressure": [
+          "我不是不敢认，只是不想再把你拖进同一个坑里。"
+        ],
+        "pivot": [
+          "既然已经走到这里，我就不想再装作什么都没看见。"
+        ],
+        "aftermath": [
+          "这句先算在我头上，后面的我不会再躲。"
+        ],
+        "echo": [
+          "等我再来时，我会把那句真正该说的带过来。"
+        ]
+      }
+    },
+    "zhou_lan": {
+      "cadence_id": "zhou_lan",
+      "reaction_tempo": "tight",
+      "reaction_lines": {
+        "entry": [
+          "她没立刻接，只把视线钉在他脸上，像先看穿那层没说出口的退路。"
+        ],
+        "pressure": [
+          "指尖在杯盖上轻敲了两下，脆响短得很，却把场面一下子敲紧了。"
+        ],
+        "pivot": [
+          "她这才开口，语气不高，反而像把每个字都压到了最难回避的位置。"
+        ],
+        "aftermath": [
+          "她没有继续逼，可那种不肯替人圆谎的态度反而更重。"
+        ],
+        "echo": [
+          "她先收了声，留下来的却是更明确的一层边界。"
+        ]
+      },
+      "reply_lines": {
+        "entry": [
+          "既然你肯开口，就别只给我半句。"
+        ],
+        "pressure": [
+          "你要真想护谁，就别总拿沉默来替自己找台阶。"
+        ],
+        "pivot": [
+          "我可以听真话，但不会再替你把后果咽回去。"
+        ],
+        "aftermath": [
+          "这句先放在这，迟早还要回来算清。"
+        ],
+        "echo": [
+          "下次见我时，你最好带着真相，不是带着更圆的借口。"
+        ]
+      }
+    }
+  },
+  "pressure_response_styles": {
+    "yu_cheng": {
+      "style_id": "lead",
+      "under_pressure": "嘴上更轻，动作更硬",
+      "when_cornered": "先沉默，再把难听的话说实",
+      "when_softening": "语气微松，但不立刻退让",
+      "when_deflecting": "把真正的心事往旁处挪半寸"
+    },
+    "lin_wan": {
+      "style_id": "counterpart",
+      "under_pressure": "嘴上更轻，动作更硬",
+      "when_cornered": "先沉默，再把难听的话说实",
+      "when_softening": "语气微松，但不立刻退让",
+      "when_deflecting": "把真正的心事往旁处挪半寸"
+    }
+  },
+  "emotion_action_policies": {
+    "default": {
+      "policy_id": "urban_default_action",
+      "action_map": {
+        "false_peace": {
+          "entry": [
+            "手机屏幕亮了一瞬，又被反手扣灭，空气顿时冷下去半格。"
+          ],
+          "pressure": [
+            "便利店玻璃门上映出两道模糊人影，谁都没先让开那一点视线。"
+          ],
+          "pivot": [
+            "雨水顺着檐角掉下来，恰好把沉默砸出一个必须开口的缝。"
+          ],
+          "aftermath": [
+            "冰柜的低鸣还在，场面却比刚才更像有人把门从里头顶住了。"
+          ],
+          "echo": [
+            "等脚步声散远了，那点没有说尽的东西反而沿着旧巷慢慢追上来。"
+          ],
+          "repeat": [
+            "谁都没做太大的动作，可那层装出来的平静已经开始起皱。"
+          ]
+        },
+        "truth_trial": {
+          "entry": [
+            "先动的不是声音，而是她把纸杯往桌沿推近了半寸。"
+          ],
+          "pressure": [
+            "天桥下的风卷过来，吹得塑料棚布轻轻一响，把每个字都衬得更硬。"
+          ],
+          "pivot": [
+            "他指尖一松，扣在掌心里的钥匙先撞出一声轻响。"
+          ],
+          "aftermath": [
+            "一句话落下去以后，谁都没有立刻挪步，像还在等更难听的那半句。"
+          ],
+          "echo": [
+            "路灯把影子拉得很长，倒像是把没说透的旧账一并拖了出来。"
+          ],
+          "repeat": [
+            "谁先多看一眼，谁就像先把底牌从袖口里滑出来。"
+          ]
+        },
+        "mask_crack": {
+          "entry": [
+            "他嘴上还撑着，指尖却先在打火机壳上停住了。"
+          ],
+          "pressure": [
+            "她把目光收得极稳，像是在等那层嘴硬自己先裂。"
+          ],
+          "pivot": [
+            "一句话没拐过去，连站姿都跟着露了怯。"
+          ],
+          "aftermath": [
+            "场面表面还稳着，裂口却已经落到了每个人心里。"
+          ],
+          "echo": [
+            "再往下走时，谁也回不到刚才那副没事人的样子。"
+          ]
+        },
+        "confession_window": {
+          "entry": [
+            "旧巷忽然安静下来，连远处车声都像给这句真话让了道。"
+          ],
+          "pressure": [
+            "他把那口气压了又压，最后还是没能把话咽回去。"
+          ],
+          "pivot": [
+            "她没替他补台阶，只把那一瞬的沉默留成了逼人的空白。"
+          ],
+          "aftermath": [
+            "真话一落地，连站在原地都比刚才更像一种选择。"
+          ],
+          "echo": [
+            "哪怕这次先收住了，下一次见面时也不可能装作没发生。"
+          ]
+        }
+      }
+    }
+  },
+  "sensory_grounding_policies": {
+    "default": {
+      "policy_id": "urban_sensory",
+      "location_slots": {
+        "旧巷": {
+          "atmosphere": [
+            "旧巷里潮气很重，墙面返出来的凉意像先替人把心口压窄了一圈。"
+          ],
+          "detail": [
+            "路灯把积水照出一层发灰的亮，连鞋底蹭过地面的声音都显得格外清。"
+          ],
+          "repeat_detail": [
+            "越到后面，巷子里的回声越像把那些没说完的话一遍遍弹回来。"
+          ]
+        },
+        "便利店门口": {
+          "atmosphere": [
+            "便利店门口的白光太直，把每个人脸上的迟疑都照得无处可躲。"
+          ],
+          "detail": [
+            "冰柜的低鸣贴着耳边过去，塑料门帘轻轻一摆，带出一股凉得过分的甜味。"
+          ],
+          "repeat_detail": [
+            "门口那点白光不动声色，却把场面里的退路照得越来越窄。"
+          ]
+        },
+        "天桥下": {
+          "atmosphere": [
+            "天桥下风声空荡，连一句压低的话都像会被钢梁重新弹回来。"
+          ],
+          "detail": [
+            "桥洞阴影压在肩头，远处车流从缝里掠过去，只留下短促的亮和噪音。"
+          ],
+          "repeat_detail": [
+            "越往后，桥下那种空空的回响越像把每个人心里的亏欠放大。"
+          ]
+        }
+      },
+      "generic_slots": {
+        "atmosphere": [
+          "这座城的夜里没有真正的安静，连空气都像替谁记着一笔旧账。"
+        ],
+        "detail": [
+          "最细小的光线和声响都在提醒人，这里没有一句话会白白落下去。"
+        ],
+        "repeat_detail": [
+          "等沉默拉长以后，城市里最轻的一点回声反而把情绪照得更明。"
+        ]
+      }
+    }
+  },
+  "scene_realization_contracts": {
+    "default": {
+      "contract_id": "urban_scene_realization",
+      "scene_openings": {
+        "false_peace": [
+          "表面平静下的暗潮。旧巷的凉意先贴上来，像把每个人真正不肯承认的心思都逼到了嘴边。"
+        ],
+        "truth_trial": [
+          "真相开始逼近的时候，场面反而先静了一下，像谁都知道下一句会更难听。"
+        ],
+        "mask_crack": [
+          "嘴上还稳着，可真正先裂开的往往不是语气，而是那一点藏不住的停顿。"
+        ],
+        "confession_window": [
+          "有些真话只有在最安静的时候才会自己浮上来，像谁也压不回去。"
+        ]
+      },
+      "scene_hooks": {
+        "false_peace": [
+          "这层表面上的平静撑不过太久，真正会追上来的，是旧巷里那句没说尽的话。"
+        ],
+        "truth_trial": [
+          "话先落在这里，可真正让人睡不着的，往往是下一次见面时还要不要继续问下去。"
+        ],
+        "mask_crack": [
+          "等下一次再开口时，谁也回不到刚才那副还能装作没事的样子。"
+        ],
+        "confession_window": [
+          "这一回先说到这里，可真正决定关系走向的，是谁会先带着真相回来。"
+        ]
+      }
+    }
+  },
+  "narrative_style_pack": {
+    "style_pack_id": "default",
+    "tonal_lexicon": [
+      "urban_mystery",
+      "romance",
+      "suspense"
+    ],
+    "thematic_axis_labels": {
+      "duty": "家门与责任",
+      "ambition": "前途与求胜",
+      "reputation": "名声与体面",
+      "love": "情意与靠近",
+      "selfhood": "自我与抉择",
+      "truth": "真相与揭露",
+      "reform": "改写旧秩序",
+      "destiny": "命运的去向"
+    },
+    "hook_templates": [
+      "等人声慢慢静下去时，真正要追上来的往往才刚刚露出影子。",
+      "这句话先落下去，真正的余波还在后面等着。"
+    ],
+    "goal_labels": {},
+    "tag_labels": {
+      "urban_mystery": "urban mystery",
+      "romance": "romance",
+      "suspense": "suspense"
+    },
+    "dialogue": {
+      "policy_id": "urban_mystery_lotus_lane_dialogue",
+      "require_turn_taking": true,
+      "require_counter_reaction": true,
+      "min_turns": 2,
+      "max_turns": 3,
+      "turn_pattern": [
+        "speaker",
+        "reaction",
+        "reply"
+      ],
+      "minimum_exchanges": 1
+    },
+    "emotion_actions": {
+      "policy_id": "urban_mystery_lotus_lane_default_action",
+      "action_map": {
+        "false_peace": {
+          "entry": [
+            "桌上的器物轻轻一碰，谁都知道这一步已经走出去，很难再收回来。"
+          ],
+          "pressure": [
+            "最细小的抬眼和换气都带上了掂量，像谁先多动一下，谁就会先露底。"
+          ],
+          "pivot": [
+            "那一点极轻的停顿和改口，让场面从还能周旋，变成了不得不选边。"
+          ],
+          "aftermath": [
+            "人散得不快，沉默却先压了下来。"
+          ],
+          "echo": [
+            "越到后面，越能听见那些没说尽的话慢慢回身。"
+          ],
+          "repeat": [
+            "动作并不大，可谁都知道事情已经换了味道。"
+          ]
+        },
+        "truth_trial": {
+          "entry": [
+            "先动的不是声音，而是视线和手指那一点收紧。"
+          ],
+          "pressure": [
+            "杯沿上那一点冷光轻轻一闪，连呼吸都像被逼慢了半拍。"
+          ],
+          "pivot": [
+            "风从门缝里钻进来，把场里的沉默一下子吹偏了方向。"
+          ],
+          "aftermath": [
+            "茶香已经淡了，场里的气却还迟迟不肯散开。"
+          ],
+          "echo": [
+            "等人散尽以后，连空下来的位置都还像留着刚才那句重话。"
+          ],
+          "repeat": [
+            "动作不大，可谁都知道这句真话已经绕不过去了。"
+          ]
+        }
+      }
+    },
+    "sensory_grounding": {
+      "policy_id": "urban_mystery_lotus_lane_default_sensory",
+      "location_slots": {
+        "generic": {
+          "atmosphere": [
+            "generic里并不安静，连空气都像压着一句没说完的话。"
+          ],
+          "detail": [
+            "generic里的光线、器物和衣袖摩擦声，都把场里的情绪衬得更清。"
+          ],
+          "repeat_detail": [
+            "generic里最轻的一点动静，反而把话里的分量又压重了一层。"
+          ]
+        }
+      },
+      "generic_slots": {
+        "atmosphere": [
+          "场里并不安静，连空气都像在替谁压住一口没说完的话。"
+        ],
+        "detail": [
+          "细小的声响和光线变化，把场里的情绪压得更清了一层。"
+        ],
+        "repeat_detail": [
+          "越到后面，越能听见那些没说尽的话慢慢回身。"
+        ]
+      }
+    },
+    "scene_realization": {
+      "contract_id": "urban_mystery_lotus_lane_scene_realizer",
+      "dialogue_policy_id": "urban_mystery_lotus_lane_dialogue",
+      "default_voice_profile_id": "default",
+      "default_cadence_id": "default",
+      "default_pressure_style_id": "default",
+      "default_emotion_action_policy_id": "default",
+      "default_sensory_policy_id": "default",
+      "narrative_style_pack_id": "default",
+      "scene_openings": {},
+      "scene_hooks": {},
+      "scene_pressures": {}
+    }
+  }
+}

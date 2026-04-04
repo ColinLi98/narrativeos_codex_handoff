@@ -1,0 +1,112 @@
+{
+  "world_id": "world_template_minimal",
+  "title": "最小世界模板",
+  "version": "0.1.0",
+  "manifest": {
+    "author_id": "author_demo",
+    "language": "zh-CN",
+    "genres": [
+      "urban_mystery"
+    ],
+    "risk_rating": "PG-13",
+    "monetization_policy": {
+      "trial_chapters": 2,
+      "paid_after": 2
+    }
+  },
+  "world_bible": {
+    "premise": "一个每次选择都会留下因果印记的城市秘密故事。",
+    "canon_rules": [
+      "秘密不会无代价地消失",
+      "真相不会一次性全部出现"
+    ],
+    "forbidden_moves": [
+      "角色突然全知",
+      "无成本圆满"
+    ]
+  },
+  "characters": [
+    {
+      "character_id": "protagonist",
+      "display_name": "主角",
+      "role": "lead",
+      "destiny_contract": {
+        "life_theme": "真相与爱能否并存"
+      },
+      "poison_vector": {
+        "greed": 0.3,
+        "anger": 0.2,
+        "delusion": 0.6,
+        "pride": 0.5,
+        "doubt": 0.7
+      },
+      "vow_profile": {
+        "vows": [
+          "不再重演过去的懦弱"
+        ],
+        "sacrifice_capacity": 0.6,
+        "truth_tolerance": 0.4
+      },
+      "wound_profile": {
+        "core_wound": "被抛弃",
+        "public_self": "我很冷静",
+        "shadow_desire": "被坚定地选择",
+        "defense_style": "试探"
+      },
+      "awakening_profile": {
+        "clarity": 0.2,
+        "reflection_capacity": 0.5,
+        "repentance_threshold": 0.75,
+        "transformation_paths": [
+          "坦白",
+          "承担"
+        ]
+      }
+    }
+  ],
+  "scene_blueprints": [
+    {
+      "scene_id": "setup_secret",
+      "scene_function": "setup",
+      "phase_support": [
+        "setup"
+      ],
+      "required_roles": [
+        "lead"
+      ],
+      "beats_template": [
+        "入场",
+        "异常信号",
+        "心意遮掩",
+        "轻微钩子"
+      ]
+    },
+    {
+      "scene_id": "trust_test",
+      "scene_function": "trust_test",
+      "phase_support": [
+        "early_rising",
+        "midpoint"
+      ],
+      "required_roles": [
+        "lead",
+        "counterpart"
+      ],
+      "beats_template": [
+        "试探",
+        "话里有话",
+        "旧伤触发",
+        "留下悬念"
+      ]
+    }
+  ],
+  "style_pack": {
+    "mode": "novel_light",
+    "pov": "limited_third",
+    "dialogue_density": "medium"
+  },
+  "risk_policy": {
+    "shareable": true,
+    "requires_manual_review": false
+  }
+}

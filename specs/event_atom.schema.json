@@ -1,0 +1,375 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EventAtom",
+  "type": "object",
+  "required": [
+    "event_id",
+    "title",
+    "summary",
+    "actors",
+    "scene_function",
+    "tags",
+    "preconditions_all",
+    "forbidden_if_any",
+    "world_fact_deltas_add",
+    "world_fact_deltas_remove",
+    "belief_updates",
+    "trust_deltas",
+    "emotion_deltas",
+    "promises_open",
+    "promises_close",
+    "tension_delta",
+    "theme_impacts",
+    "agency_affordances",
+    "rating_ceiling",
+    "temptation_vector",
+    "vow_tests",
+    "wound_triggers",
+    "debt_deltas",
+    "karmic_seed_creations",
+    "karmic_seed_resolutions",
+    "awakening_affordances",
+    "concealment_level",
+    "consequence_delay_hint"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "actors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "scene_function": {
+      "type": "string",
+      "enum": [
+        "temptation",
+        "mask_crack",
+        "debt_exchange",
+        "misrecognition",
+        "truth_trial",
+        "mercy_vs_control",
+        "humiliation",
+        "confession_window",
+        "karma_ripening",
+        "vow_payment",
+        "false_peace"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "preconditions_all": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_if_any": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "world_fact_deltas_add": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "world_fact_deltas_remove": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "belief_updates": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "add_true": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "add_false": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "trust_deltas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "target",
+          "delta"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "delta": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "emotion_deltas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "character",
+          "emotion",
+          "delta"
+        ],
+        "properties": {
+          "character": {
+            "type": "string"
+          },
+          "emotion": {
+            "type": "string"
+          },
+          "delta": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "promises_open": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "promise_id",
+          "description",
+          "opened_at_turn",
+          "due_by_turn",
+          "holders",
+          "fulfillment_modes",
+          "status",
+          "stakes",
+          "tags"
+        ],
+        "properties": {
+          "promise_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "opened_at_turn": {
+            "type": "integer"
+          },
+          "due_by_turn": {
+            "type": "integer"
+          },
+          "holders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fulfillment_modes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "stakes": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "promises_close": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tension_delta": {
+      "type": "number"
+    },
+    "theme_impacts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "agency_affordances": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "rating_ceiling": {
+      "type": "string",
+      "enum": [
+        "G",
+        "PG",
+        "PG13",
+        "R"
+      ]
+    },
+    "temptation_vector": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "vow_tests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "wound_triggers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "debt_deltas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "karmic_seed_creations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "seed_id",
+          "source_event_id",
+          "actor",
+          "seed_type",
+          "charge",
+          "tags",
+          "created_at_turn",
+          "ripening_conditions",
+          "earliest_turn",
+          "status",
+          "transformable_by"
+        ],
+        "properties": {
+          "seed_id": {
+            "type": "string"
+          },
+          "source_event_id": {
+            "type": "string"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "target": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seed_type": {
+            "type": "string"
+          },
+          "charge": {
+            "type": "number"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at_turn": {
+            "type": "integer"
+          },
+          "ripening_conditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "earliest_turn": {
+            "type": "integer"
+          },
+          "latest_turn": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "transformable_by": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "karmic_seed_resolutions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "awakening_affordances": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "concealment_level": {
+      "type": "number"
+    },
+    "consequence_delay_hint": {
+      "type": "integer"
+    },
+    "convergence_key": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

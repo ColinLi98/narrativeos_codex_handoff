@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ContinueChurnEvent",
+  "type": "object",
+  "required": [
+    "event_name",
+    "reader_id",
+    "session_id",
+    "world_id",
+    "world_version_id",
+    "chapter_index",
+    "access_tier",
+    "occurred_at",
+    "payload_json"
+  ],
+  "properties": {
+    "event_name": {"type": "string"},
+    "reader_id": {"type": ["string", "null"]},
+    "session_id": {"type": ["string", "null"]},
+    "world_id": {"type": "string"},
+    "world_version_id": {"type": "string"},
+    "chapter_index": {"type": ["integer", "null"]},
+    "access_tier": {"type": ["string", "null"]},
+    "occurred_at": {"type": "string"},
+    "payload_json": {"type": "object"}
+  }
+}

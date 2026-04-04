@@ -1,0 +1,23 @@
+# Phase 9 Summary
+
+- 新增 action-oriented learned data ops builder：
+  - `src/narrativeos/eval/learned_data_ops.py`
+- 新增 Ops API：
+  - `GET /v1/ops/learned-data-ops`
+  - `GET /v1/ops/issue-fix-pair-backlog`
+- 当前 `/app` 的 Ops 区新增：
+  - `Learned Data Ops`
+  - `Review Backlog`
+  - `Pair Coverage Backlog`
+  - `Quick Capture Review`
+- data ops summary 会统一输出：
+  - `preferred_shadow_candidate`
+  - `recommended_next_action`
+  - `review_sample_backlog`
+  - `pair_coverage_backlog`
+  - `coverage_gaps`
+  - `action_queue`
+- 当前结论：
+  - NarrativeOS 已从 learned compare，继续推进到“Ops 能直接补数据”的工作流层
+  - reranker 仍保持 inferred-only，不新增人工 pair 标注持久化
+  - 数据扩充 workflow 仍然只影响分析与运营层，不影响线上 gate

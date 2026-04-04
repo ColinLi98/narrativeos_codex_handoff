@@ -1,0 +1,591 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NarrativeState",
+  "type": "object",
+  "required": [
+    "state_id",
+    "world_id",
+    "turn_index",
+    "story_phase",
+    "chapter_index",
+    "min_end_turn",
+    "fate_pressure",
+    "karmic_weather",
+    "unresolved_debts",
+    "world_facts",
+    "timeline",
+    "characters",
+    "relationship_graph",
+    "open_promises",
+    "tension",
+    "themes",
+    "player_intent",
+    "recent_scene_functions",
+    "visited_event_ids",
+    "route_fingerprint",
+    "rating_ceiling"
+  ],
+  "properties": {
+    "state_id": {
+      "type": "string"
+    },
+    "world_id": {
+      "type": "string"
+    },
+    "turn_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "story_phase": {
+      "type": "string",
+      "enum": [
+        "setup",
+        "early_rising",
+        "midpoint",
+        "crisis",
+        "climax",
+        "aftermath"
+      ]
+    },
+    "chapter_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "min_end_turn": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "fate_pressure": {
+      "type": "number"
+    },
+    "karmic_weather": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "unresolved_debts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "world_facts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "characters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "name",
+          "role",
+          "public_goals",
+          "hidden_goals",
+          "constraints",
+          "beliefs_true",
+          "beliefs_false",
+          "emotions",
+          "trust",
+          "poisons",
+          "vows",
+          "wound",
+          "awakening",
+          "destiny",
+          "debts",
+          "karmic_seeds"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "public_goals": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hidden_goals": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "constraints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "beliefs_true": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "beliefs_false": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "emotions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "trust": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "poisons": {
+            "type": "object",
+            "required": [
+              "greed",
+              "anger",
+              "delusion",
+              "pride",
+              "doubt"
+            ],
+            "properties": {
+              "greed": {
+                "type": "number"
+              },
+              "anger": {
+                "type": "number"
+              },
+              "delusion": {
+                "type": "number"
+              },
+              "pride": {
+                "type": "number"
+              },
+              "doubt": {
+                "type": "number"
+              }
+            }
+          },
+          "vows": {
+            "type": "object",
+            "required": [
+              "vows",
+              "sacrifice_capacity",
+              "truth_tolerance"
+            ],
+            "properties": {
+              "vows": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sacrifice_capacity": {
+                "type": "number"
+              },
+              "truth_tolerance": {
+                "type": "number"
+              }
+            }
+          },
+          "wound": {
+            "type": "object",
+            "required": [
+              "core_wound",
+              "public_self",
+              "shadow_desire",
+              "defense_style"
+            ],
+            "properties": {
+              "core_wound": {
+                "type": "string"
+              },
+              "public_self": {
+                "type": "string"
+              },
+              "shadow_desire": {
+                "type": "string"
+              },
+              "defense_style": {
+                "type": "string"
+              }
+            }
+          },
+          "awakening": {
+            "type": "object",
+            "required": [
+              "clarity",
+              "reflection_capacity",
+              "repentance_threshold",
+              "transformation_paths"
+            ],
+            "properties": {
+              "clarity": {
+                "type": "number"
+              },
+              "reflection_capacity": {
+                "type": "number"
+              },
+              "repentance_threshold": {
+                "type": "number"
+              },
+              "transformation_paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "destiny": {
+            "type": "object",
+            "required": [
+              "life_theme",
+              "inescapable_nodes",
+              "fated_relations",
+              "forbidden_escape",
+              "endgame_shapes"
+            ],
+            "properties": {
+              "life_theme": {
+                "type": "string"
+              },
+              "inescapable_nodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "fated_relations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "forbidden_escape": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "endgame_shapes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "debts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "relation_with",
+                "debt_type",
+                "magnitude",
+                "opened_at_turn",
+                "notes"
+              ],
+              "properties": {
+                "relation_with": {
+                  "type": "string"
+                },
+                "debt_type": {
+                  "type": "string"
+                },
+                "magnitude": {
+                  "type": "number"
+                },
+                "opened_at_turn": {
+                  "type": "integer"
+                },
+                "notes": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "karmic_seeds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "seed_id",
+                "source_event_id",
+                "actor",
+                "seed_type",
+                "charge",
+                "tags",
+                "created_at_turn",
+                "ripening_conditions",
+                "earliest_turn",
+                "status",
+                "transformable_by"
+              ],
+              "properties": {
+                "seed_id": {
+                  "type": "string"
+                },
+                "source_event_id": {
+                  "type": "string"
+                },
+                "actor": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "seed_type": {
+                  "type": "string"
+                },
+                "charge": {
+                  "type": "number"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "created_at_turn": {
+                  "type": "integer"
+                },
+                "ripening_conditions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "earliest_turn": {
+                  "type": "integer"
+                },
+                "latest_turn": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "status": {
+                  "type": "string"
+                },
+                "transformable_by": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "relationship_graph": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "target",
+          "attachment",
+          "resentment",
+          "shame",
+          "obligation",
+          "projection",
+          "possession",
+          "gratitude",
+          "fear",
+          "debts",
+          "notes"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "attachment": {
+            "type": "number"
+          },
+          "resentment": {
+            "type": "number"
+          },
+          "shame": {
+            "type": "number"
+          },
+          "obligation": {
+            "type": "number"
+          },
+          "projection": {
+            "type": "number"
+          },
+          "possession": {
+            "type": "number"
+          },
+          "gratitude": {
+            "type": "number"
+          },
+          "fear": {
+            "type": "number"
+          },
+          "debts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "relation_with",
+                "debt_type",
+                "magnitude",
+                "opened_at_turn",
+                "notes"
+              ],
+              "properties": {
+                "relation_with": {
+                  "type": "string"
+                },
+                "debt_type": {
+                  "type": "string"
+                },
+                "magnitude": {
+                  "type": "number"
+                },
+                "opened_at_turn": {
+                  "type": "integer"
+                },
+                "notes": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "open_promises": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "promise_id",
+          "description",
+          "opened_at_turn",
+          "due_by_turn",
+          "holders",
+          "fulfillment_modes",
+          "status",
+          "stakes",
+          "tags"
+        ],
+        "properties": {
+          "promise_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "opened_at_turn": {
+            "type": "integer"
+          },
+          "due_by_turn": {
+            "type": "integer"
+          },
+          "holders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fulfillment_modes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "stakes": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "tension": {
+      "type": "number"
+    },
+    "themes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "player_intent": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "recent_scene_functions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "visited_event_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "route_fingerprint": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "rating_ceiling": {
+      "type": "string",
+      "enum": [
+        "G",
+        "PG",
+        "PG13",
+        "R"
+      ]
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

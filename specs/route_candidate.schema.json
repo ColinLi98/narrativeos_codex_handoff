@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RouteCandidate",
+  "type": "object",
+  "required": [
+    "events",
+    "event_ids",
+    "total_score",
+    "score_breakdown",
+    "critic_trace"
+  ],
+  "properties": {
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "./event_atom.schema.json"
+      }
+    },
+    "event_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "total_score": {
+      "type": "number"
+    },
+    "score_breakdown": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "critic_trace": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "explanation": {
+      "type": "string"
+    }
+  }
+}

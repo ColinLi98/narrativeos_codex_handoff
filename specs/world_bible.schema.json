@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorldBible",
+  "type": "object",
+  "required": [
+    "world_id",
+    "title",
+    "source_type",
+    "themes",
+    "canon_anchors",
+    "forbidden_moves",
+    "characters",
+    "locations"
+  ],
+  "properties": {
+    "world_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "public_domain",
+        "original",
+        "licensed",
+        "unlicensed_fanfic"
+      ]
+    },
+    "themes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "canon_anchors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_moves": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "characters": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "creator_controls": {
+      "type": "object",
+      "properties": {
+        "merge_policy": {
+          "type": "string"
+        },
+        "darkness_ceiling": {
+          "type": "string",
+          "enum": [
+            "G",
+            "PG",
+            "PG13",
+            "R"
+          ]
+        },
+        "theme_targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "payoff_style": {
+          "type": "string"
+        },
+        "scoring_weights": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

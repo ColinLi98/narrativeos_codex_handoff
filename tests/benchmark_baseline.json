@@ -1,0 +1,1543 @@
+{
+  "golden_dir": "tests/golden_routes",
+  "benchmark_mode": "standard",
+  "chapter_budget": 6,
+  "min_end_turn_override": null,
+  "worlds": [
+    {
+      "world_id": "jade_court_exam",
+      "pass_rate": 1.0,
+      "rewrite_rate": 0.0,
+      "block_rate": 0.0,
+      "character_fidelity": 0.776,
+      "causal_continuity": 0.88,
+      "choice_distinctness": 0.872,
+      "prose_leak_rate": 0.0,
+      "route_longevity": 6,
+      "route_longevity_target": 6,
+      "dialogue_ratio": 0.408,
+      "scene_detail_density": 0.01,
+      "voice_separation_score": 0.25,
+      "emotion_action_specificity": 0.625,
+      "cross_pack_pass_rate": 1.0,
+      "issue_mix": [],
+      "long_route_quality": 0.857,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.25,
+      "target_chapters": 6,
+      "min_end_turn_target": 8,
+      "completion_ratio": 1.0,
+      "stop_reason": "chapter_budget_reached",
+      "premature_ending": true,
+      "avg_overall_score": 0.857,
+      "mid_arc_pass_rate": 1.0,
+      "late_arc_pass_rate": 1.0,
+      "avg_repetition_score": 0.029,
+      "mid_arc_repetition_score": 0.052,
+      "late_arc_repetition_score": 0.036,
+      "avg_exposition_ratio": 0.378,
+      "mid_arc_exposition_ratio": 0.367,
+      "late_arc_exposition_ratio": 0.367,
+      "avg_hook_quality": 0.9,
+      "mid_arc_hook_quality": 0.9,
+      "late_arc_hook_quality": 0.9,
+      "top_issue_categories": [],
+      "dimension_scores": {
+        "character_fidelity": 0.776,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.872,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 6.0,
+        "dialogue_ratio": 0.408,
+        "scene_detail_density": 0.01,
+        "voice_separation_score": 0.25,
+        "emotion_action_specificity": 0.625
+      },
+      "issue_summary": {
+        "dominant_issue": "",
+        "weakest_dimensions": [
+          {
+            "name": "scene_detail_density",
+            "value": 0.01,
+            "weakness": 0.99
+          },
+          {
+            "name": "voice_separation_score",
+            "value": 0.25,
+            "weakness": 0.75
+          },
+          {
+            "name": "dialogue_ratio",
+            "value": 0.408,
+            "weakness": 0.592
+          }
+        ],
+        "recommended_target": "writer / planner / world pack asset"
+      },
+      "diagnostic_score": 0.146,
+      "diagnostic_rank": 5
+    },
+    {
+      "world_id": "jade_court_romance",
+      "pass_rate": 0.6666666666666666,
+      "rewrite_rate": 0.3333333333333333,
+      "block_rate": 0.0,
+      "character_fidelity": 0.647,
+      "causal_continuity": 0.88,
+      "choice_distinctness": 0.876,
+      "prose_leak_rate": 0.0,
+      "route_longevity": 3,
+      "route_longevity_target": 6,
+      "dialogue_ratio": 0.374,
+      "scene_detail_density": 0.009,
+      "voice_separation_score": 0.25,
+      "emotion_action_specificity": 0.625,
+      "cross_pack_pass_rate": 0.6666666666666666,
+      "issue_mix": [
+        {
+          "issue_code": "Q04",
+          "count": 2,
+          "share": 0.667,
+          "owning_module": "writer",
+          "fix_hint": "减少解释句，改成对白、动作与环境共同推进。"
+        },
+        {
+          "issue_code": "Q05",
+          "count": 1,
+          "share": 0.333,
+          "owning_module": "writer",
+          "fix_hint": "补场景物件、动作、声响与人物细微反应。"
+        }
+      ],
+      "long_route_quality": 0.412,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.25,
+      "target_chapters": 6,
+      "min_end_turn_target": 9,
+      "completion_ratio": 0.5,
+      "stop_reason": "no_legal_routes",
+      "premature_ending": true,
+      "avg_overall_score": 0.824,
+      "mid_arc_pass_rate": 1.0,
+      "late_arc_pass_rate": 0.0,
+      "avg_repetition_score": 0.034,
+      "mid_arc_repetition_score": 0.0,
+      "late_arc_repetition_score": 0.103,
+      "avg_exposition_ratio": 0.433,
+      "mid_arc_exposition_ratio": 0.4,
+      "late_arc_exposition_ratio": 0.5,
+      "avg_hook_quality": 0.9,
+      "mid_arc_hook_quality": 0.9,
+      "late_arc_hook_quality": 0.9,
+      "top_issue_categories": [
+        {
+          "issue_code": "Q04",
+          "count": 2,
+          "owning_module": "writer",
+          "fix_hint": "减少解释句，改成对白、动作与环境共同推进。"
+        },
+        {
+          "issue_code": "Q05",
+          "count": 1,
+          "owning_module": "writer",
+          "fix_hint": "补场景物件、动作、声响与人物细微反应。"
+        }
+      ],
+      "dimension_scores": {
+        "character_fidelity": 0.647,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.876,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 3.0,
+        "dialogue_ratio": 0.374,
+        "scene_detail_density": 0.009,
+        "voice_separation_score": 0.25,
+        "emotion_action_specificity": 0.625
+      },
+      "issue_summary": {
+        "dominant_issue": "Q04",
+        "weakest_dimensions": [
+          {
+            "name": "scene_detail_density",
+            "value": 0.009,
+            "weakness": 0.991
+          },
+          {
+            "name": "voice_separation_score",
+            "value": 0.25,
+            "weakness": 0.75
+          },
+          {
+            "name": "dialogue_ratio",
+            "value": 0.374,
+            "weakness": 0.626
+          }
+        ],
+        "recommended_target": "writer / sensory / scene realization"
+      },
+      "diagnostic_score": 0.318,
+      "diagnostic_rank": 1
+    },
+    {
+      "world_id": "urban_mystery_lotus_lane",
+      "pass_rate": 1.0,
+      "rewrite_rate": 0.0,
+      "block_rate": 0.0,
+      "character_fidelity": 0.613,
+      "causal_continuity": 0.88,
+      "choice_distinctness": 0.914,
+      "prose_leak_rate": 0.0,
+      "route_longevity": 4,
+      "route_longevity_target": 6,
+      "dialogue_ratio": 0.403,
+      "scene_detail_density": 0.007,
+      "voice_separation_score": 0.275,
+      "emotion_action_specificity": 0.625,
+      "cross_pack_pass_rate": 1.0,
+      "issue_mix": [],
+      "long_route_quality": 0.555,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.275,
+      "target_chapters": 6,
+      "min_end_turn_target": 6,
+      "completion_ratio": 0.667,
+      "stop_reason": "no_legal_routes",
+      "premature_ending": true,
+      "avg_overall_score": 0.833,
+      "mid_arc_pass_rate": 1.0,
+      "late_arc_pass_rate": 1.0,
+      "avg_repetition_score": 0.067,
+      "mid_arc_repetition_score": 0.059,
+      "late_arc_repetition_score": 0.06,
+      "avg_exposition_ratio": 0.4,
+      "mid_arc_exposition_ratio": 0.4,
+      "late_arc_exposition_ratio": 0.4,
+      "avg_hook_quality": 0.9,
+      "mid_arc_hook_quality": 0.9,
+      "late_arc_hook_quality": 0.9,
+      "top_issue_categories": [],
+      "dimension_scores": {
+        "character_fidelity": 0.613,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.914,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 4.0,
+        "dialogue_ratio": 0.403,
+        "scene_detail_density": 0.007,
+        "voice_separation_score": 0.275,
+        "emotion_action_specificity": 0.625
+      },
+      "issue_summary": {
+        "dominant_issue": "",
+        "weakest_dimensions": [
+          {
+            "name": "scene_detail_density",
+            "value": 0.007,
+            "weakness": 0.993
+          },
+          {
+            "name": "voice_separation_score",
+            "value": 0.275,
+            "weakness": 0.725
+          },
+          {
+            "name": "dialogue_ratio",
+            "value": 0.403,
+            "weakness": 0.597
+          }
+        ],
+        "recommended_target": "writer / planner / world pack asset"
+      },
+      "diagnostic_score": 0.204,
+      "diagnostic_rank": 3
+    },
+    {
+      "world_id": "xianxia_forgotten_vow",
+      "pass_rate": 1.0,
+      "rewrite_rate": 0.0,
+      "block_rate": 0.0,
+      "character_fidelity": 0.549,
+      "causal_continuity": 0.88,
+      "choice_distinctness": 0.913,
+      "prose_leak_rate": 0.0,
+      "route_longevity": 4,
+      "route_longevity_target": 6,
+      "dialogue_ratio": 0.419,
+      "scene_detail_density": 0.016,
+      "voice_separation_score": 0.33,
+      "emotion_action_specificity": 0.625,
+      "cross_pack_pass_rate": 1.0,
+      "issue_mix": [],
+      "long_route_quality": 0.544,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.33,
+      "target_chapters": 6,
+      "min_end_turn_target": 6,
+      "completion_ratio": 0.667,
+      "stop_reason": "no_legal_routes",
+      "premature_ending": true,
+      "avg_overall_score": 0.816,
+      "mid_arc_pass_rate": 1.0,
+      "late_arc_pass_rate": 1.0,
+      "avg_repetition_score": 0.105,
+      "mid_arc_repetition_score": 0.104,
+      "late_arc_repetition_score": 0.105,
+      "avg_exposition_ratio": 0.4,
+      "mid_arc_exposition_ratio": 0.4,
+      "late_arc_exposition_ratio": 0.4,
+      "avg_hook_quality": 0.9,
+      "mid_arc_hook_quality": 0.9,
+      "late_arc_hook_quality": 0.9,
+      "top_issue_categories": [],
+      "dimension_scores": {
+        "character_fidelity": 0.549,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.913,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 4.0,
+        "dialogue_ratio": 0.419,
+        "scene_detail_density": 0.016,
+        "voice_separation_score": 0.33,
+        "emotion_action_specificity": 0.625
+      },
+      "issue_summary": {
+        "dominant_issue": "",
+        "weakest_dimensions": [
+          {
+            "name": "scene_detail_density",
+            "value": 0.016,
+            "weakness": 0.984
+          },
+          {
+            "name": "voice_separation_score",
+            "value": 0.33,
+            "weakness": 0.67
+          },
+          {
+            "name": "dialogue_ratio",
+            "value": 0.419,
+            "weakness": 0.581
+          }
+        ],
+        "recommended_target": "writer / planner / world pack asset"
+      },
+      "diagnostic_score": 0.155,
+      "diagnostic_rank": 4
+    },
+    {
+      "world_id": "synthetic_min_pack",
+      "pass_rate": 1.0,
+      "rewrite_rate": 0.0,
+      "block_rate": 0.0,
+      "character_fidelity": 0.43,
+      "causal_continuity": 0.88,
+      "choice_distinctness": 0.912,
+      "prose_leak_rate": 0.0,
+      "route_longevity": 1,
+      "route_longevity_target": 6,
+      "dialogue_ratio": 0.487,
+      "scene_detail_density": 0.012,
+      "voice_separation_score": 0.255,
+      "emotion_action_specificity": 0.625,
+      "cross_pack_pass_rate": 1.0,
+      "issue_mix": [],
+      "long_route_quality": 0.133,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.255,
+      "target_chapters": 6,
+      "min_end_turn_target": 6,
+      "completion_ratio": 0.167,
+      "stop_reason": "no_legal_routes",
+      "premature_ending": true,
+      "avg_overall_score": 0.797,
+      "mid_arc_pass_rate": 1.0,
+      "late_arc_pass_rate": 1.0,
+      "avg_repetition_score": 0.063,
+      "mid_arc_repetition_score": 0.063,
+      "late_arc_repetition_score": 0.063,
+      "avg_exposition_ratio": 0.4,
+      "mid_arc_exposition_ratio": 0.4,
+      "late_arc_exposition_ratio": 0.4,
+      "avg_hook_quality": 0.9,
+      "mid_arc_hook_quality": 0.9,
+      "late_arc_hook_quality": 0.9,
+      "top_issue_categories": [],
+      "dimension_scores": {
+        "character_fidelity": 0.43,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.912,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 1.0,
+        "dialogue_ratio": 0.487,
+        "scene_detail_density": 0.012,
+        "voice_separation_score": 0.255,
+        "emotion_action_specificity": 0.625
+      },
+      "issue_summary": {
+        "dominant_issue": "",
+        "weakest_dimensions": [
+          {
+            "name": "scene_detail_density",
+            "value": 0.012,
+            "weakness": 0.988
+          },
+          {
+            "name": "route_longevity",
+            "value": 1.0,
+            "weakness": 0.833
+          },
+          {
+            "name": "voice_separation_score",
+            "value": 0.255,
+            "weakness": 0.745
+          }
+        ],
+        "recommended_target": "writer / planner / world pack asset"
+      },
+      "diagnostic_score": 0.245,
+      "diagnostic_rank": 2
+    }
+  ],
+  "cross_pack_pass_rate": 0.933,
+  "strongest_packs": [
+    {
+      "world_id": "jade_court_exam",
+      "pass_rate": 1.0,
+      "rewrite_rate": 0.0,
+      "block_rate": 0.0,
+      "voice_separation_score": 0.25,
+      "emotion_action_specificity": 0.625,
+      "prose_leak_rate": 0.0,
+      "long_route_quality": 0.857,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.25,
+      "completion_ratio": 1.0,
+      "stop_reason": "chapter_budget_reached",
+      "diagnostic_score": 0.146,
+      "diagnostic_rank": 5,
+      "top_issue_categories": [],
+      "issue_mix": [],
+      "weakest_dimensions": [
+        {
+          "name": "scene_detail_density",
+          "value": 0.01,
+          "weakness": 0.99
+        },
+        {
+          "name": "voice_separation_score",
+          "value": 0.25,
+          "weakness": 0.75
+        },
+        {
+          "name": "dialogue_ratio",
+          "value": 0.408,
+          "weakness": 0.592
+        }
+      ],
+      "recommended_target": "writer / planner / world pack asset",
+      "dimension_scores": {
+        "character_fidelity": 0.776,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.872,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 6.0,
+        "dialogue_ratio": 0.408,
+        "scene_detail_density": 0.01,
+        "voice_separation_score": 0.25,
+        "emotion_action_specificity": 0.625
+      }
+    },
+    {
+      "world_id": "xianxia_forgotten_vow",
+      "pass_rate": 1.0,
+      "rewrite_rate": 0.0,
+      "block_rate": 0.0,
+      "voice_separation_score": 0.33,
+      "emotion_action_specificity": 0.625,
+      "prose_leak_rate": 0.0,
+      "long_route_quality": 0.544,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.33,
+      "completion_ratio": 0.667,
+      "stop_reason": "no_legal_routes",
+      "diagnostic_score": 0.155,
+      "diagnostic_rank": 4,
+      "top_issue_categories": [],
+      "issue_mix": [],
+      "weakest_dimensions": [
+        {
+          "name": "scene_detail_density",
+          "value": 0.016,
+          "weakness": 0.984
+        },
+        {
+          "name": "voice_separation_score",
+          "value": 0.33,
+          "weakness": 0.67
+        },
+        {
+          "name": "dialogue_ratio",
+          "value": 0.419,
+          "weakness": 0.581
+        }
+      ],
+      "recommended_target": "writer / planner / world pack asset",
+      "dimension_scores": {
+        "character_fidelity": 0.549,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.913,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 4.0,
+        "dialogue_ratio": 0.419,
+        "scene_detail_density": 0.016,
+        "voice_separation_score": 0.33,
+        "emotion_action_specificity": 0.625
+      }
+    }
+  ],
+  "weakest_packs": [
+    {
+      "world_id": "jade_court_romance",
+      "pass_rate": 0.6666666666666666,
+      "rewrite_rate": 0.3333333333333333,
+      "block_rate": 0.0,
+      "voice_separation_score": 0.25,
+      "emotion_action_specificity": 0.625,
+      "prose_leak_rate": 0.0,
+      "long_route_quality": 0.412,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.25,
+      "completion_ratio": 0.5,
+      "stop_reason": "no_legal_routes",
+      "diagnostic_score": 0.318,
+      "diagnostic_rank": 1,
+      "top_issue_categories": [
+        {
+          "issue_code": "Q04",
+          "count": 2,
+          "owning_module": "writer",
+          "fix_hint": "减少解释句，改成对白、动作与环境共同推进。"
+        },
+        {
+          "issue_code": "Q05",
+          "count": 1,
+          "owning_module": "writer",
+          "fix_hint": "补场景物件、动作、声响与人物细微反应。"
+        }
+      ],
+      "issue_mix": [
+        {
+          "issue_code": "Q04",
+          "count": 2,
+          "share": 0.667,
+          "owning_module": "writer",
+          "fix_hint": "减少解释句，改成对白、动作与环境共同推进。"
+        },
+        {
+          "issue_code": "Q05",
+          "count": 1,
+          "share": 0.333,
+          "owning_module": "writer",
+          "fix_hint": "补场景物件、动作、声响与人物细微反应。"
+        }
+      ],
+      "weakest_dimensions": [
+        {
+          "name": "scene_detail_density",
+          "value": 0.009,
+          "weakness": 0.991
+        },
+        {
+          "name": "voice_separation_score",
+          "value": 0.25,
+          "weakness": 0.75
+        },
+        {
+          "name": "dialogue_ratio",
+          "value": 0.374,
+          "weakness": 0.626
+        }
+      ],
+      "recommended_target": "writer / sensory / scene realization",
+      "dimension_scores": {
+        "character_fidelity": 0.647,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.876,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 3.0,
+        "dialogue_ratio": 0.374,
+        "scene_detail_density": 0.009,
+        "voice_separation_score": 0.25,
+        "emotion_action_specificity": 0.625
+      }
+    },
+    {
+      "world_id": "synthetic_min_pack",
+      "pass_rate": 1.0,
+      "rewrite_rate": 0.0,
+      "block_rate": 0.0,
+      "voice_separation_score": 0.255,
+      "emotion_action_specificity": 0.625,
+      "prose_leak_rate": 0.0,
+      "long_route_quality": 0.133,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.255,
+      "completion_ratio": 0.167,
+      "stop_reason": "no_legal_routes",
+      "diagnostic_score": 0.245,
+      "diagnostic_rank": 2,
+      "top_issue_categories": [],
+      "issue_mix": [],
+      "weakest_dimensions": [
+        {
+          "name": "scene_detail_density",
+          "value": 0.012,
+          "weakness": 0.988
+        },
+        {
+          "name": "route_longevity",
+          "value": 1.0,
+          "weakness": 0.833
+        },
+        {
+          "name": "voice_separation_score",
+          "value": 0.255,
+          "weakness": 0.745
+        }
+      ],
+      "recommended_target": "writer / planner / world pack asset",
+      "dimension_scores": {
+        "character_fidelity": 0.43,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.912,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 1.0,
+        "dialogue_ratio": 0.487,
+        "scene_detail_density": 0.012,
+        "voice_separation_score": 0.255,
+        "emotion_action_specificity": 0.625
+      }
+    },
+    {
+      "world_id": "urban_mystery_lotus_lane",
+      "pass_rate": 1.0,
+      "rewrite_rate": 0.0,
+      "block_rate": 0.0,
+      "voice_separation_score": 0.275,
+      "emotion_action_specificity": 0.625,
+      "prose_leak_rate": 0.0,
+      "long_route_quality": 0.555,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.275,
+      "completion_ratio": 0.667,
+      "stop_reason": "no_legal_routes",
+      "diagnostic_score": 0.204,
+      "diagnostic_rank": 3,
+      "top_issue_categories": [],
+      "issue_mix": [],
+      "weakest_dimensions": [
+        {
+          "name": "scene_detail_density",
+          "value": 0.007,
+          "weakness": 0.993
+        },
+        {
+          "name": "voice_separation_score",
+          "value": 0.275,
+          "weakness": 0.725
+        },
+        {
+          "name": "dialogue_ratio",
+          "value": 0.403,
+          "weakness": 0.597
+        }
+      ],
+      "recommended_target": "writer / planner / world pack asset",
+      "dimension_scores": {
+        "character_fidelity": 0.613,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.914,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 4.0,
+        "dialogue_ratio": 0.403,
+        "scene_detail_density": 0.007,
+        "voice_separation_score": 0.275,
+        "emotion_action_specificity": 0.625
+      }
+    }
+  ],
+  "top_failing_packs": [
+    {
+      "world_id": "jade_court_romance",
+      "pass_rate": 0.6666666666666666,
+      "rewrite_rate": 0.3333333333333333,
+      "block_rate": 0.0,
+      "voice_separation_score": 0.25,
+      "emotion_action_specificity": 0.625,
+      "prose_leak_rate": 0.0,
+      "long_route_quality": 0.412,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.25,
+      "completion_ratio": 0.5,
+      "stop_reason": "no_legal_routes",
+      "diagnostic_score": 0.318,
+      "diagnostic_rank": 1,
+      "top_issue_categories": [
+        {
+          "issue_code": "Q04",
+          "count": 2,
+          "owning_module": "writer",
+          "fix_hint": "减少解释句，改成对白、动作与环境共同推进。"
+        },
+        {
+          "issue_code": "Q05",
+          "count": 1,
+          "owning_module": "writer",
+          "fix_hint": "补场景物件、动作、声响与人物细微反应。"
+        }
+      ],
+      "issue_mix": [
+        {
+          "issue_code": "Q04",
+          "count": 2,
+          "share": 0.667,
+          "owning_module": "writer",
+          "fix_hint": "减少解释句，改成对白、动作与环境共同推进。"
+        },
+        {
+          "issue_code": "Q05",
+          "count": 1,
+          "share": 0.333,
+          "owning_module": "writer",
+          "fix_hint": "补场景物件、动作、声响与人物细微反应。"
+        }
+      ],
+      "weakest_dimensions": [
+        {
+          "name": "scene_detail_density",
+          "value": 0.009,
+          "weakness": 0.991
+        },
+        {
+          "name": "voice_separation_score",
+          "value": 0.25,
+          "weakness": 0.75
+        },
+        {
+          "name": "dialogue_ratio",
+          "value": 0.374,
+          "weakness": 0.626
+        }
+      ],
+      "recommended_target": "writer / sensory / scene realization",
+      "dimension_scores": {
+        "character_fidelity": 0.647,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.876,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 3.0,
+        "dialogue_ratio": 0.374,
+        "scene_detail_density": 0.009,
+        "voice_separation_score": 0.25,
+        "emotion_action_specificity": 0.625
+      }
+    },
+    {
+      "world_id": "synthetic_min_pack",
+      "pass_rate": 1.0,
+      "rewrite_rate": 0.0,
+      "block_rate": 0.0,
+      "voice_separation_score": 0.255,
+      "emotion_action_specificity": 0.625,
+      "prose_leak_rate": 0.0,
+      "long_route_quality": 0.133,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.255,
+      "completion_ratio": 0.167,
+      "stop_reason": "no_legal_routes",
+      "diagnostic_score": 0.245,
+      "diagnostic_rank": 2,
+      "top_issue_categories": [],
+      "issue_mix": [],
+      "weakest_dimensions": [
+        {
+          "name": "scene_detail_density",
+          "value": 0.012,
+          "weakness": 0.988
+        },
+        {
+          "name": "route_longevity",
+          "value": 1.0,
+          "weakness": 0.833
+        },
+        {
+          "name": "voice_separation_score",
+          "value": 0.255,
+          "weakness": 0.745
+        }
+      ],
+      "recommended_target": "writer / planner / world pack asset",
+      "dimension_scores": {
+        "character_fidelity": 0.43,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.912,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 1.0,
+        "dialogue_ratio": 0.487,
+        "scene_detail_density": 0.012,
+        "voice_separation_score": 0.255,
+        "emotion_action_specificity": 0.625
+      }
+    },
+    {
+      "world_id": "urban_mystery_lotus_lane",
+      "pass_rate": 1.0,
+      "rewrite_rate": 0.0,
+      "block_rate": 0.0,
+      "voice_separation_score": 0.275,
+      "emotion_action_specificity": 0.625,
+      "prose_leak_rate": 0.0,
+      "long_route_quality": 0.555,
+      "mid_arc_drop": 0.0,
+      "dialogue_distinctness": 0.275,
+      "completion_ratio": 0.667,
+      "stop_reason": "no_legal_routes",
+      "diagnostic_score": 0.204,
+      "diagnostic_rank": 3,
+      "top_issue_categories": [],
+      "issue_mix": [],
+      "weakest_dimensions": [
+        {
+          "name": "scene_detail_density",
+          "value": 0.007,
+          "weakness": 0.993
+        },
+        {
+          "name": "voice_separation_score",
+          "value": 0.275,
+          "weakness": 0.725
+        },
+        {
+          "name": "dialogue_ratio",
+          "value": 0.403,
+          "weakness": 0.597
+        }
+      ],
+      "recommended_target": "writer / planner / world pack asset",
+      "dimension_scores": {
+        "character_fidelity": 0.613,
+        "causal_continuity": 0.88,
+        "choice_distinctness": 0.914,
+        "prose_leak_rate": 0.0,
+        "route_longevity": 4.0,
+        "dialogue_ratio": 0.403,
+        "scene_detail_density": 0.007,
+        "voice_separation_score": 0.275,
+        "emotion_action_specificity": 0.625
+      }
+    }
+  ],
+  "weakest_pack_diagnostics": [
+    {
+      "world_id": "jade_court_romance",
+      "diagnostic_rank": 1,
+      "diagnostic_score": 0.318,
+      "completion_ratio": 0.5,
+      "stop_reason": "no_legal_routes",
+      "issue_category_distribution": [
+        {
+          "issue_code": "Q04",
+          "count": 2,
+          "share": 0.667,
+          "owning_module": "writer",
+          "fix_hint": "减少解释句，改成对白、动作与环境共同推进。"
+        },
+        {
+          "issue_code": "Q05",
+          "count": 1,
+          "share": 0.333,
+          "owning_module": "writer",
+          "fix_hint": "补场景物件、动作、声响与人物细微反应。"
+        }
+      ],
+      "worst_chapters": [
+        {
+          "chapter_id": "simulation_jade_court_romance@1.0.0_3",
+          "decision": "rewrite",
+          "overall_score": 0.79,
+          "issue_codes": [
+            "Q04",
+            "Q05",
+            "Q04"
+          ],
+          "issue_count": 3,
+          "summary": "Q04 章节篇幅过短，容易只剩说明。；Q05 章节缺少动作或场景细节。；Q04 解释句比例偏高，场面推进感不足。",
+          "module_focus": [
+            "writer"
+          ],
+          "signal_snapshot": {
+            "engineering_leak_rate": 0.0,
+            "repetition_score": 0.103,
+            "exposition_ratio": 0.5,
+            "dialogue_plus_action_ratio": 0.246,
+            "concrete_detail_density": 0.008
+          }
+        },
+        {
+          "chapter_id": "simulation_jade_court_romance@1.0.0_1",
+          "decision": "pass",
+          "overall_score": 0.84,
+          "issue_codes": [],
+          "issue_count": 0,
+          "summary": "该章节通过当前 NarrativeEval 守卫。",
+          "module_focus": [],
+          "signal_snapshot": {
+            "engineering_leak_rate": 0.0,
+            "repetition_score": 0.0,
+            "exposition_ratio": 0.4,
+            "dialogue_plus_action_ratio": 0.44,
+            "concrete_detail_density": 0.009
+          }
+        },
+        {
+          "chapter_id": "simulation_jade_court_romance@1.0.0_2",
+          "decision": "pass",
+          "overall_score": 0.841,
+          "issue_codes": [],
+          "issue_count": 0,
+          "summary": "该章节通过当前 NarrativeEval 守卫。",
+          "module_focus": [],
+          "signal_snapshot": {
+            "engineering_leak_rate": 0.0,
+            "repetition_score": 0.0,
+            "exposition_ratio": 0.4,
+            "dialogue_plus_action_ratio": 0.436,
+            "concrete_detail_density": 0.008
+          }
+        }
+      ],
+      "attribution_map": {
+        "modules": [
+          {
+            "module": "writer",
+            "signal_score": 5.367,
+            "issue_codes": [
+              "Q04",
+              "Q05"
+            ],
+            "weakest_dimensions": [
+              "dialogue_ratio",
+              "scene_detail_density",
+              "voice_separation_score"
+            ],
+            "coverage": 0
+          }
+        ],
+        "assets": [
+          {
+            "asset": "scene_blueprints",
+            "signal_score": 2.0,
+            "issue_codes": [
+              "Q04"
+            ],
+            "weakest_dimensions": [],
+            "coverage": 11
+          },
+          {
+            "asset": "sensory_grounding_policies",
+            "signal_score": 1.991,
+            "issue_codes": [
+              "Q05"
+            ],
+            "weakest_dimensions": [
+              "scene_detail_density"
+            ],
+            "coverage": 1
+          },
+          {
+            "asset": "voice_profiles",
+            "signal_score": 1.376,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "dialogue_ratio",
+              "voice_separation_score"
+            ],
+            "coverage": 4
+          }
+        ],
+        "policies": [
+          {
+            "policy": "scene_realization_contracts",
+            "signal_score": 3.991,
+            "issue_codes": [
+              "Q04",
+              "Q05"
+            ],
+            "weakest_dimensions": [
+              "scene_detail_density"
+            ],
+            "coverage": 1
+          },
+          {
+            "policy": "dialogue_realism_policy",
+            "signal_score": 1.376,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "dialogue_ratio",
+              "voice_separation_score"
+            ],
+            "coverage": 1
+          }
+        ]
+      },
+      "asset_snapshot": {
+        "characters": 4,
+        "scene_blueprints": 11,
+        "world_bible": 3,
+        "voice_profiles": 4,
+        "emotion_action_policies": 1,
+        "sensory_grounding_policies": 1,
+        "scene_realization_contracts": 1,
+        "dialogue_realism_policy": 1
+      },
+      "next_fix_candidates": [
+        {
+          "priority": 1,
+          "module": "writer",
+          "asset": "scene_blueprints",
+          "policy": "scene_realization_contracts",
+          "issue_codes": [
+            "Q04"
+          ],
+          "weakest_dimensions": [],
+          "signal_score": 2.0,
+          "asset_coverage": 11,
+          "policy_coverage": 1,
+          "suggested_action": "shift explanation into beats, reactions, and concrete scene realization."
+        },
+        {
+          "priority": 2,
+          "module": "writer",
+          "asset": "sensory_grounding_policies",
+          "policy": "scene_realization_contracts",
+          "issue_codes": [
+            "Q05"
+          ],
+          "weakest_dimensions": [
+            "scene_detail_density"
+          ],
+          "signal_score": 1.991,
+          "asset_coverage": 1,
+          "policy_coverage": 1,
+          "suggested_action": "add concrete object, sound, motion, and body-detail grounding in weakest chapters."
+        },
+        {
+          "priority": 3,
+          "module": "writer",
+          "asset": "voice_profiles",
+          "policy": "dialogue_realism_policy",
+          "issue_codes": [],
+          "weakest_dimensions": [
+            "dialogue_ratio",
+            "voice_separation_score"
+          ],
+          "signal_score": 1.376,
+          "asset_coverage": 4,
+          "policy_coverage": 1,
+          "suggested_action": "increase per-role contrast in directness, restraint, and response cadence."
+        }
+      ]
+    },
+    {
+      "world_id": "synthetic_min_pack",
+      "diagnostic_rank": 2,
+      "diagnostic_score": 0.245,
+      "completion_ratio": 0.167,
+      "stop_reason": "no_legal_routes",
+      "issue_category_distribution": [],
+      "worst_chapters": [
+        {
+          "chapter_id": "simulation_synthetic_min_pack@0.1.0_1",
+          "decision": "pass",
+          "overall_score": 0.797,
+          "issue_codes": [],
+          "issue_count": 0,
+          "summary": "该章节通过当前 NarrativeEval 守卫。",
+          "module_focus": [],
+          "signal_snapshot": {
+            "engineering_leak_rate": 0.0,
+            "repetition_score": 0.063,
+            "exposition_ratio": 0.4,
+            "dialogue_plus_action_ratio": 0.487,
+            "concrete_detail_density": 0.012
+          }
+        }
+      ],
+      "attribution_map": {
+        "modules": [
+          {
+            "module": "writer",
+            "signal_score": 1.733,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "scene_detail_density",
+              "voice_separation_score"
+            ],
+            "coverage": 0
+          },
+          {
+            "module": "planner",
+            "signal_score": 0.833,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "route_longevity"
+            ],
+            "coverage": 0
+          }
+        ],
+        "assets": [
+          {
+            "asset": "sensory_grounding_policies",
+            "signal_score": 0.988,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "scene_detail_density"
+            ],
+            "coverage": 1
+          },
+          {
+            "asset": "scene_blueprints",
+            "signal_score": 0.833,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "route_longevity"
+            ],
+            "coverage": 1
+          },
+          {
+            "asset": "voice_profiles",
+            "signal_score": 0.745,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "voice_separation_score"
+            ],
+            "coverage": 2
+          }
+        ],
+        "policies": [
+          {
+            "policy": "scene_realization_contracts",
+            "signal_score": 1.821,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "route_longevity",
+              "scene_detail_density"
+            ],
+            "coverage": 1
+          },
+          {
+            "policy": "dialogue_realism_policy",
+            "signal_score": 0.745,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "voice_separation_score"
+            ],
+            "coverage": 1
+          }
+        ]
+      },
+      "asset_snapshot": {
+        "characters": 2,
+        "scene_blueprints": 1,
+        "world_bible": 4,
+        "voice_profiles": 2,
+        "emotion_action_policies": 1,
+        "sensory_grounding_policies": 1,
+        "scene_realization_contracts": 1,
+        "dialogue_realism_policy": 1
+      },
+      "next_fix_candidates": [
+        {
+          "priority": 1,
+          "module": "writer",
+          "asset": "sensory_grounding_policies",
+          "policy": "scene_realization_contracts",
+          "issue_codes": [],
+          "weakest_dimensions": [
+            "scene_detail_density"
+          ],
+          "signal_score": 0.988,
+          "asset_coverage": 1,
+          "policy_coverage": 1,
+          "suggested_action": "expand sensory grounding coverage where weakest chapters are visually thin."
+        },
+        {
+          "priority": 2,
+          "module": "planner",
+          "asset": "scene_blueprints",
+          "policy": "scene_realization_contracts",
+          "issue_codes": [],
+          "weakest_dimensions": [
+            "route_longevity"
+          ],
+          "signal_score": 0.833,
+          "asset_coverage": 1,
+          "policy_coverage": 1,
+          "suggested_action": "add more durable mid-route beats and stronger continuation gates."
+        },
+        {
+          "priority": 3,
+          "module": "writer",
+          "asset": "voice_profiles",
+          "policy": "dialogue_realism_policy",
+          "issue_codes": [],
+          "weakest_dimensions": [
+            "voice_separation_score"
+          ],
+          "signal_score": 0.745,
+          "asset_coverage": 2,
+          "policy_coverage": 1,
+          "suggested_action": "increase per-role contrast in directness, restraint, and response cadence."
+        }
+      ]
+    },
+    {
+      "world_id": "urban_mystery_lotus_lane",
+      "diagnostic_rank": 3,
+      "diagnostic_score": 0.204,
+      "completion_ratio": 0.667,
+      "stop_reason": "no_legal_routes",
+      "issue_category_distribution": [],
+      "worst_chapters": [
+        {
+          "chapter_id": "simulation_urban_mystery_lotus_lane@0.1.0_1",
+          "decision": "pass",
+          "overall_score": 0.811,
+          "issue_codes": [],
+          "issue_count": 0,
+          "summary": "该章节通过当前 NarrativeEval 守卫。",
+          "module_focus": [],
+          "signal_snapshot": {
+            "engineering_leak_rate": 0.0,
+            "repetition_score": 0.09,
+            "exposition_ratio": 0.4,
+            "dialogue_plus_action_ratio": 0.406,
+            "concrete_detail_density": 0.007
+          }
+        },
+        {
+          "chapter_id": "simulation_urban_mystery_lotus_lane@0.1.0_2",
+          "decision": "pass",
+          "overall_score": 0.833,
+          "issue_codes": [],
+          "issue_count": 0,
+          "summary": "该章节通过当前 NarrativeEval 守卫。",
+          "module_focus": [],
+          "signal_snapshot": {
+            "engineering_leak_rate": 0.0,
+            "repetition_score": 0.059,
+            "exposition_ratio": 0.4,
+            "dialogue_plus_action_ratio": 0.385,
+            "concrete_detail_density": 0.007
+          }
+        },
+        {
+          "chapter_id": "simulation_urban_mystery_lotus_lane@0.1.0_3",
+          "decision": "pass",
+          "overall_score": 0.841,
+          "issue_codes": [],
+          "issue_count": 0,
+          "summary": "该章节通过当前 NarrativeEval 守卫。",
+          "module_focus": [],
+          "signal_snapshot": {
+            "engineering_leak_rate": 0.0,
+            "repetition_score": 0.061,
+            "exposition_ratio": 0.4,
+            "dialogue_plus_action_ratio": 0.4,
+            "concrete_detail_density": 0.008
+          }
+        }
+      ],
+      "attribution_map": {
+        "modules": [
+          {
+            "module": "writer",
+            "signal_score": 2.315,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "dialogue_ratio",
+              "scene_detail_density",
+              "voice_separation_score"
+            ],
+            "coverage": 0
+          }
+        ],
+        "assets": [
+          {
+            "asset": "voice_profiles",
+            "signal_score": 1.322,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "dialogue_ratio",
+              "voice_separation_score"
+            ],
+            "coverage": 2
+          },
+          {
+            "asset": "sensory_grounding_policies",
+            "signal_score": 0.993,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "scene_detail_density"
+            ],
+            "coverage": 1
+          }
+        ],
+        "policies": [
+          {
+            "policy": "dialogue_realism_policy",
+            "signal_score": 1.322,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "dialogue_ratio",
+              "voice_separation_score"
+            ],
+            "coverage": 1
+          },
+          {
+            "policy": "scene_realization_contracts",
+            "signal_score": 0.993,
+            "issue_codes": [],
+            "weakest_dimensions": [
+              "scene_detail_density"
+            ],
+            "coverage": 1
+          }
+        ]
+      },
+      "asset_snapshot": {
+        "characters": 2,
+        "scene_blueprints": 2,
+        "world_bible": 4,
+        "voice_profiles": 2,
+        "emotion_action_policies": 1,
+        "sensory_grounding_policies": 1,
+        "scene_realization_contracts": 1,
+        "dialogue_realism_policy": 1
+      },
+      "next_fix_candidates": [
+        {
+          "priority": 1,
+          "module": "writer",
+          "asset": "voice_profiles",
+          "policy": "dialogue_realism_policy",
+          "issue_codes": [],
+          "weakest_dimensions": [
+            "dialogue_ratio",
+            "voice_separation_score"
+          ],
+          "signal_score": 1.322,
+          "asset_coverage": 2,
+          "policy_coverage": 1,
+          "suggested_action": "increase per-role contrast in directness, restraint, and response cadence."
+        },
+        {
+          "priority": 2,
+          "module": "writer",
+          "asset": "sensory_grounding_policies",
+          "policy": "scene_realization_contracts",
+          "issue_codes": [],
+          "weakest_dimensions": [
+            "scene_detail_density"
+          ],
+          "signal_score": 0.993,
+          "asset_coverage": 1,
+          "policy_coverage": 1,
+          "suggested_action": "expand sensory grounding coverage where weakest chapters are visually thin."
+        }
+      ]
+    }
+  ],
+  "delta_summary": {
+    "cross_pack_pass_rate_delta": 0.033,
+    "world_deltas": {
+      "jade_court_exam": {
+        "pass_rate_delta": 0.167,
+        "rewrite_rate_delta": -0.167,
+        "block_rate_delta": 0.0,
+        "character_fidelity_delta": 0.0,
+        "causal_continuity_delta": 0.0,
+        "choice_distinctness_delta": 0.0,
+        "prose_leak_rate_delta": 0.0,
+        "route_longevity_delta": 0.0,
+        "dialogue_ratio_delta": 0.013,
+        "scene_detail_density_delta": 0.0,
+        "voice_separation_score_delta": 0.0,
+        "emotion_action_specificity_delta": 0.0,
+        "long_route_quality_delta": 0.002,
+        "mid_arc_drop_delta": 0.0,
+        "dialogue_distinctness_delta": 0.0,
+        "completion_ratio_delta": 0.0,
+        "avg_overall_score_delta": 0.002,
+        "mid_arc_pass_rate_delta": 0.5,
+        "late_arc_pass_rate_delta": 0.0,
+        "avg_repetition_score_delta": 0.009,
+        "avg_exposition_ratio_delta": -0.078,
+        "avg_hook_quality_delta": 0.0,
+        "diagnostic_score_delta": -0.051
+      },
+      "jade_court_romance": {
+        "pass_rate_delta": 0.0,
+        "rewrite_rate_delta": 0.0,
+        "block_rate_delta": 0.0,
+        "character_fidelity_delta": 0.0,
+        "causal_continuity_delta": 0.0,
+        "choice_distinctness_delta": 0.0,
+        "prose_leak_rate_delta": 0.0,
+        "route_longevity_delta": 0.0,
+        "dialogue_ratio_delta": 0.059,
+        "scene_detail_density_delta": -0.001,
+        "voice_separation_score_delta": 0.0,
+        "emotion_action_specificity_delta": 0.0,
+        "long_route_quality_delta": -0.002,
+        "mid_arc_drop_delta": 0.0,
+        "dialogue_distinctness_delta": 0.0,
+        "completion_ratio_delta": 0.0,
+        "avg_overall_score_delta": -0.003,
+        "mid_arc_pass_rate_delta": 0.0,
+        "late_arc_pass_rate_delta": 0.0,
+        "avg_repetition_score_delta": 0.034,
+        "avg_exposition_ratio_delta": -0.167,
+        "avg_hook_quality_delta": 0.0,
+        "diagnostic_score_delta": 0.005
+      },
+      "synthetic_min_pack": {
+        "pass_rate_delta": 0.0,
+        "rewrite_rate_delta": 0.0,
+        "block_rate_delta": 0.0,
+        "character_fidelity_delta": 0.0,
+        "causal_continuity_delta": 0.0,
+        "choice_distinctness_delta": 0.0,
+        "prose_leak_rate_delta": 0.0,
+        "route_longevity_delta": 0.0,
+        "dialogue_ratio_delta": 0.0,
+        "scene_detail_density_delta": 0.0,
+        "voice_separation_score_delta": 0.0,
+        "emotion_action_specificity_delta": 0.0,
+        "long_route_quality_delta": 0.0,
+        "mid_arc_drop_delta": 0.0,
+        "dialogue_distinctness_delta": 0.0,
+        "completion_ratio_delta": 0.0,
+        "avg_overall_score_delta": 0.0,
+        "mid_arc_pass_rate_delta": 0.0,
+        "late_arc_pass_rate_delta": 0.0,
+        "avg_repetition_score_delta": 0.0,
+        "avg_exposition_ratio_delta": 0.0,
+        "avg_hook_quality_delta": 0.0,
+        "diagnostic_score_delta": 0.0
+      },
+      "urban_mystery_lotus_lane": {
+        "pass_rate_delta": 0.0,
+        "rewrite_rate_delta": 0.0,
+        "block_rate_delta": 0.0,
+        "character_fidelity_delta": 0.0,
+        "causal_continuity_delta": 0.0,
+        "choice_distinctness_delta": 0.0,
+        "prose_leak_rate_delta": 0.0,
+        "route_longevity_delta": 0.0,
+        "dialogue_ratio_delta": 0.0,
+        "scene_detail_density_delta": 0.0,
+        "voice_separation_score_delta": 0.0,
+        "emotion_action_specificity_delta": 0.0,
+        "long_route_quality_delta": 0.0,
+        "mid_arc_drop_delta": 0.0,
+        "dialogue_distinctness_delta": 0.0,
+        "completion_ratio_delta": 0.0,
+        "avg_overall_score_delta": 0.0,
+        "mid_arc_pass_rate_delta": 0.0,
+        "late_arc_pass_rate_delta": 0.0,
+        "avg_repetition_score_delta": 0.0,
+        "avg_exposition_ratio_delta": 0.0,
+        "avg_hook_quality_delta": 0.0,
+        "diagnostic_score_delta": 0.0
+      },
+      "xianxia_forgotten_vow": {
+        "pass_rate_delta": 0.0,
+        "rewrite_rate_delta": 0.0,
+        "block_rate_delta": 0.0,
+        "character_fidelity_delta": 0.0,
+        "causal_continuity_delta": 0.0,
+        "choice_distinctness_delta": 0.0,
+        "prose_leak_rate_delta": 0.0,
+        "route_longevity_delta": 0.0,
+        "dialogue_ratio_delta": 0.0,
+        "scene_detail_density_delta": 0.0,
+        "voice_separation_score_delta": 0.0,
+        "emotion_action_specificity_delta": 0.0,
+        "long_route_quality_delta": 0.0,
+        "mid_arc_drop_delta": 0.0,
+        "dialogue_distinctness_delta": 0.0,
+        "completion_ratio_delta": 0.0,
+        "avg_overall_score_delta": 0.0,
+        "mid_arc_pass_rate_delta": 0.0,
+        "late_arc_pass_rate_delta": 0.0,
+        "avg_repetition_score_delta": 0.0,
+        "avg_exposition_ratio_delta": 0.0,
+        "avg_hook_quality_delta": 0.0,
+        "diagnostic_score_delta": 0.0
+      }
+    },
+    "regressions": [],
+    "ranking_changes": {
+      "current_strongest": [
+        "jade_court_exam",
+        "xianxia_forgotten_vow"
+      ],
+      "baseline_strongest": [
+        "xianxia_forgotten_vow",
+        "jade_court_exam"
+      ],
+      "entered_strongest": [],
+      "exited_strongest": [],
+      "current_weakest": [
+        "jade_court_romance",
+        "synthetic_min_pack",
+        "urban_mystery_lotus_lane"
+      ],
+      "baseline_weakest": [
+        "jade_court_romance",
+        "synthetic_min_pack",
+        "urban_mystery_lotus_lane"
+      ],
+      "entered_weakest": [],
+      "exited_weakest": [],
+      "rank_deltas": {
+        "jade_court_exam": {
+          "current_rank": 5,
+          "baseline_rank": 4,
+          "diagnostic_rank_delta": 1
+        },
+        "jade_court_romance": {
+          "current_rank": 1,
+          "baseline_rank": 1,
+          "diagnostic_rank_delta": 0
+        },
+        "synthetic_min_pack": {
+          "current_rank": 2,
+          "baseline_rank": 2,
+          "diagnostic_rank_delta": 0
+        },
+        "urban_mystery_lotus_lane": {
+          "current_rank": 3,
+          "baseline_rank": 3,
+          "diagnostic_rank_delta": 0
+        },
+        "xianxia_forgotten_vow": {
+          "current_rank": 4,
+          "baseline_rank": 5,
+          "diagnostic_rank_delta": -1
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+weights:
+  causal_consistency: 0.28
+  character_fidelity: 0.20
+  dramatic_tension_delta: 0.16
+  user_agency_alignment: 0.12
+  thematic_resonance: 0.10
+  branch_novelty: 0.09
+  pacing_quality: 0.05
+
+beam:
+  width: 3
+  depth: 2
+
+thresholds:
+  min_total_score: 0.45
+  min_candidate_count_after_filter: 3

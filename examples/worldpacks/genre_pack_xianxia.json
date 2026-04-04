@@ -1,0 +1,631 @@
+{
+  "world_id": "xianxia_forgotten_vow",
+  "title": "照骨灯",
+  "version": "0.1.0",
+  "manifest": {
+    "author_id": "studio_demo",
+    "language": "zh-CN",
+    "genres": [
+      "xianxia",
+      "fate",
+      "tragedy_romance"
+    ],
+    "risk_rating": "PG-13",
+    "monetization_policy": {
+      "trial_chapters": 1,
+      "paid_after": 2
+    }
+  },
+  "world_bible": {
+    "premise": "修行不是增添力量，而是看见自己到底愿意舍弃什么。",
+    "canon_rules": [
+      "每次逆天改命都会失去某种人间牵引",
+      "誓言可以护人也可以反噬"
+    ],
+    "forbidden_moves": [
+      "主角毫无代价地逆天成功",
+      "所有人都被一句话点悟"
+    ],
+    "locations": [
+      "偏殿",
+      "石阶",
+      "山门"
+    ]
+  },
+  "characters": [
+    {
+      "character_id": "shen_zhao",
+      "display_name": "沈照",
+      "role": "lead",
+      "destiny_contract": {
+        "life_theme": "救一人是否值得背弃众生之愿",
+        "inescapable_nodes": [
+          "违誓",
+          "补誓"
+        ]
+      },
+      "poison_vector": {
+        "greed": 0.34,
+        "anger": 0.18,
+        "delusion": 0.36,
+        "pride": 0.68,
+        "doubt": 0.22
+      },
+      "vow_profile": {
+        "vows": [
+          "我当年既许众生，便不能只为一人"
+        ],
+        "sacrifice_capacity": 0.82,
+        "truth_tolerance": 0.42
+      },
+      "wound_profile": {
+        "core_wound": "守不住最想守的人",
+        "public_self": "我只讲大道",
+        "shadow_desire": "哪怕一回，只为她而活",
+        "defense_style": "克制与自罚"
+      },
+      "awakening_profile": {
+        "clarity": 0.38,
+        "reflection_capacity": 0.74,
+        "repentance_threshold": 0.78,
+        "transformation_paths": [
+          "补誓",
+          "舍名"
+        ]
+      },
+      "speech_traits": [
+        "克制",
+        "压低声息",
+        "宁折不弯"
+      ],
+      "action_traits": [
+        "压息",
+        "持剑不动",
+        "先护后退"
+      ]
+    },
+    {
+      "character_id": "ye_qingzhu",
+      "display_name": "叶青烛",
+      "role": "counterpart",
+      "destiny_contract": {
+        "life_theme": "执念是否能被放下而不被背弃",
+        "inescapable_nodes": [
+          "逼问旧誓",
+          "替他承一次反噬"
+        ]
+      },
+      "poison_vector": {
+        "greed": 0.16,
+        "anger": 0.24,
+        "delusion": 0.22,
+        "pride": 0.44,
+        "doubt": 0.48
+      },
+      "vow_profile": {
+        "vows": [
+          "若旧誓真要反噬，也该有人与你同担"
+        ],
+        "sacrifice_capacity": 0.7,
+        "truth_tolerance": 0.74
+      },
+      "wound_profile": {
+        "core_wound": "被大道放弃在身后",
+        "public_self": "我只是来问一句旧话",
+        "shadow_desire": "他能为我偏一次路",
+        "defense_style": "冷问与不肯退"
+      },
+      "awakening_profile": {
+        "clarity": 0.46,
+        "reflection_capacity": 0.64,
+        "repentance_threshold": 0.68,
+        "transformation_paths": [
+          "共担",
+          "斩执",
+          "离山"
+        ]
+      },
+      "speech_traits": [
+        "清冷",
+        "直问",
+        "不替人遮掩"
+      ],
+      "action_traits": [
+        "逼近",
+        "停剑",
+        "以退为进"
+      ]
+    }
+  ],
+  "scene_blueprints": [
+    {
+      "scene_id": "lamp_awakens",
+      "scene_function": "setup",
+      "phase_support": [
+        "setup"
+      ],
+      "required_roles": [
+        "lead",
+        "counterpart"
+      ],
+      "beats_template": [
+        "古灯异动",
+        "旧誓回响",
+        "不祥预兆",
+        "命题落下"
+      ]
+    },
+    {
+      "scene_id": "vow_trial",
+      "scene_function": "temptation",
+      "phase_support": [
+        "early_rising",
+        "crisis"
+      ],
+      "required_roles": [
+        "lead",
+        "counterpart"
+      ],
+      "beats_template": [
+        "旧人现身",
+        "誓言动摇",
+        "代价显形",
+        "强行压下"
+      ]
+    }
+  ],
+  "style_pack": {
+    "mode": "manhua_drama",
+    "pov": "limited_third",
+    "dialogue_density": "medium"
+  },
+  "risk_policy": {
+    "shareable": true,
+    "requires_manual_review": true
+  },
+  "dialogue_realism_policy": {
+    "policy_id": "xianxia_forgotten_vow_dialogue",
+    "require_turn_taking": true,
+    "require_counter_reaction": true,
+    "min_turns": 2,
+    "max_turns": 3,
+    "turn_pattern": [
+      "speaker",
+      "reaction",
+      "reply"
+    ],
+    "minimum_exchanges": 1
+  },
+  "voice_profiles": {
+    "shen_zhao": {
+      "profile_id": "shen_zhao",
+      "cadence": "measured",
+      "directness": 0.54,
+      "bluntness": 0.33,
+      "restraint": 0.84,
+      "social_rank_awareness": 0.72,
+      "opening_style": [
+        "旧誓若真要追上来，也该先由我自己接住。"
+      ],
+      "pressure_style": [
+        "你若非逼我开口，我也不愿让这层反噬先落到你身上。"
+      ],
+      "pivot_style": [
+        "大道我没有忘，只是这一次我也不能再把你留在身后。"
+      ],
+      "aftermath_style": [
+        "这一句先落在这里，后面的天罚我自己去领。"
+      ],
+      "echo_style": [
+        "等下一次再见时，我不会只带着一身沉默回来。"
+      ],
+      "signature_replies": [
+        "你先别替我断，我还想亲手把这句誓补完整。"
+      ]
+    },
+    "ye_qingzhu": {
+      "profile_id": "ye_qingzhu",
+      "cadence": "cool",
+      "directness": 0.78,
+      "bluntness": 0.61,
+      "restraint": 0.46,
+      "social_rank_awareness": 0.58,
+      "opening_style": [
+        "誓既然是你亲口许下的，就别总拿大道当成回避我的借口。"
+      ],
+      "pressure_style": [
+        "我来不是求你回头，是要你承认这道伤到底落在谁身上。"
+      ],
+      "pivot_style": [
+        "你若总想一个人把天命背完，那我偏要把这句话逼到明处。"
+      ],
+      "aftermath_style": [
+        "我先不替你收场，等你自己把这句旧誓认清。"
+      ],
+      "echo_style": [
+        "下次再见时，你最好带着真话，不是带着更圆的道理。"
+      ],
+      "signature_replies": [
+        "我不是来听你讲大道的，我是来问你到底还肯不肯看我。"
+      ]
+    }
+  },
+  "response_cadence_profiles": {
+    "shen_zhao": {
+      "cadence_id": "shen_zhao",
+      "reaction_tempo": "measured",
+      "reaction_lines": {
+        "entry": [
+          "他先垂了垂眼，像把翻起来的灵息又一点点按回骨血里。"
+        ],
+        "pressure": [
+          "袍袖下的手指轻轻一蜷，连呼吸都像先被他自己截断了一截。"
+        ],
+        "pivot": [
+          "他这才抬眼，眼底那点动摇没有散尽，语气却已经不肯再退。"
+        ],
+        "aftermath": [
+          "收声时他反倒更静，静得像把更重的代价先压回自己身上。"
+        ],
+        "echo": [
+          "他不再追着解释，可那层未尽之意仍在周身灵息里发紧。"
+        ]
+      },
+      "reply_lines": {
+        "entry": [
+          "你既然追到这里，我便不想再把这句话藏回去。"
+        ],
+        "pressure": [
+          "我不是不肯认，只是不想让反噬先顺着你落下来。"
+        ],
+        "pivot": [
+          "若连这一句我都不敢承，后面的天命我也担不起。"
+        ],
+        "aftermath": [
+          "这层代价先记在我身上，你不必替我接。"
+        ],
+        "echo": [
+          "等我再回来时，我会把那句欠你的话一并补完。"
+        ]
+      }
+    },
+    "ye_qingzhu": {
+      "cadence_id": "ye_qingzhu",
+      "reaction_tempo": "tight",
+      "reaction_lines": {
+        "entry": [
+          "她并未立刻近前，只把目光钉在他脸上，像先把旧伤一寸寸照亮。"
+        ],
+        "pressure": [
+          "她指尖搭在剑穗上，没真碰响，那点停顿反而更像逼问。"
+        ],
+        "pivot": [
+          "她这才开口，语气清冷，却把最不肯听的那句推到了面前。"
+        ],
+        "aftermath": [
+          "她先收住了势，可那点不肯退的锋芒还停在原处。"
+        ],
+        "echo": [
+          "她不再多说，可檐下那声铃响倒像替她把余话追了回来。"
+        ]
+      },
+      "reply_lines": {
+        "entry": [
+          "你若还肯认这层旧誓，就别再拿沉默替自己挡。"
+        ],
+        "pressure": [
+          "我不怕反噬，只怕你又把我留在你那套大道之外。"
+        ],
+        "pivot": [
+          "你若总往后退，我就只好把这句真话追到山门外。"
+        ],
+        "aftermath": [
+          "先把这句放下，回头你还是得自己来接。"
+        ],
+        "echo": [
+          "下一回再见，我要听的是你的真心，不是更漂亮的道理。"
+        ]
+      }
+    }
+  },
+  "pressure_response_styles": {
+    "shen_zhao": {
+      "style_id": "lead",
+      "under_pressure": "嘴上更轻，动作更硬",
+      "when_cornered": "先沉默，再把难听的话说实",
+      "when_softening": "语气微松，但不立刻退让",
+      "when_deflecting": "把真正的心事往旁处挪半寸"
+    }
+  },
+  "emotion_action_policies": {
+    "default": {
+      "policy_id": "xianxia_default_action",
+      "action_map": {
+        "false_peace": {
+          "entry": [
+            "袍袖扫过石阶，灵息只乱了一瞬，原本压住的气机便跟着起了波纹。"
+          ],
+          "pressure": [
+            "偏殿檐角的风卷下来，连铃索都只轻轻一晃，谁也不肯先退。"
+          ],
+          "pivot": [
+            "他指节在剑柄上一松一紧，那点迟疑比任何一句话都更像裂口。"
+          ],
+          "aftermath": [
+            "表面上无人失态，可散开时每个人周身的气机都比来时更沉。"
+          ],
+          "echo": [
+            "等灯焰再跳一下时，那些没说尽的旧誓便像在骨血里缓缓回响。"
+          ],
+          "repeat": [
+            "动作极轻，可谁都知道这层平静已经压不住真正的反噬。"
+          ]
+        },
+        "temptation": {
+          "entry": [
+            "先动的不是人，而是照骨灯里那一点忽明忽暗的灵火。"
+          ],
+          "pressure": [
+            "灯焰一偏，连影子都像替人把那点执念照得更清。"
+          ],
+          "pivot": [
+            "两股气机在半空里轻轻一撞，谁都知道这回再退只会更痛。"
+          ],
+          "aftermath": [
+            "风过石阶，余震未散，像旧誓还在等一个人先认输。"
+          ],
+          "echo": [
+            "越到后面，越能听见那点心魔在沉默里一点点抬头。"
+          ],
+          "repeat": [
+            "没人真出手，可那点诱惑已经顺着灵息渗进了骨头里。"
+          ]
+        },
+        "mask_crack": {
+          "entry": [
+            "他嘴上仍压得平稳，袖中的真气却先露了一丝乱。"
+          ],
+          "pressure": [
+            "她不再逼近，只把那一点看穿了的沉默稳稳放在两人之间。"
+          ],
+          "pivot": [
+            "那层大道与私心的壳终于裂了一缝，谁都装不回去了。"
+          ],
+          "aftermath": [
+            "场面没有炸开，真正的失守却已经在心里落了地。"
+          ],
+          "echo": [
+            "等下一次再开口时，谁都回不到还能强讲大道的那一边。"
+          ]
+        },
+        "confession_window": {
+          "entry": [
+            "偏殿忽然静极，连灯焰的轻响都像替这句真话腾出了位置。"
+          ],
+          "pressure": [
+            "他把呼吸压到最稳，反而更显得那句想说的话早已顶到喉间。"
+          ],
+          "pivot": [
+            "她没有替他收拾场面，只把那点空白留成了最逼人的台阶。"
+          ],
+          "aftermath": [
+            "真话一落下来，连周围的灵息都像跟着轻了一瞬。"
+          ],
+          "echo": [
+            "这一回先说到这里，可真正的取舍还要到下一次见面时才算数。"
+          ]
+        }
+      }
+    }
+  },
+  "sensory_grounding_policies": {
+    "default": {
+      "policy_id": "xianxia_sensory",
+      "location_slots": {
+        "偏殿": {
+          "atmosphere": [
+            "偏殿里灯焰不稳，薄薄一层金光把每个人心里的动摇都映得无处可藏。"
+          ],
+          "detail": [
+            "案上香灰斜斜坠下来，殿角风过时，铜铃只轻轻响了一声。"
+          ],
+          "repeat_detail": [
+            "越到后面，偏殿里那一点灯火越像把旧誓从灰里重新照了出来。"
+          ]
+        },
+        "石阶": {
+          "atmosphere": [
+            "石阶上寒意贴着足底往上爬，连衣角擦过风声都显得格外冷。"
+          ],
+          "detail": [
+            "夜露落在阶边，月光从裂石里渗下来，把影子压得又细又长。"
+          ],
+          "repeat_detail": [
+            "风再过一遍石阶时，连沉默都像带了薄刃。"
+          ]
+        },
+        "山门": {
+          "atmosphere": [
+            "山门外的风空得很，像专为那些说不出口的旧誓留出回响。"
+          ],
+          "detail": [
+            "远处云气压低，门前长阶只剩一点冷白，照得人连退路都看得太清。"
+          ],
+          "repeat_detail": [
+            "越靠近山门，越能听见那些没补完的誓言在风里一层层逼近。"
+          ]
+        }
+      },
+      "generic_slots": {
+        "atmosphere": [
+          "灵息与风声缠在一起，像谁都不肯先把那句真话放下。"
+        ],
+        "detail": [
+          "最轻的一点铃响和灯影，都把场里的取舍照得更锋利。"
+        ],
+        "repeat_detail": [
+          "等沉默拖长以后，连周身灵息都像替旧誓回了一次身。"
+        ]
+      }
+    }
+  },
+  "scene_realization_contracts": {
+    "default": {
+      "contract_id": "xianxia_scene_realization",
+      "scene_openings": {
+        "false_peace": [
+          "誓愿与天命先压下来。偏殿里的灯火不稳，像连空气都在替这层旧誓发颤。"
+        ],
+        "temptation": [
+          "真正先动摇的不是人，而是那一点被旧誓照亮以后再也压不住的执念。"
+        ],
+        "mask_crack": [
+          "大道还挂在嘴边，可真正先裂开的，是那一点再也讲不圆的私心。"
+        ],
+        "confession_window": [
+          "有些真话只有在灵息都静下来的时候才会自己浮上来，像谁也按不回去。"
+        ]
+      },
+      "scene_hooks": {
+        "false_peace": [
+          "这一层表面上的平静撑不过太久，真正要追上来的，是照骨灯里那句没人敢补完的旧誓。"
+        ],
+        "temptation": [
+          "话先停在这里，可真正难的，是下一次见面时谁还肯先认这层执念。"
+        ],
+        "mask_crack": [
+          "等下一次再开口时，谁都回不到还能把大道说得毫无裂缝的那边。"
+        ],
+        "confession_window": [
+          "这一回先说到这里，可真正决定命数的，是谁会带着那句真话回来。"
+        ]
+      }
+    }
+  },
+  "narrative_style_pack": {
+    "style_pack_id": "default",
+    "tonal_lexicon": [
+      "xianxia",
+      "fate",
+      "tragedy_romance"
+    ],
+    "thematic_axis_labels": {
+      "duty": "家门与责任",
+      "ambition": "前途与求胜",
+      "reputation": "名声与体面",
+      "love": "情意与靠近",
+      "selfhood": "自我与抉择",
+      "truth": "真相与揭露",
+      "reform": "改写旧秩序",
+      "destiny": "命运的去向"
+    },
+    "hook_templates": [
+      "等人声慢慢静下去时，真正要追上来的往往才刚刚露出影子。",
+      "这句话先落下去，真正的余波还在后面等着。"
+    ],
+    "goal_labels": {},
+    "tag_labels": {
+      "xianxia": "xianxia",
+      "fate": "fate",
+      "tragedy_romance": "tragedy romance"
+    },
+    "dialogue": {
+      "policy_id": "xianxia_forgotten_vow_dialogue",
+      "require_turn_taking": true,
+      "require_counter_reaction": true,
+      "min_turns": 2,
+      "max_turns": 3,
+      "turn_pattern": [
+        "speaker",
+        "reaction",
+        "reply"
+      ],
+      "minimum_exchanges": 1
+    },
+    "emotion_actions": {
+      "policy_id": "xianxia_forgotten_vow_default_action",
+      "action_map": {
+        "false_peace": {
+          "entry": [
+            "桌上的器物轻轻一碰，谁都知道这一步已经走出去，很难再收回来。"
+          ],
+          "pressure": [
+            "最细小的抬眼和换气都带上了掂量，像谁先多动一下，谁就会先露底。"
+          ],
+          "pivot": [
+            "那一点极轻的停顿和改口，让场面从还能周旋，变成了不得不选边。"
+          ],
+          "aftermath": [
+            "人散得不快，沉默却先压了下来。"
+          ],
+          "echo": [
+            "越到后面，越能听见那些没说尽的话慢慢回身。"
+          ],
+          "repeat": [
+            "动作并不大，可谁都知道事情已经换了味道。"
+          ]
+        },
+        "truth_trial": {
+          "entry": [
+            "先动的不是声音，而是视线和手指那一点收紧。"
+          ],
+          "pressure": [
+            "杯沿上那一点冷光轻轻一闪，连呼吸都像被逼慢了半拍。"
+          ],
+          "pivot": [
+            "风从门缝里钻进来，把场里的沉默一下子吹偏了方向。"
+          ],
+          "aftermath": [
+            "茶香已经淡了，场里的气却还迟迟不肯散开。"
+          ],
+          "echo": [
+            "等人散尽以后，连空下来的位置都还像留着刚才那句重话。"
+          ],
+          "repeat": [
+            "动作不大，可谁都知道这句真话已经绕不过去了。"
+          ]
+        }
+      }
+    },
+    "sensory_grounding": {
+      "policy_id": "xianxia_forgotten_vow_default_sensory",
+      "location_slots": {
+        "generic": {
+          "atmosphere": [
+            "generic里并不安静，连空气都像压着一句没说完的话。"
+          ],
+          "detail": [
+            "generic里的光线、器物和衣袖摩擦声，都把场里的情绪衬得更清。"
+          ],
+          "repeat_detail": [
+            "generic里最轻的一点动静，反而把话里的分量又压重了一层。"
+          ]
+        }
+      },
+      "generic_slots": {
+        "atmosphere": [
+          "场里并不安静，连空气都像在替谁压住一口没说完的话。"
+        ],
+        "detail": [
+          "细小的声响和光线变化，把场里的情绪压得更清了一层。"
+        ],
+        "repeat_detail": [
+          "越到后面，越能听见那些没说尽的话慢慢回身。"
+        ]
+      }
+    },
+    "scene_realization": {
+      "contract_id": "xianxia_forgotten_vow_scene_realizer",
+      "dialogue_policy_id": "xianxia_forgotten_vow_dialogue",
+      "default_voice_profile_id": "default",
+      "default_cadence_id": "default",
+      "default_pressure_style_id": "default",
+      "default_emotion_action_policy_id": "default",
+      "default_sensory_policy_id": "default",
+      "narrative_style_pack_id": "default",
+      "scene_openings": {},
+      "scene_hooks": {},
+      "scene_pressures": {}
+    }
+  }
+}

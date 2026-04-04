@@ -1,0 +1,167 @@
+{
+  "world_id": "urban_mystery_lotus_lane",
+  "title": "莲巷夜话",
+  "version": "0.1.0",
+  "manifest": {
+    "author_id": "studio_demo",
+    "language": "zh-CN",
+    "genres": [
+      "urban_mystery",
+      "romance",
+      "suspense"
+    ],
+    "risk_rating": "PG-13",
+    "monetization_policy": {
+      "trial_chapters": 2,
+      "paid_after": 3
+    }
+  },
+  "world_bible": {
+    "premise": "一条旧巷里，越想隐瞒的事越会以另一种方式回来收债。",
+    "canon_rules": [
+      "任何隐瞒都会留下因果种子",
+      "关系推进必须伴随代价或误解"
+    ],
+    "forbidden_moves": [
+      "神力直接解决问题",
+      "无根由的完美和解"
+    ]
+  },
+  "characters": [
+    {
+      "character_id": "yu_cheng",
+      "display_name": "余澄",
+      "role": "lead",
+      "destiny_contract": {
+        "life_theme": "真话是否值得承担失去",
+        "inescapable_nodes": [
+          "坦白",
+          "失去一次信任"
+        ]
+      },
+      "poison_vector": {
+        "greed": 0.35,
+        "anger": 0.25,
+        "delusion": 0.55,
+        "pride": 0.6,
+        "doubt": 0.8
+      },
+      "vow_profile": {
+        "vows": [
+          "不再让重要的人从别人那里知道真相"
+        ],
+        "sacrifice_capacity": 0.7,
+        "truth_tolerance": 0.45
+      },
+      "wound_profile": {
+        "core_wound": "被误解与被抛下",
+        "public_self": "我能处理一切",
+        "shadow_desire": "有人无条件信我一次",
+        "defense_style": "控制与拖延"
+      },
+      "awakening_profile": {
+        "clarity": 0.25,
+        "reflection_capacity": 0.55,
+        "repentance_threshold": 0.8,
+        "transformation_paths": [
+          "坦白",
+          "让渡控制"
+        ]
+      }
+    },
+    {
+      "character_id": "lin_wan",
+      "display_name": "林绾",
+      "role": "counterpart",
+      "destiny_contract": {
+        "life_theme": "爱与边界如何共存",
+        "inescapable_nodes": [
+          "要求真相",
+          "拒绝一次越界保护"
+        ]
+      },
+      "poison_vector": {
+        "greed": 0.2,
+        "anger": 0.3,
+        "delusion": 0.4,
+        "pride": 0.55,
+        "doubt": 0.65
+      },
+      "vow_profile": {
+        "vows": [
+          "不再被半真半假的温柔说服"
+        ],
+        "sacrifice_capacity": 0.5,
+        "truth_tolerance": 0.75
+      },
+      "wound_profile": {
+        "core_wound": "被替自己决定命运",
+        "public_self": "我不在乎",
+        "shadow_desire": "被平等地对待",
+        "defense_style": "冷处理"
+      },
+      "awakening_profile": {
+        "clarity": 0.4,
+        "reflection_capacity": 0.6,
+        "repentance_threshold": 0.7,
+        "transformation_paths": [
+          "直问",
+          "离开",
+          "共担"
+        ]
+      }
+    }
+  ],
+  "scene_blueprints": [
+    {
+      "scene_id": "alley_meet",
+      "scene_function": "setup",
+      "phase_support": [
+        "setup"
+      ],
+      "required_roles": [
+        "lead",
+        "counterpart"
+      ],
+      "beats_template": [
+        "夜巷相遇",
+        "试探",
+        "藏而不说",
+        "留下钩子"
+      ]
+    },
+    {
+      "scene_id": "truth_request",
+      "scene_function": "trust_test",
+      "phase_support": [
+        "early_rising",
+        "midpoint"
+      ],
+      "required_roles": [
+        "lead",
+        "counterpart"
+      ],
+      "wound_triggers": [
+        "被替自己决定命运"
+      ],
+      "vow_tests": [
+        "不再被半真半假的温柔说服"
+      ],
+      "beats_template": [
+        "追问",
+        "回避",
+        "情绪升级",
+        "沉默余波"
+      ]
+    }
+  ],
+  "style_pack": {
+    "mode": "novel_lush",
+    "pov": "limited_third",
+    "dialogue_density": "medium_high"
+  },
+  "risk_policy": {
+    "shareable": true,
+    "requires_manual_review": false
+  }
+}

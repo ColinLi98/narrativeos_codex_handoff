@@ -1,0 +1,167 @@
+openapi: 3.1.0
+info:
+  title: NarrativeOS Platform API
+  version: 0.1.0
+paths:
+  /worlds:
+    get:
+      summary: List published worlds
+      responses:
+        '200':
+          description: OK
+  /worlds/{worldId}:
+    get:
+      summary: Get world detail
+      parameters:
+        - name: worldId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+  /sessions:
+    post:
+      summary: Create reader session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Created
+  /sessions/{sessionId}:
+    get:
+      summary: Get session
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+  /sessions/{sessionId}/continue:
+    post:
+      summary: Continue to next chapter
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContinueRequest'
+      responses:
+        '200':
+          description: Chapter generated
+  /author/worldpacks:
+    post:
+      summary: Create or update world pack draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorldPack'
+      responses:
+        '200':
+          description: Saved
+  /author/worldpacks/{worldId}/validate:
+    post:
+      summary: Validate world pack
+      parameters:
+        - name: worldId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Validation report
+  /author/worldpacks/{worldId}/simulate:
+    post:
+      summary: Run simulation batch
+      parameters:
+        - name: worldId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '202':
+          description: Job accepted
+  /ops/reviews:
+    get:
+      summary: List review queue
+      responses:
+        '200':
+          description: OK
+  /ops/worlds/{worldVersionId}/publish:
+    post:
+      summary: Publish validated world version
+      parameters:
+        - name: worldVersionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Published
+  /ops/worlds/{worldVersionId}/rollback:
+    post:
+      summary: Roll back world version
+      parameters:
+        - name: worldVersionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Rolled back
+  /billing/quote:
+    post:
+      summary: Get quote for continue action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id: { type: string }
+                action: { type: string }
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    CreateSessionRequest:
+      type: object
+      required: [world_id]
+      properties:
+        world_id: { type: string }
+        reader_id: { type: string }
+        style_mode: { type: string }
+    ContinueRequest:
+      type: object
+      properties:
+        choice_id: { type: string }
+        freeform_intent: { type: string }
+    WorldPack:
+      type: object
+      required: [world_id, title, version, manifest, characters, scene_blueprints]
+      properties:
+        world_id: { type: string }
+        title: { type: string }
+        version: { type: string }
+        manifest: { type: object }
+        characters:
+          type: array
+          items: { type: object }
+        scene_blueprints:
+          type: array
+          items: { type: object }

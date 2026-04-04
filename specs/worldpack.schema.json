@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorldPack",
+  "type": "object",
+  "required": [
+    "world_id",
+    "title",
+    "version",
+    "manifest",
+    "world_bible",
+    "characters",
+    "scene_blueprints",
+    "style_pack",
+    "risk_policy"
+  ],
+  "properties": {
+    "world_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "manifest": {
+      "type": "object",
+      "required": [
+        "author_id",
+        "language",
+        "genres",
+        "risk_rating",
+        "monetization_policy"
+      ],
+      "properties": {
+        "author_id": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "genres": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "risk_rating": {
+          "type": "string"
+        },
+        "monetization_policy": {
+          "type": "object",
+          "properties": {
+            "trial_chapters": {"type": "integer"},
+            "paid_after": {"type": "integer"}
+          }
+        }
+      }
+    },
+    "world_bible": {
+      "type": "object"
+    },
+    "characters": {
+      "type": "array",
+      "items": {
+        "$ref": "character_profile.schema.json"
+      }
+    },
+    "scene_blueprints": {
+      "type": "array",
+      "items": {
+        "$ref": "scene_plan.schema.json"
+      }
+    },
+    "style_pack": {
+      "type": "object"
+    },
+    "risk_policy": {
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+name: ops-navigation-stale-ref-smoke
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+      - name: Run ops navigation stale-ref smoke
+        run: |
+          CI_HEADLESS=1 \
+          CHROME_BIN="${{ steps.setup-chrome.outputs.chrome-path }}" \
+          bash scripts/run_ops_navigation_stale_ref_smoke.sh
+      - name: Publish stale-ref smoke summary
+        if: always()
+        run: |
+          . .venv/bin/activate
+          python scripts/write_ops_navigation_stale_ref_step_summary.py \
+            --result-file artifacts/ops_navigation_stale_ref_smoke_result.json \
+            --server-log /tmp/ops_navigation_stale_ref_smoke_server.log \
+            --chrome-log /tmp/ops_navigation_stale_ref_smoke_chrome.log \
+            --failure-artifact artifacts/ops_navigation_stale_ref_smoke_failure_snapshot.json \
+            >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload stale-ref smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops-navigation-stale-ref-smoke-artifacts
+          if-no-files-found: warn
+          path: |
+            artifacts/ops_navigation_stale_ref_smoke_seed.json
+            artifacts/ops_navigation_stale_ref_smoke_result.json
+            artifacts/ops_navigation_stale_ref_smoke_failure_snapshot.json
+            artifacts/ops_navigation_stale_ref_smoke_failure.png
+            /tmp/ops_navigation_stale_ref_smoke_server.log
+            /tmp/ops_navigation_stale_ref_smoke_chrome.log

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IssueFixPair",
+  "type": "object",
+  "required": [
+    "pair_id",
+    "world_id",
+    "world_version_id",
+    "before_revision_id",
+    "after_revision_id",
+    "changed_sections",
+    "before_summary",
+    "after_summary",
+    "simulation_delta",
+    "improved",
+    "linked_review_sample_ids",
+    "linked_issue_codes",
+    "timestamp"
+  ],
+  "properties": {
+    "pair_id": {"type": "string"},
+    "world_id": {"type": "string"},
+    "world_version_id": {"type": "string"},
+    "before_revision_id": {"type": "string"},
+    "after_revision_id": {"type": "string"},
+    "changed_sections": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "before_summary": {"type": "string"},
+    "after_summary": {"type": "string"},
+    "simulation_delta": {"type": "object"},
+    "improved": {"type": "boolean"},
+    "linked_review_sample_ids": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "before_review_sample_ids": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "after_review_sample_ids": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "linked_issue_codes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "review_coverage_count": {"type": "integer"},
+    "human_review_count": {"type": "integer"},
+    "pair_source": {"type": "string"},
+    "pair_quality": {"type": "string"},
+    "pair_warnings": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "timestamp": {"type": "string"}
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "world_id": "xianxia_forgotten_vow",
+  "title": "照骨灯",
+  "version": "0.1.0",
+  "manifest": {
+    "author_id": "studio_demo",
+    "language": "zh-CN",
+    "genres": [
+      "xianxia",
+      "fate",
+      "tragedy_romance"
+    ],
+    "risk_rating": "PG-13",
+    "monetization_policy": {
+      "trial_chapters": 1,
+      "paid_after": 2
+    }
+  },
+  "world_bible": {
+    "premise": "修行不是增添力量，而是看见自己到底愿意舍弃什么。",
+    "canon_rules": [
+      "每次逆天改命都会失去某种人间牵引",
+      "誓言可以护人也可以反噬"
+    ],
+    "forbidden_moves": [
+      "主角毫无代价地逆天成功",
+      "所有人都被一句话点悟"
+    ]
+  },
+  "characters": [
+    {
+      "character_id": "shen_zhao",
+      "display_name": "沈照",
+      "role": "lead",
+      "destiny_contract": {
+        "life_theme": "救一人是否值得背弃众生之愿",
+        "inescapable_nodes": [
+          "违誓",
+          "补誓"
+        ]
+      },
+      "poison_vector": {
+        "greed": 0.45,
+        "anger": 0.2,
+        "delusion": 0.5,
+        "pride": 0.7,
+        "doubt": 0.35
+      },
+      "vow_profile": {
+        "vows": [
+          "我当年既许众生，便不能只为一人"
+        ],
+        "sacrifice_capacity": 0.8,
+        "truth_tolerance": 0.35
+      },
+      "wound_profile": {
+        "core_wound": "守不住最想守的人",
+        "public_self": "我只讲大道",
+        "shadow_desire": "哪怕一回，只为她而活",
+        "defense_style": "克制与自罚"
+      },
+      "awakening_profile": {
+        "clarity": 0.3,
+        "reflection_capacity": 0.7,
+        "repentance_threshold": 0.78,
+        "transformation_paths": [
+          "补誓",
+          "舍名"
+        ]
+      }
+    }
+  ],
+  "scene_blueprints": [
+    {
+      "scene_id": "lamp_awakens",
+      "scene_function": "setup",
+      "phase_support": [
+        "setup"
+      ],
+      "required_roles": [
+        "lead"
+      ],
+      "beats_template": [
+        "古灯异动",
+        "旧誓回响",
+        "不祥预兆",
+        "命题落下"
+      ]
+    },
+    {
+      "scene_id": "vow_trial",
+      "scene_function": "temptation",
+      "phase_support": [
+        "early_rising",
+        "crisis"
+      ],
+      "required_roles": [
+        "lead",
+        "counterpart"
+      ],
+      "beats_template": [
+        "旧人现身",
+        "誓言动摇",
+        "代价显形",
+        "强行压下"
+      ]
+    }
+  ],
+  "style_pack": {
+    "mode": "manhua_drama",
+    "pov": "limited_third",
+    "dialogue_density": "medium"
+  },
+  "risk_policy": {
+    "shareable": true,
+    "requires_manual_review": true
+  }
+}

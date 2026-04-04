@@ -1,0 +1,460 @@
+{
+  "state_id": "state_0001",
+  "world_id": "jade_court_exam",
+  "turn_index": 0,
+  "story_phase": "setup",
+  "chapter_index": 0,
+  "min_end_turn": 8,
+  "world_facts": [
+    "spring_exam_announced",
+    "family_reputation_fragile",
+    "yu_cheng_nominated",
+    "lin_wan_trusts_yu_cheng",
+    "tutor_xu_observes_yu_cheng"
+  ],
+  "timeline": [],
+  "characters": {
+    "yu_cheng": {
+      "name": "余澄",
+      "role": "heir",
+      "public_goals": [
+        "protect_family_reputation",
+        "survive_exam_expectation"
+      ],
+      "hidden_goals": [
+        "seek_selfhood",
+        "remain_true_to_lin_wan"
+      ],
+      "constraints": [
+        "avoid_public_humiliation",
+        "cannot_directly_defy_matriarch_without_cost"
+      ],
+      "beliefs_true": [
+        "family_reputation_fragile"
+      ],
+      "beliefs_false": [],
+      "emotions": {
+        "anxiety": 0.7,
+        "defiance": 0.4,
+        "tenderness": 0.5
+      },
+      "trust": {
+        "lin_wan": 0.8,
+        "lady_rong": 0.6,
+        "tutor_xu": 0.5
+      },
+      "poisons": {
+        "greed": 0.22,
+        "anger": 0.18,
+        "delusion": 0.52,
+        "pride": 0.48,
+        "doubt": 0.46
+      },
+      "vows": {
+        "vows": [
+          "宁可自己背负，也不让她替我受伤",
+          "不想把一生交给空洞功名"
+        ],
+        "sacrifice_capacity": 0.74,
+        "truth_tolerance": 0.41
+      },
+      "wound": {
+        "core_wound": "永远要证明自己才值得被留下",
+        "public_self": "稳得住局面的继承人",
+        "shadow_desire": "想被人无条件地相信与偏爱",
+        "defense_style": "奉献与硬撑"
+      },
+      "awakening": {
+        "clarity": 0.36,
+        "reflection_capacity": 0.42,
+        "repentance_threshold": 0.64,
+        "transformation_paths": [
+          "full_confession",
+          "sacrifice",
+          "mutual_truth"
+        ]
+      },
+      "destiny": {
+        "life_theme": "爱能否不以牺牲自我为代价",
+        "inescapable_nodes": [
+          "被误解",
+          "公开失去体面",
+          "为愿付出代价"
+        ],
+        "fated_relations": [
+          "lin_wan",
+          "lady_rong"
+        ],
+        "forbidden_escape": [
+          "继续把顺从伪装成孝义"
+        ],
+        "endgame_shapes": [
+          "awakening",
+          "fracture",
+          "false_awakening"
+        ]
+      },
+      "debts": [],
+      "karmic_seeds": []
+    },
+    "lin_wan": {
+      "name": "林绾",
+      "role": "cousin",
+      "public_goals": [
+        "protect_truth",
+        "protect_yu_cheng"
+      ],
+      "hidden_goals": [
+        "test_yu_cheng_sincerity"
+      ],
+      "constraints": [
+        "will_not_reward_cowardice"
+      ],
+      "beliefs_true": [
+        "family_reputation_fragile"
+      ],
+      "beliefs_false": [],
+      "emotions": {
+        "concern": 0.7,
+        "doubt": 0.3
+      },
+      "trust": {
+        "yu_cheng": 0.8,
+        "lady_rong": 0.3,
+        "tutor_xu": 0.4
+      },
+      "poisons": {
+        "greed": 0.08,
+        "anger": 0.26,
+        "delusion": 0.28,
+        "pride": 0.55,
+        "doubt": 0.51
+      },
+      "vows": {
+        "vows": [
+          "若他不肯说真话，我也不替他圆谎",
+          "若真要护他，先逼他看清自己"
+        ],
+        "sacrifice_capacity": 0.62,
+        "truth_tolerance": 0.78
+      },
+      "wound": {
+        "core_wound": "先相信的人总是先受伤",
+        "public_self": "看得清也守得住分寸的人",
+        "shadow_desire": "想被坚定选择而不是被权衡",
+        "defense_style": "冷漠与试探"
+      },
+      "awakening": {
+        "clarity": 0.49,
+        "reflection_capacity": 0.58,
+        "repentance_threshold": 0.52,
+        "transformation_paths": [
+          "mutual_truth",
+          "let_go",
+          "public_witness"
+        ]
+      },
+      "destiny": {
+        "life_theme": "真心能否在不被优先选择时仍不扭曲",
+        "inescapable_nodes": [
+          "被隐瞒",
+          "替对方站出来一次"
+        ],
+        "fated_relations": [
+          "yu_cheng"
+        ],
+        "forbidden_escape": [
+          "把失望包装成无所谓"
+        ],
+        "endgame_shapes": [
+          "awakening",
+          "fracture"
+        ]
+      },
+      "debts": [],
+      "karmic_seeds": []
+    },
+    "lady_rong": {
+      "name": "荣老太君",
+      "role": "matriarch",
+      "public_goals": [
+        "stabilize_household",
+        "secure_exam_success"
+      ],
+      "hidden_goals": [
+        "preserve_authority"
+      ],
+      "constraints": [
+        "must_appear_fair"
+      ],
+      "beliefs_true": [
+        "yu_cheng_nominated"
+      ],
+      "beliefs_false": [],
+      "emotions": {
+        "control": 0.9,
+        "worry": 0.5
+      },
+      "trust": {
+        "yu_cheng": 0.6,
+        "lin_wan": 0.4,
+        "tutor_xu": 0.7
+      },
+      "poisons": {
+        "greed": 0.34,
+        "anger": 0.22,
+        "delusion": 0.44,
+        "pride": 0.82,
+        "doubt": 0.31
+      },
+      "vows": {
+        "vows": [
+          "就算被怨，也要把门楣撑住"
+        ],
+        "sacrifice_capacity": 0.57,
+        "truth_tolerance": 0.33
+      },
+      "wound": {
+        "core_wound": "一旦失手，整个家门都会塌",
+        "public_self": "懂得权衡全局的掌舵人",
+        "shadow_desire": "想证明自己当年的选择没有错",
+        "defense_style": "控制与体面"
+      },
+      "awakening": {
+        "clarity": 0.24,
+        "reflection_capacity": 0.29,
+        "repentance_threshold": 0.81,
+        "transformation_paths": [
+          "public_concession",
+          "release_control"
+        ]
+      },
+      "destiny": {
+        "life_theme": "控制是否真能换来庇护",
+        "inescapable_nodes": [
+          "公开承认一次自己错了"
+        ],
+        "fated_relations": [
+          "yu_cheng",
+          "lin_wan"
+        ],
+        "forbidden_escape": [
+          "继续把控制说成保护"
+        ],
+        "endgame_shapes": [
+          "awakening",
+          "downfall",
+          "false_awakening"
+        ]
+      },
+      "debts": [],
+      "karmic_seeds": []
+    },
+    "tutor_xu": {
+      "name": "徐师",
+      "role": "tutor",
+      "public_goals": [
+        "prepare_yu_cheng_for_exam"
+      ],
+      "hidden_goals": [
+        "avoid_empty_merit",
+        "protect_real_talent"
+      ],
+      "constraints": [
+        "cannot_publicly_shame_patron_house"
+      ],
+      "beliefs_true": [
+        "yu_cheng_nominated"
+      ],
+      "beliefs_false": [],
+      "emotions": {
+        "patience": 0.6,
+        "skepticism": 0.4
+      },
+      "trust": {
+        "yu_cheng": 0.5,
+        "lady_rong": 0.6,
+        "lin_wan": 0.5
+      },
+      "poisons": {
+        "greed": 0.05,
+        "anger": 0.17,
+        "delusion": 0.19,
+        "pride": 0.37,
+        "doubt": 0.29
+      },
+      "vows": {
+        "vows": [
+          "若见空名压人，就该替真正的人说一句公道话"
+        ],
+        "sacrifice_capacity": 0.66,
+        "truth_tolerance": 0.82
+      },
+      "wound": {
+        "core_wound": "见过太多被体面毁掉的人",
+        "public_self": "守礼而克制的师长",
+        "shadow_desire": "想亲手纠正一次旧秩序的错",
+        "defense_style": "克制与旁敲侧击"
+      },
+      "awakening": {
+        "clarity": 0.63,
+        "reflection_capacity": 0.72,
+        "repentance_threshold": 0.36,
+        "transformation_paths": [
+          "public_witness",
+          "truth_testimony",
+          "sacrifice"
+        ]
+      },
+      "destiny": {
+        "life_theme": "公道能否在寄人篱下时仍被守住",
+        "inescapable_nodes": [
+          "替学生违逆一次权势"
+        ],
+        "fated_relations": [
+          "yu_cheng",
+          "lady_rong"
+        ],
+        "forbidden_escape": [
+          "继续做一个只提醒不承担的人"
+        ],
+        "endgame_shapes": [
+          "awakening",
+          "fracture"
+        ]
+      },
+      "debts": [],
+      "karmic_seeds": []
+    }
+  },
+  "open_promises": [],
+  "tension": 0.42,
+  "themes": {
+    "duty": 0.6,
+    "love": 0.4,
+    "selfhood": 0.3,
+    "reputation": 0.7,
+    "destiny": 0.5
+  },
+  "player_intent": {
+    "ambition": 0.75,
+    "loyalty": 0.55,
+    "honesty": 0.4,
+    "romance": 0.2,
+    "selfhood": 0.55
+  },
+  "recent_scene_functions": [],
+  "visited_event_ids": [],
+  "route_fingerprint": [],
+  "rating_ceiling": "PG13",
+  "metadata": {
+    "source_type": "original"
+  },
+  "fate_pressure": 0.18,
+  "karmic_weather": {
+    "suspicion": 0.22,
+    "grief": 0.08,
+    "temptation": 0.26,
+    "shame": 0.18,
+    "mercy": 0.1
+  },
+  "unresolved_debts": [],
+  "relationship_graph": [
+    {
+      "source": "yu_cheng",
+      "target": "lin_wan",
+      "attachment": 0.82,
+      "resentment": 0.06,
+      "shame": 0.12,
+      "obligation": 0.28,
+      "projection": 0.18,
+      "possession": 0.14,
+      "gratitude": 0.42,
+      "fear": 0.44,
+      "debts": [],
+      "notes": [
+        "说不出口的情意压得太久"
+      ]
+    },
+    {
+      "source": "lin_wan",
+      "target": "yu_cheng",
+      "attachment": 0.78,
+      "resentment": 0.18,
+      "shame": 0.08,
+      "obligation": 0.12,
+      "projection": 0.24,
+      "possession": 0.05,
+      "gratitude": 0.22,
+      "fear": 0.49,
+      "debts": [],
+      "notes": [
+        "越在意越不肯先示弱"
+      ]
+    },
+    {
+      "source": "yu_cheng",
+      "target": "lady_rong",
+      "attachment": 0.41,
+      "resentment": 0.22,
+      "shame": 0.31,
+      "obligation": 0.73,
+      "projection": 0.12,
+      "possession": 0.0,
+      "gratitude": 0.37,
+      "fear": 0.54,
+      "debts": [],
+      "notes": [
+        "孝义与窒息并存"
+      ]
+    },
+    {
+      "source": "lady_rong",
+      "target": "yu_cheng",
+      "attachment": 0.52,
+      "resentment": 0.04,
+      "shame": 0.0,
+      "obligation": 0.58,
+      "projection": 0.35,
+      "possession": 0.46,
+      "gratitude": 0.12,
+      "fear": 0.43,
+      "debts": [],
+      "notes": [
+        "把控制误当成庇护"
+      ]
+    },
+    {
+      "source": "tutor_xu",
+      "target": "yu_cheng",
+      "attachment": 0.36,
+      "resentment": 0.0,
+      "shame": 0.0,
+      "obligation": 0.27,
+      "projection": 0.18,
+      "possession": 0.0,
+      "gratitude": 0.0,
+      "fear": 0.12,
+      "debts": [],
+      "notes": [
+        "带着惜才的师生之义"
+      ]
+    },
+    {
+      "source": "yu_cheng",
+      "target": "tutor_xu",
+      "attachment": 0.25,
+      "resentment": 0.0,
+      "shame": 0.11,
+      "obligation": 0.33,
+      "projection": 0.1,
+      "possession": 0.0,
+      "gratitude": 0.34,
+      "fear": 0.16,
+      "debts": [],
+      "notes": [
+        "把徐师当成少数能说真话的人"
+      ]
+    }
+  ]
+}

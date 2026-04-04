@@ -1,0 +1,47 @@
+{
+  "world_id": "jade_court_exam",
+  "title": "玉阙春闱",
+  "source_type": "original",
+  "themes": [
+    "duty",
+    "love",
+    "selfhood",
+    "reputation",
+    "destiny"
+  ],
+  "canon_anchors": [
+    "春闱已开，荣府寄望于嫡孙入场应试。",
+    "林绾聪慧敏锐，不会轻易相信空话。",
+    "老太君最在意家门名声与府中稳定。",
+    "徐师表面重科举功名，内心仍尊重真才与真心。"
+  ],
+  "forbidden_moves": [
+    "角色不能突然拥有超自然力量。",
+    "角色不能无理由知道他未听闻的秘密。",
+    "故事不能跳过重大代价直接进入圆满结局。"
+  ],
+  "characters": [
+    "yu_cheng",
+    "lin_wan",
+    "lady_rong",
+    "tutor_xu"
+  ],
+  "locations": [
+    "荣府",
+    "书房",
+    "花厅",
+    "考棚",
+    "渡口"
+  ],
+  "creator_controls": {
+    "merge_policy": "allow_dag_with_scars",
+    "darkness_ceiling": "PG13",
+    "payoff_style": "bittersweet_or_earned",
+    "theme_targets": [
+      "duty",
+      "selfhood",
+      "love"
+    ]
+  },
+  "capability_assets": {}
+}

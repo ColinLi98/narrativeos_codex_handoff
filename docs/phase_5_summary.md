@@ -1,0 +1,39 @@
+# Phase 5 Summary
+
+- 新增 `src/narrativeos/eval/learned_baseline.py`
+- 新增 learned evaluator baseline CLI：
+  - `python -m src.narrativeos.eval.learned_baseline`
+- 第一版 learned evaluator 仅做离线 baseline：
+  - 不接线上 gate
+  - 不替换现有 `NarrativeEval`
+- 第二轮 learned layer 已加入并行 inference：
+  - 不接 publish / simulation gate
+  - 只做 rule-vs-learned shadow comparison
+- 第三轮 learned layer 已加入 shadow candidate summary：
+  - 产出 `unavailable / warming_up / candidate / not_ready`
+  - 继续不接 publish / simulation gate
+- 当前 baseline 使用：
+  - `scikit-learn`
+  - `TfidfVectorizer`
+  - `DictVectorizer`
+  - `LogisticRegression`
+  - 单标签时回退 `DummyClassifier`
+- 训练输出 artifact：
+  - `model.joblib`
+  - `label_encoder.json`
+  - `metrics.json`
+  - `feature_manifest.json`
+  - `training_manifest.json`
+- 新增 `src/narrativeos/eval/learned_inference.py`
+- Author simulation 现可返回：
+  - `learned_evaluation_summary`
+- Ops `eval-metrics` 现可返回：
+  - `learned_eval_available`
+  - `learned_rule_agreement_rate`
+  - `top_mismatch_worlds`
+  - `top_mismatch_issue_codes`
+  - `learned_shadow_summary`
+- 当前结论：
+  - NarrativeOS 已从“dataset-ready export”推进到“可训练 + 可并行对照”的 learned evaluator baseline
+  - learned evaluator 现在已有明确的 shadow readiness/status
+  - 但 learned 结果仍然只是 shadow signal，不影响线上 publish / simulation gate

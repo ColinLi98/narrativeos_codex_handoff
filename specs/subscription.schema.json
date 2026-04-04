@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SubscriptionRecord",
+  "type": "object",
+  "required": [
+    "subscription_id",
+    "account_id",
+    "tier_id",
+    "provider",
+    "status"
+  ],
+  "properties": {
+    "subscription_id": {"type": "string"},
+    "account_id": {"type": "string"},
+    "tier_id": {"type": "string"},
+    "provider": {"type": "string"},
+    "provider_ref": {"type": ["string", "null"]},
+    "status": {
+      "type": "string",
+      "enum": ["trialing", "active", "past_due", "paused", "canceled", "expired"]
+    },
+    "period_start": {"type": ["string", "null"]},
+    "period_end": {"type": ["string", "null"]},
+    "cancel_at_period_end": {"type": "boolean"},
+    "created_at": {"type": ["string", "null"]},
+    "updated_at": {"type": ["string", "null"]}
+  }
+}

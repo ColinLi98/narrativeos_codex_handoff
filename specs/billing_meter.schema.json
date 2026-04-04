@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BillingMeterRecord",
+  "type": "object",
+  "required": [
+    "meter_id",
+    "account_id",
+    "world_version_id",
+    "action_type",
+    "usage_units"
+  ],
+  "properties": {
+    "meter_id": {
+      "type": "string"
+    },
+    "account_id": {
+      "type": "string"
+    },
+    "reader_id": {
+      "type": ["string", "null"]
+    },
+    "world_version_id": {
+      "type": "string"
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "chapter_id": {
+      "type": "string"
+    },
+    "action_type": {
+      "type": "string"
+    },
+    "usage_units": {
+      "type": "number"
+    },
+    "estimated_cost": {
+      "type": "number"
+    },
+    "wallet_type": {
+      "type": ["string", "null"]
+    },
+    "subscription_tier": {
+      "type": ["string", "null"]
+    },
+    "provider": {
+      "type": ["string", "null"]
+    },
+    "entitlement_type": {
+      "type": ["string", "null"]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+# Phase 15 Summary
+
+- 新增 Monetization & Entitlements M0 基础层：
+  - `configs/monetization_tiers.json`
+  - `src/narrativeos/services/monetization.py`
+- 持久层扩展：
+  - `subscriptions`
+  - account-aware `entitlements`
+  - wallet-aware `usage_meters`
+- Reader 已新增：
+  - `GET /v1/reader/subscription`
+  - `POST /v1/reader/checkout/start`
+  - `story_credits` gating
+- Author 已新增：
+  - `studio_credits` gating（当前覆盖 `drafts/from-brief` 与 `simulate`）
+- Ops 已新增：
+  - `GET /v1/ops/subscriptions`
+  - `GET /v1/ops/entitlements`
+  - `POST /v1/ops/subscriptions/grant`
+  - `POST /v1/ops/subscriptions/state`
+  - `POST /v1/ops/wallets/grant`
+  - `POST /v1/ops/wallets/debit`
+- 当前结论：
+  - Monetization & Entitlements Track 已作为并行主线进入代码实现
+  - 但它仍然是 web-first stub，不接真实支付，不替代 cross-pack 质量稳定化

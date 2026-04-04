@@ -1,0 +1,22 @@
+# Phase 8 Summary
+
+- 新增 compare builder：
+  - `src/narrativeos/eval/learned_compare.py`
+- 新增 Ops API：
+  - `GET /v1/ops/learned-compare`
+- 当前 `/app` 的 Ops 区新增：
+  - `Shadow Candidate Compare`
+- compare summary 会统一输出：
+  - `evaluator_status`
+  - `reranker_status`
+  - `evaluator_scorecard`
+  - `reranker_scorecard`
+  - `shared_weak_worlds`
+  - `shared_weak_issue_codes`
+  - `disagreement_worlds`
+  - `disagreement_issue_codes`
+  - `preferred_shadow_candidate`
+  - `recommended_next_action`
+- 当前结论：
+  - NarrativeOS 已从 learned dashboard summary，进一步推进到“哪条 learned 线更值得先进入下一阶段”的 compare 层
+  - compare 仍然只用于运营判断，不影响线上 gate

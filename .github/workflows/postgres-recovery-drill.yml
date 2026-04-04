@@ -11,8 +11,8 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
           POSTGRES_DB: narrativeos_integration
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
         options: >-
@@ -44,7 +44,7 @@ jobs:
       - name: Run Postgres recovery integration
         env:
           NARRATIVEOS_POSTGRES_INTEGRATION: "1"
-          NARRATIVEOS_POSTGRES_TEST_URL: "postgresql://postgres:postgres@localhost:5432/narrativeos_integration"
+          NARRATIVEOS_POSTGRES_TEST_URL: "postgresql://postgres@127.0.0.1:5432/narrativeos_integration"
           NARRATIVEOS_PG_DUMP_BIN: "/usr/bin/pg_dump"
           NARRATIVEOS_PG_RESTORE_BIN: "/usr/bin/pg_restore"
           NARRATIVEOS_PSQL_BIN: "/usr/bin/psql"

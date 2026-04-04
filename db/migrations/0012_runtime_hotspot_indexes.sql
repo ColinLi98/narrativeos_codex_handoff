@@ -9,6 +9,20 @@ create index if not exists idx_review_records_asset_type_status_updated_at on re
 create index if not exists idx_review_records_asset_type_asset_id_updated_at on review_records(asset_type, asset_id, updated_at);
 create index if not exists idx_review_records_reviewer_updated_at on review_records(reviewer_id, updated_at);
 
+create table if not exists subscriptions (
+  subscription_id text primary key,
+  account_id text not null,
+  tier_id text not null,
+  provider text not null,
+  provider_ref text,
+  status text not null default 'trialing',
+  period_start timestamptz,
+  period_end timestamptz,
+  cancel_at_period_end text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists idx_subscriptions_account_status_updated_at on subscriptions(account_id, status, updated_at);
 
 create index if not exists idx_usage_meters_account_created_at on usage_meters(account_id, created_at);

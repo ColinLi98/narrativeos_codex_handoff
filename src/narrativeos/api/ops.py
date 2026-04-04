@@ -8,10 +8,27 @@ from pydantic import BaseModel
 
 from ..benchmark.runner import run_benchmark
 from ..persistence.migrations import inspect_schema_lifecycle
+from ..eval.learned_assisted_gate import (
+    build_assisted_gate_summary,
+    save_assisted_gate_config,
+)
+from ..eval.learned_assisted_rerank import (
+    build_assisted_rerank_summary,
+    save_assisted_rerank_config,
+)
 from ..eval.learned_compare import build_learned_compare_summary
+from ..eval.learned_cadence import (
+    build_learned_cadence_summary,
+    build_learned_cadence_track_detail,
+)
 from ..eval.learned_data_impact import build_learned_data_impact_receipt
 from ..eval.learned_data_ops import build_learned_data_ops_summary
 from ..eval.learned_dashboard import build_learned_dashboard_summary
+from ..eval.learned_impact import (
+    build_learned_impact_issue_detail,
+    build_learned_impact_summary,
+    build_learned_impact_world_detail,
+)
 from ..eval.learned_rollout import (
     activate_learned_rollout,
     build_learned_rollout_summary,
@@ -29,6 +46,11 @@ from ..eval.learned_reranker_promotion_workflow import (
     build_reranker_promotion_workflow_summary,
     save_reranker_promotion_decision,
 )
+from ..eval.learned_review_quality import (
+    build_learned_review_quality_summary,
+    build_learned_review_quality_world_detail,
+)
+from ..services.provider_rollout import ProviderRolloutService
 
 class PublishRequest(BaseModel):
     reviewer_id: Optional[str] = None
@@ -58,9 +80,78 @@ class ReviewSampleRequest(BaseModel):
     source_ref: Optional[Dict[str, Any]] = None
 
 
+class PreferenceSampleRequest(BaseModel):
+    preference_id: Optional[str] = None
+    world_id: str
+    world_version_id: str
+    chapter_id: Optional[str] = None
+    session_id: Optional[str] = None
+    reviewer_id: str
+    left_revision_id: str
+    right_revision_id: str
+    preferred_revision_id: str
+    freeform_notes: str
+    linked_issue_codes: Optional[list[str]] = None
+    preference_strength: str = "medium"
+    created_at: Optional[str] = None
+    source: str = "human_preference"
+
+
+class RankingSampleRequest(BaseModel):
+    ranking_id: Optional[str] = None
+    world_id: str
+    world_version_id: str
+    chapter_id: Optional[str] = None
+    session_id: Optional[str] = None
+    reviewer_id: str
+    ranked_revision_ids: list[str]
+    freeform_notes: str
+    linked_issue_codes: Optional[list[str]] = None
+    created_at: Optional[str] = None
+    source: str = "human_ranking"
+
+
 class LearnedPromotionDecisionRequest(BaseModel):
     reviewer_id: str
     reason: str
+
+
+class LearnedAssistedGateConfigRequest(BaseModel):
+    reviewer_id: str
+    reason: str
+    enabled: bool = False
+    mode: str = "shadow_only"
+    bucket_percentage: int = 0
+    confidence_threshold: float = 0.9
+    min_example_count: int = 3
+    min_high_confidence_blocks: int = 2
+    required_block_share: float = 0.5
+    world_allowlist: list[str] = []
+
+
+class LearnedAssistedRerankConfigRequest(BaseModel):
+    reviewer_id: str
+    reason: str
+    enabled: bool = False
+    mode: str = "shadow_only"
+    bucket_percentage: int = 0
+    confidence_threshold: float = 0.65
+    candidate_window: int = 3
+    max_score_gap: float = 0.08
+    world_allowlist: list[str] = []
+
+
+class ProviderRolloutDecisionRequest(BaseModel):
+    reviewer_id: str
+    reason: str
+    bucket_percentage: int = 0
+    world_allowlist: list[str] = []
+
+
+class DataIntegrityRepairRequest(BaseModel):
+    apply: bool = False
+    actions: list[str] = []
+    limit: int = 20
 
 
 class SubscriptionGrantRequest(BaseModel):
@@ -209,6 +300,29 @@ class RuntimeRestoreRequest(BaseModel):
     dry_run: bool = False
 
 
+class RuntimeRestoreCreateRequest(BaseModel):
+    backup_path: str
+    reason: str
+
+
+class RuntimeRestoreApproveRequest(BaseModel):
+    reason: str
+
+
+class RuntimeRestoreRevokeRequest(BaseModel):
+    reason: str
+
+
+class RuntimeRecoveryDrillRequest(BaseModel):
+    backup_path: Optional[str] = None
+    output_dir: Optional[str] = None
+
+
+class AsyncRuntimeRestoreJobRequest(BaseModel):
+    request_id: str
+    account_id: Optional[str] = None
+
+
 class AsyncLearnedTrainingJobRequest(BaseModel):
     tracks: list[str] = ["evaluator", "reranker"]
     world_id: Optional[str] = None
@@ -352,6 +466,40 @@ def _require_ops_reviewer(request: Request, fallback_reviewer_id: Optional[str] 
     return actor
 
 
+def _require_ops_roles(
+    request: Request,
+    *,
+    allowed_roles: set[str],
+    fallback_actor_id: Optional[str] = None,
+    missing_reason: str = "ops_identity_required",
+    forbidden_reason: str = "ops_role_forbidden",
+) -> Dict[str, Optional[str]]:
+    actor = _ops_actor(request, fallback_actor_id)
+    if not actor["actor_id"]:
+        raise HTTPException(status_code=403, detail={"code": "ops_actor_missing", "reason": missing_reason})
+    if str(actor["actor_role"] or "") not in allowed_roles:
+        raise HTTPException(status_code=403, detail={"code": "ops_actor_forbidden", "reason": forbidden_reason})
+    return actor
+
+
+def _require_restore_requester(request: Request) -> Dict[str, Optional[str]]:
+    return _require_ops_roles(
+        request,
+        allowed_roles={"reviewer", "ops", "admin"},
+        missing_reason="restore_requester_identity_required",
+        forbidden_reason="restore_requester_role_forbidden",
+    )
+
+
+def _require_restore_admin(request: Request) -> Dict[str, Optional[str]]:
+    return _require_ops_roles(
+        request,
+        allowed_roles={"admin"},
+        missing_reason="restore_admin_identity_required",
+        forbidden_reason="restore_admin_required",
+    )
+
+
 @router.get("/review-queue")
 def review_queue(request: Request) -> Dict[str, Any]:
     return {"reviews": request.app.state.review_service.queue()}
@@ -422,6 +570,20 @@ def schema_lifecycle(request: Request) -> Dict[str, Any]:
     return inspect_schema_lifecycle(request.app.state.repository.engine)
 
 
+@router.get("/data-integrity")
+def data_integrity(limit: int = 20, request: Request = None) -> Dict[str, Any]:
+    return request.app.state.data_integrity_service.build_summary(limit=limit)
+
+
+@router.post("/data-integrity/repair")
+def repair_data_integrity(payload: DataIntegrityRepairRequest, request: Request) -> Dict[str, Any]:
+    return request.app.state.data_integrity_service.run_repair(
+        actions=list(payload.actions or []),
+        apply=payload.apply,
+        limit=payload.limit,
+    )
+
+
 @router.get("/runtime-receipts")
 def runtime_receipts(
     request: Request,
@@ -449,6 +611,92 @@ def runtime_incident_snapshot(
     return request.app.state.observability_service.runtime_incident_snapshot(
         account_id=account_id,
         limit=limit,
+    )
+
+
+@router.get("/provider-routing")
+def provider_routing_policy(
+    request: Request,
+) -> Dict[str, Any]:
+    return request.app.state.provider_routing_service.policy_summary()
+
+
+@router.get("/provider-rollout")
+def provider_rollout_summary(
+    request: Request,
+) -> Dict[str, Any]:
+    return request.app.state.provider_rollout_service.summary(
+        candidate_backend_present=request.app.state.candidate_backend is not None,
+        renderer_backend_present=request.app.state.renderer_backend is not None,
+    )
+
+
+@router.post("/provider-rollout/{track}/canary")
+def provider_rollout_canary(
+    track: str,
+    payload: ProviderRolloutDecisionRequest,
+    request: Request,
+) -> Dict[str, Any]:
+    try:
+        request.app.state.provider_rollout_service.save_track_decision(
+            track=track,
+            reviewer_id=payload.reviewer_id,
+            reason=payload.reason,
+            rollout_status="canary",
+            bucket_percentage=payload.bucket_percentage,
+            world_allowlist=payload.world_allowlist,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return request.app.state.provider_rollout_service.summary(
+        candidate_backend_present=request.app.state.candidate_backend is not None,
+        renderer_backend_present=request.app.state.renderer_backend is not None,
+    )
+
+
+@router.post("/provider-rollout/{track}/activate")
+def provider_rollout_activate(
+    track: str,
+    payload: ProviderRolloutDecisionRequest,
+    request: Request,
+) -> Dict[str, Any]:
+    try:
+        request.app.state.provider_rollout_service.save_track_decision(
+            track=track,
+            reviewer_id=payload.reviewer_id,
+            reason=payload.reason,
+            rollout_status="active",
+            bucket_percentage=0,
+            world_allowlist=payload.world_allowlist,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return request.app.state.provider_rollout_service.summary(
+        candidate_backend_present=request.app.state.candidate_backend is not None,
+        renderer_backend_present=request.app.state.renderer_backend is not None,
+    )
+
+
+@router.post("/provider-rollout/{track}/rollback")
+def provider_rollout_rollback(
+    track: str,
+    payload: ProviderRolloutDecisionRequest,
+    request: Request,
+) -> Dict[str, Any]:
+    try:
+        request.app.state.provider_rollout_service.save_track_decision(
+            track=track,
+            reviewer_id=payload.reviewer_id,
+            reason=payload.reason,
+            rollout_status="rolled_back",
+            bucket_percentage=0,
+            world_allowlist=[],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return request.app.state.provider_rollout_service.summary(
+        candidate_backend_present=request.app.state.candidate_backend is not None,
+        renderer_backend_present=request.app.state.renderer_backend is not None,
     )
 
 
@@ -855,6 +1103,112 @@ def preflight_verification_bundle(request: Request, account_id: Optional[str] = 
 @router.get("/incident-playbook")
 def incident_playbook(request: Request, account_id: Optional[str] = None) -> Dict[str, Any]:
     return request.app.state.runtime_ops_service.build_incident_playbook(account_id=account_id)
+
+
+@router.get("/recovery-drills")
+def recovery_drills(request: Request) -> Dict[str, Any]:
+    return {"recovery_drills": request.app.state.runtime_ops_service.list_recovery_drills(limit=10)}
+
+
+@router.get("/runtime-restore-requests")
+def runtime_restore_requests(request: Request, limit: int = 20) -> Dict[str, Any]:
+    return {"restore_requests": request.app.state.runtime_ops_service.list_restore_requests(limit=limit)}
+
+
+@router.post("/runtime-restore/request")
+def request_runtime_restore(payload: RuntimeRestoreCreateRequest, request: Request) -> Dict[str, Any]:
+    try:
+        actor = _require_restore_requester(request)
+        restore_request = request.app.state.runtime_ops_service.request_restore(
+            backup_path=payload.backup_path,
+            requested_by=str(actor["actor_id"]),
+            reason=payload.reason,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"restore_request": restore_request}
+
+
+@router.post("/runtime-restore/{request_id}/approve")
+def approve_runtime_restore(request_id: str, payload: RuntimeRestoreApproveRequest, request: Request) -> Dict[str, Any]:
+    try:
+        actor = _require_restore_admin(request)
+        restore_request = request.app.state.runtime_ops_service.approve_restore_request(
+            request_id=request_id,
+            approver_id=str(actor["actor_id"]),
+            reason=payload.reason,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"restore_request": restore_request}
+
+
+@router.post("/runtime-restore/{request_id}/revoke")
+def revoke_runtime_restore(request_id: str, payload: RuntimeRestoreRevokeRequest, request: Request) -> Dict[str, Any]:
+    try:
+        actor = _require_restore_admin(request)
+        restore_request = request.app.state.runtime_ops_service.revoke_restore_request(
+            request_id=request_id,
+            reviewer_id=str(actor["actor_id"]),
+            reason=payload.reason,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"restore_request": restore_request}
+
+
+@router.post("/recovery-drill")
+def recovery_drill(payload: RuntimeRecoveryDrillRequest, request: Request) -> Dict[str, Any]:
+    result = request.app.state.runtime_ops_service.run_recovery_drill(
+        backup_path=payload.backup_path,
+        output_dir=payload.output_dir,
+    )
+    request.app.state.analytics_service.track(
+        "runtime_recovery_drill_ran",
+        payload_json=result,
+    )
+    return {"recovery_drill": result}
+
+
+@router.post("/jobs/runtime-restores")
+def enqueue_runtime_restore_job(
+    payload: AsyncRuntimeRestoreJobRequest,
+    background_tasks: BackgroundTasks,
+    request: Request,
+) -> Dict[str, Any]:
+    try:
+        actor = _require_restore_admin(request)
+        job = request.app.state.async_job_service.enqueue_job(
+            job_type="runtime_restore",
+            payload={
+                "request_id": payload.request_id,
+                "requested_by": str(actor["actor_id"]),
+            },
+            requested_by=str(actor["actor_id"]),
+            account_id=payload.account_id,
+            schedule=background_tasks.add_task,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"job": job}
 
 
 @router.post("/runtime-backups")
@@ -1707,6 +2061,72 @@ def list_review_samples(
     }
 
 
+@router.post("/preference-samples")
+def create_preference_sample(payload: PreferenceSampleRequest, request: Request) -> Dict[str, Any]:
+    try:
+        sample = request.app.state.training_signal_service.save_preference_sample(payload.model_dump())
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"preference_sample": sample}
+
+
+@router.get("/preference-samples")
+def list_preference_samples(
+    request: Request,
+    world_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    reviewer_id: Optional[str] = None,
+    since: Optional[str] = None,
+    cursor: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    return {
+        "preference_samples": request.app.state.training_signal_service.list_preference_samples(
+            world_id=world_id,
+            world_version_id=world_version_id,
+            reviewer_id=reviewer_id,
+            since=since,
+            cursor=cursor,
+            limit=limit,
+        )
+    }
+
+
+@router.post("/ranking-samples")
+def create_ranking_sample(payload: RankingSampleRequest, request: Request) -> Dict[str, Any]:
+    try:
+        sample = request.app.state.training_signal_service.save_ranking_sample(payload.model_dump())
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"ranking_sample": sample}
+
+
+@router.get("/ranking-samples")
+def list_ranking_samples(
+    request: Request,
+    world_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    reviewer_id: Optional[str] = None,
+    since: Optional[str] = None,
+    cursor: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    return {
+        "ranking_samples": request.app.state.training_signal_service.list_ranking_samples(
+            world_id=world_id,
+            world_version_id=world_version_id,
+            reviewer_id=reviewer_id,
+            since=since,
+            cursor=cursor,
+            limit=limit,
+        )
+    }
+
+
 @router.get("/review-sample-backlog")
 def review_sample_backlog(
     request: Request,
@@ -1772,6 +2192,217 @@ def learned_data_ops(
         world_version_id=world_version_id,
         limit=limit,
     )
+
+
+@router.get("/learned-review-quality")
+def learned_review_quality(
+    request: Request,
+    world_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    return build_learned_review_quality_summary(
+        repository=request.app.state.repository,
+        world_id=world_id,
+        world_version_id=world_version_id,
+        limit=limit,
+    )
+
+
+@router.get("/learned-review-quality/worlds/{world_id}")
+def learned_review_quality_world_detail(
+    world_id: str,
+    request: Request,
+    world_version_id: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    try:
+        return build_learned_review_quality_world_detail(
+            repository=request.app.state.repository,
+            world_id=world_id,
+            world_version_id=world_version_id,
+            limit=limit,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/learned-impact")
+def learned_impact(
+    request: Request,
+    world_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    track: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    try:
+        return build_learned_impact_summary(
+            repository=request.app.state.repository,
+            world_id=world_id,
+            world_version_id=world_version_id,
+            track=track,
+            limit=limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/learned-impact/worlds/{world_id}")
+def learned_impact_world_detail(
+    world_id: str,
+    request: Request,
+    world_version_id: Optional[str] = None,
+    track: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    try:
+        return build_learned_impact_world_detail(
+            repository=request.app.state.repository,
+            world_id=world_id,
+            world_version_id=world_version_id,
+            track=track,
+            limit=limit,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/learned-impact/issues/{issue_code}")
+def learned_impact_issue_detail(
+    issue_code: str,
+    request: Request,
+    world_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    track: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    try:
+        return build_learned_impact_issue_detail(
+            repository=request.app.state.repository,
+            issue_code=issue_code,
+            world_id=world_id,
+            world_version_id=world_version_id,
+            track=track,
+            limit=limit,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/learned-assisted-gate")
+def learned_assisted_gate(
+    request: Request,
+    limit: int = 20,
+) -> Dict[str, Any]:
+    return build_assisted_gate_summary(
+        repository=request.app.state.repository,
+        limit=limit,
+    )
+
+
+@router.post("/learned-assisted-gate/configure")
+def configure_learned_assisted_gate(
+    payload: LearnedAssistedGateConfigRequest,
+    request: Request,
+) -> Dict[str, Any]:
+    try:
+        save_assisted_gate_config(
+            repository=request.app.state.repository,
+            reviewer_id=payload.reviewer_id,
+            reason=payload.reason,
+            enabled=payload.enabled,
+            mode=payload.mode,
+            bucket_percentage=payload.bucket_percentage,
+            confidence_threshold=payload.confidence_threshold,
+            min_example_count=payload.min_example_count,
+            min_high_confidence_blocks=payload.min_high_confidence_blocks,
+            required_block_share=payload.required_block_share,
+            world_allowlist=payload.world_allowlist,
+        )
+        return build_assisted_gate_summary(
+            repository=request.app.state.repository,
+            limit=20,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/learned-assisted-rerank")
+def learned_assisted_rerank(
+    request: Request,
+    limit: int = 20,
+) -> Dict[str, Any]:
+    return build_assisted_rerank_summary(
+        repository=request.app.state.repository,
+        limit=limit,
+    )
+
+
+@router.post("/learned-assisted-rerank/configure")
+def configure_learned_assisted_rerank(
+    payload: LearnedAssistedRerankConfigRequest,
+    request: Request,
+) -> Dict[str, Any]:
+    try:
+        save_assisted_rerank_config(
+            repository=request.app.state.repository,
+            reviewer_id=payload.reviewer_id,
+            reason=payload.reason,
+            enabled=payload.enabled,
+            mode=payload.mode,
+            bucket_percentage=payload.bucket_percentage,
+            confidence_threshold=payload.confidence_threshold,
+            candidate_window=payload.candidate_window,
+            max_score_gap=payload.max_score_gap,
+            world_allowlist=payload.world_allowlist,
+        )
+        return build_assisted_rerank_summary(
+            repository=request.app.state.repository,
+            limit=20,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/learned-cadence")
+def learned_cadence(
+    request: Request,
+    world_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    return build_learned_cadence_summary(
+        repository=request.app.state.repository,
+        world_id=world_id,
+        world_version_id=world_version_id,
+        limit=limit,
+    )
+
+
+@router.get("/learned-cadence/{track}")
+def learned_cadence_track_detail(
+    track: str,
+    request: Request,
+    world_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    try:
+        return build_learned_cadence_track_detail(
+            repository=request.app.state.repository,
+            track=track,
+            world_id=world_id,
+            world_version_id=world_version_id,
+            limit=limit,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/learned-promotion")

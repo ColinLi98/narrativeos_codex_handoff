@@ -15,8 +15,12 @@ dependencies = [
   "pyyaml>=6.0",
   "jsonschema>=4.0",
   "sqlalchemy>=2.0",
+  "alembic>=1.14",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+  "integration: real external or service-backed integration checks that are env-gated",
+]

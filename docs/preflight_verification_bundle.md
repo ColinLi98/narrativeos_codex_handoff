@@ -9,6 +9,7 @@ It combines:
 - deployment health gate
 - deployment runbook
 - incident playbook
+- restore verification steps
 - recommended verification commands
 
 ## Current checks
@@ -16,6 +17,8 @@ It combines:
 - database connectivity
 - schema lifecycle state
 - recent backup availability / freshness
+- restore readiness
+- Postgres operator tooling readiness
 - runtime incident pressure
 
 ## Expected usage

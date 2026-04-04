@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 import json
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -20,7 +21,6 @@ from ..eval.learned_shadow import default_learned_shadow_service
 from ..eval.learned_reranker_shadow import default_learned_reranker_shadow_service
 from ..models import EventAtom, NarrativeState, StepRecord, WorldBible, WorldRecord
 from ..pipeline import plan_next_turn_from_events
-from ..providers import LLMCandidateProvider, StaticCandidateProvider, build_llm_backend_from_env
 from ..eval.learned_inference import LearnedInferenceService, default_learned_artifact_dir
 from ..services.analytics import AnalyticsService
 from ..services.auth import AuthService
@@ -32,6 +32,7 @@ from ..services.async_job_adapters import (
 from ..services.async_jobs import AsyncJobService
 from ..services.authoring import AuthoringService
 from ..services.billing import BillingService
+from ..services.data_integrity import DataIntegrityService
 from ..services.governance import GovernanceService
 from ..services.intent_prefill import IntentPrefillService
 from ..services.monetization import MonetizationService
@@ -41,6 +42,8 @@ from ..services.ops_alerting import OpsAlertingService
 from ..services.ops_account_workspace import OpsAccountWorkspaceService
 from ..services.ops_release_workspace import OpsReleaseWorkspaceService
 from ..services.ops_navigation import OpsNavigationService
+from ..services.provider_routing import ProviderRoutingService
+from ..services.provider_rollout import ProviderRolloutService
 from ..services.review import ReviewService
 from ..services.runtime_ops import RuntimeOpsService
 from ..services.sessions import SessionService
@@ -128,7 +131,10 @@ def create_app(
     repository: Optional[SQLAlchemyRepository] = None,
     intent_parser: Optional[SimpleIntentParser] = None,
     renderer: Optional[TemplateRenderer] = None,
+    candidate_backend: Any = None,
+    renderer_backend: Any = None,
     llm_backend: Any = None,
+    provider_routing_service: Optional[ProviderRoutingService] = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -142,8 +148,18 @@ def create_app(
     app.state.base_dir = BASE_DIR
     app.state.repository = repository or SQLAlchemyRepository()
     app.state.intent_parser = intent_parser or SimpleIntentParser()
-    app.state.renderer = renderer or TemplateRenderer()
-    app.state.llm_backend = llm_backend or build_llm_backend_from_env()
+    app.state.provider_rollout_service = ProviderRolloutService(app.state.repository)
+    app.state.provider_routing_service = provider_routing_service or ProviderRoutingService.from_env(
+        rollout_service=app.state.provider_rollout_service,
+        candidate_backend=candidate_backend,
+        renderer_backend=renderer_backend,
+        shared_backend=llm_backend,
+        fallback_renderer=renderer or TemplateRenderer(),
+    )
+    app.state.candidate_backend = app.state.provider_routing_service.candidate_backend
+    app.state.renderer_backend = app.state.provider_routing_service.renderer_backend
+    app.state.llm_backend = app.state.candidate_backend
+    app.state.renderer = app.state.provider_routing_service.build_renderer()
     app.state.world_registry = FileSystemWorldRegistry()
     app.state.monetization_service = MonetizationService(app.state.repository, base_dir=BASE_DIR)
     app.state.billing_service = BillingService(
@@ -158,6 +174,7 @@ def create_app(
         observability_service=app.state.observability_service,
         base_dir=BASE_DIR,
     )
+    app.state.data_integrity_service = DataIntegrityService(app.state.repository)
     app.state.async_remote_shipping_registry = build_remote_shipping_registry(BASE_DIR)
     app.state.async_notification_sink_registry = build_notification_sink_registry(BASE_DIR)
     app.state.async_job_service = AsyncJobService(
@@ -167,6 +184,7 @@ def create_app(
         remote_shipping_registry=app.state.async_remote_shipping_registry,
         notification_sink_registry=app.state.async_notification_sink_registry,
     )
+    app.state.runtime_ops_service.async_job_service = app.state.async_job_service
     app.state.review_service = ReviewService(app.state.repository, analytics_service=app.state.analytics_service)
     app.state.governance_service = GovernanceService(
         app.state.repository,
@@ -220,6 +238,8 @@ def create_app(
         learned_inference_service=app.state.learned_inference_service,
         learned_shadow_service=app.state.learned_shadow_service,
         billing_service=app.state.billing_service,
+        provider_routing_service=app.state.provider_routing_service,
+        observability_service=app.state.observability_service,
     )
     app.state.author_collaboration_service = AuthorCollaborationService(
         app.state.repository,
@@ -233,6 +253,7 @@ def create_app(
         billing_service=app.state.billing_service,
         analytics_service=app.state.analytics_service,
         observability_service=app.state.observability_service,
+        provider_routing_service=app.state.provider_routing_service,
     )
 
     def _run_learned_training_job(job: Dict[str, Any]) -> Dict[str, Any]:
@@ -265,6 +286,8 @@ def create_app(
             label=payload.get("label"),
             output_dir=payload.get("output_dir"),
             dry_run=bool(payload.get("dry_run")),
+            execute_postgres=True,
+            job_id=job.get("job_id"),
         )
         app.state.async_job_service.heartbeat_job(job["job_id"], requested_by="runtime_backup_runner")
         app.state.analytics_service.track(
@@ -277,8 +300,28 @@ def create_app(
         )
         return result
 
+    def _run_runtime_restore_job(job: Dict[str, Any]) -> Dict[str, Any]:
+        payload = dict(job.get("payload") or {})
+        app.state.async_job_service.heartbeat_job(job["job_id"], requested_by="runtime_restore_runner")
+        result = app.state.runtime_ops_service.execute_restore_request(
+            request_id=str(payload.get("request_id") or ""),
+            job_id=job.get("job_id"),
+            requested_by=payload.get("requested_by") or job.get("requested_by"),
+        )
+        app.state.async_job_service.heartbeat_job(job["job_id"], requested_by="runtime_restore_runner")
+        app.state.analytics_service.track(
+            "runtime_restore_executed" if result.get("_job_status_override") != "failed" else "runtime_restore_failed",
+            account_id=job.get("account_id"),
+            payload_json={
+                **result,
+                "job_id": job.get("job_id"),
+            },
+        )
+        return result
+
     app.state.async_job_service.register_runner("learned_training", _run_learned_training_job)
     app.state.async_job_service.register_runner("runtime_backup", _run_runtime_backup_job)
+    app.state.async_job_service.register_runner("runtime_restore", _run_runtime_restore_job)
     app.state.async_job_boot_reconcile = None
 
     app.mount("/assets", StaticFiles(directory=WEB_DIR), name="assets")
@@ -456,7 +499,10 @@ def create_app(
             world=world,
             beam_width=payload.beam_width,
             depth=payload.depth,
-            renderer=app.state.renderer,
+            renderer=app.state.provider_routing_service.build_renderer(
+                surface="route_preview",
+                world_id=world.world_id,
+            ),
             debug=True,
         )
 
@@ -528,31 +574,50 @@ def create_app(
 
         if payload.candidate_events:
             candidate_events = [EventAtom.from_dict(item) for item in payload.candidate_events]
+            started = perf_counter()
             result = plan_next_turn_from_events(
                 state_before,
                 candidate_events,
                 world=world_record.world,
                 beam_width=payload.beam_width,
                 depth=payload.depth,
-                renderer=app.state.renderer,
+                renderer=app.state.provider_routing_service.build_renderer(
+                    surface="session_api",
+                    account_id=app.state.billing_service.resolve_account_id(reader_id=reader_id),
+                    session_id=session_id,
+                    world_id=world_record.world.world_id,
+                    world_version_id=session_record.metadata.get("world_version_id"),
+                ),
                 debug=True,
             )
         else:
-            static_provider = StaticCandidateProvider(world_record.event_atoms)
-            provider = static_provider
-            if app.state.llm_backend is not None:
-                provider = LLMCandidateProvider(app.state.llm_backend, static_provider)
+            provider = app.state.provider_routing_service.build_candidate_provider(
+                world_record.event_atoms,
+                surface="session_api",
+                account_id=app.state.billing_service.resolve_account_id(reader_id=reader_id),
+                session_id=session_id,
+                world_id=world_record.world.world_id,
+                world_version_id=session_record.metadata.get("world_version_id"),
+            )
             from ..pipeline import plan_next_turn
 
+            started = perf_counter()
             result = plan_next_turn(
                 state_before,
                 world=world_record.world,
                 candidate_provider=provider,
                 beam_width=payload.beam_width,
                 depth=payload.depth,
-                renderer=app.state.renderer,
+                renderer=app.state.provider_routing_service.build_renderer(
+                    surface="session_api",
+                    account_id=app.state.billing_service.resolve_account_id(reader_id=reader_id),
+                    session_id=session_id,
+                    world_id=world_record.world.world_id,
+                    world_version_id=session_record.metadata.get("world_version_id"),
+                ),
                 debug=True,
             )
+        runtime_latency_ms = round((perf_counter() - started) * 1000.0, 3)
 
         chosen_event = EventAtom.from_dict(result["chosen_event"]) if result.get("chosen_event") else None
         state_after = (
@@ -646,6 +711,7 @@ def create_app(
                 rendered_scene=result.get("rendered_scene"),
                 reader_view=result.get("reader_view"),
                 estimated_cost=round(max(1, len(result["reader_view"]["body"])) / 1200.0, 3),
+                runtime_latency_ms=runtime_latency_ms,
             )
         else:
             app.state.observability_service.record_runtime_receipt(
@@ -661,6 +727,7 @@ def create_app(
                 rendered_scene=result.get("rendered_scene"),
                 reader_view=result.get("reader_view"),
                 estimated_cost=0.0,
+                runtime_latency_ms=runtime_latency_ms,
             )
         base_response = {
             "status": result["status"],

@@ -79,6 +79,39 @@ def test_schema_fingerprints_match_repo_schema_and_migrations():
     assert schema_file_fingerprint(POSTGRES_SCHEMA_PATH) == migrations_fingerprint(MIGRATIONS_DIR)
 
 
+def test_repo_alembic_scaffold_is_discoverable_and_stampable(tmp_path: Path):
+    from sqlalchemy import create_engine
+
+    from src.narrativeos.persistence.migrations import (
+        ALEMBIC_INI_PATH,
+        ALEMBIC_SCRIPT_LOCATION,
+        alembic_history,
+        inspect_alembic_state,
+        stamp_alembic_head,
+    )
+
+    assert ALEMBIC_INI_PATH.exists()
+    assert ALEMBIC_SCRIPT_LOCATION.exists()
+
+    history = alembic_history()
+    assert history["enabled"] is True
+    assert history["head_revision"] == "20260404_0012"
+    assert history["history"]
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'alembic_lifecycle.db'}", future=True)
+    before = inspect_alembic_state(engine)
+    assert before["head_revision"] == "20260404_0012"
+    assert before["status"] == "not_stamped"
+
+    stamped = stamp_alembic_head(str(engine.url))
+    assert stamped["enabled"] is True
+    assert stamped["target_revision"] == "20260404_0012"
+
+    after = inspect_alembic_state(engine)
+    assert after["status"] == "at_head"
+    assert after["current_revision"] == "20260404_0012"
+
+
 def test_schema_lifecycle_can_report_pending_and_apply_temp_migrations(tmp_path: Path):
     from sqlalchemy import create_engine
 
@@ -100,6 +133,7 @@ def test_schema_lifecycle_can_report_pending_and_apply_temp_migrations(tmp_path:
     before = inspect_schema_lifecycle(engine, migrations_dir=migrations_dir, schema_path=schema_path)
     assert before["status"] == "pending_migrations"
     assert before["pending_versions"] == ["0001_init"]
+    assert "alembic" in before
 
     dry_run = bootstrap_schema_lifecycle(engine, migrations_dir=migrations_dir, schema_path=schema_path, apply=False)
     assert dry_run["dry_run"] is True

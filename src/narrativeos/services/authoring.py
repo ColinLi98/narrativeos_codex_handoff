@@ -4,6 +4,7 @@ import copy
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
@@ -16,8 +17,12 @@ from ..eval.service import evaluate_chapter
 from ..eval.taxonomy import ISSUE_TAXONOMY
 from ..models import NarrativeState
 from ..persistence.repositories import SQLAlchemyPlatformRepository
-from ..pipeline import plan_next_turn_from_events
+from ..pipeline import plan_next_turn
+from ..providers import StaticCandidateProvider
+from ..rendering import TemplateRenderer
 from .billing import BillingService
+from .observability import ObservabilityService
+from .provider_routing import ProviderRoutingService
 from .training_signal import TrainingSignalService
 from ..worldpacks.models import WorldPack, WorldVersion
 from ..worldpacks.registry import FileSystemWorldRegistry
@@ -33,6 +38,8 @@ class AuthoringService:
         learned_inference_service: Optional[LearnedInferenceService] = None,
         learned_shadow_service: Optional[LearnedShadowService] = None,
         billing_service: Optional[BillingService] = None,
+        provider_routing_service: Optional[ProviderRoutingService] = None,
+        observability_service: Optional[ObservabilityService] = None,
     ) -> None:
         self.repository = repository
         self.registry = registry or FileSystemWorldRegistry()
@@ -44,6 +51,8 @@ class AuthoringService:
             default_learned_artifact_dir(self.base_dir),
             learned_inference_service=self.learned_inference,
         )
+        self.provider_routing = provider_routing_service
+        self.observability = observability_service
 
     def _normalize_change_context(self, change_context: Optional[Dict[str, Any]], *, default_source: str, default_label: str) -> Dict[str, str]:
         payload = dict(change_context or {})
@@ -1221,7 +1230,38 @@ class AuthoringService:
         stop_reason = "chapter_budget_reached"
 
         for _ in range(max_chapters):
-            result = plan_next_turn_from_events(state, runtime.event_atoms, world=runtime.world_record.world, debug=True)
+            candidate_provider = (
+                self.provider_routing.build_candidate_provider(
+                    runtime.event_atoms,
+                    surface="authoring_simulation",
+                    account_id=str((version.worldpack_json or {}).get("manifest", {}).get("author_id") or "") or None,
+                    session_id="simulation:%s" % version.world_id,
+                    world_id=runtime.worldpack.world_id,
+                    world_version_id=world_version_id,
+                )
+                if self.provider_routing
+                else StaticCandidateProvider(runtime.event_atoms)
+            )
+            active_renderer = (
+                self.provider_routing.build_renderer(
+                    surface="authoring_simulation",
+                    account_id=str((version.worldpack_json or {}).get("manifest", {}).get("author_id") or "") or None,
+                    session_id="simulation:%s" % version.world_id,
+                    world_id=runtime.worldpack.world_id,
+                    world_version_id=world_version_id,
+                )
+                if self.provider_routing
+                else TemplateRenderer()
+            )
+            started = perf_counter()
+            result = plan_next_turn(
+                state,
+                world=runtime.world_record.world,
+                candidate_provider=candidate_provider,
+                renderer=active_renderer,
+                debug=True,
+            )
+            runtime_latency_ms = round((perf_counter() - started) * 1000.0, 3)
             if result["status"] != "ok":
                 stop_reason = str(result.get("status", "stopped"))
                 break
@@ -1264,8 +1304,28 @@ class AuthoringService:
                     "quality_pass_applied": bool(draft_metadata.get("quality_pass_applied", False)),
                     "quality_pass_actions": list(draft_metadata.get("quality_pass_actions", [])),
                     "critic_signal_count": len(result.get("critic_trace") or []),
+                    "candidate_backend_routing": dict((result.get("candidate_batch") or {}).get("debug", {}).get("backend_routing") or {}),
+                    "renderer_backend_routing": dict((result.get("rendered_scene") or {}).get("debug", {}).get("backend_routing") or {}),
                 }
             )
+            if self.observability is not None:
+                manifest = dict((version.worldpack_json or {}).get("manifest", {}))
+                author_account_id = str(manifest.get("author_id") or "") or None
+                self.observability.record_runtime_receipt(
+                    surface="authoring_simulation",
+                    action="run_simulation",
+                    response_status="ok",
+                    world_id=runtime.worldpack.world_id,
+                    world_version_id=world_version_id,
+                    session_id="simulation:%s" % version.world_id,
+                    account_id=author_account_id,
+                    reader_id=author_account_id,
+                    candidate_batch=result.get("candidate_batch"),
+                    rendered_scene=result.get("rendered_scene"),
+                    reader_view=result.get("reader_view"),
+                    estimated_cost=round(max(1, len(result["reader_view"]["body"])) / 1200.0, 3),
+                    runtime_latency_ms=runtime_latency_ms,
+                )
 
         aggregate = aggregate_reports(reports)
         simulation_report = {

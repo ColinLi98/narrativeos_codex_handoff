@@ -1058,6 +1058,68 @@
             <div id="ops-learned-dashboard" class="list-stack empty-state">这里会显示 evaluator / reranker 的统一 learned summary。</div>
             <section class="panel panel-subtle">
               <div class="panel-head">
+                <p class="panel-label">Learned Impact</p>
+                <h3>继续读 / 付费代理指标相关性</h3>
+              </div>
+              <div id="ops-learned-impact" class="list-stack empty-state">这里会显示 evaluator / reranker 的 learned impact summary、retention proxy 与 monetization proxy。</div>
+            </section>
+            <section class="panel panel-subtle">
+              <div class="panel-head">
+                <p class="panel-label">Learned Cadence</p>
+                <h3>训练 / 验证 / 晋升节奏</h3>
+              </div>
+              <div id="ops-learned-cadence" class="list-stack empty-state">这里会显示 evaluator / reranker 当前处于 collect data、train、validate、promotion 还是 activate 阶段。</div>
+            </section>
+            <section class="panel panel-subtle">
+              <div class="panel-head">
+                <p class="panel-label">Assisted Gate Experiment</p>
+                <h3>shadow -> assisted gate 受控实验</h3>
+              </div>
+              <div id="ops-learned-assisted-gate" class="list-stack empty-state">这里会显示 assisted gate experiment 的 config、guardrails、recent decisions 与 rollback 条件。</div>
+              <label class="input-label" for="ops-assisted-gate-reviewer-id">Reviewer ID</label>
+              <input id="ops-assisted-gate-reviewer-id" class="field-input" type="text" value="ops_web" />
+              <label class="input-label" for="ops-assisted-gate-reason">Reason</label>
+              <textarea id="ops-assisted-gate-reason" class="field-input" rows="3" placeholder="说明为什么启用或关闭 assisted gate experiment。"></textarea>
+              <label class="input-label" for="ops-assisted-gate-bucket">Bucket Percentage</label>
+              <input id="ops-assisted-gate-bucket" class="field-input" type="number" min="0" max="100" value="10" />
+              <label class="input-label" for="ops-assisted-gate-confidence">Confidence Threshold</label>
+              <input id="ops-assisted-gate-confidence" class="field-input" type="number" min="0" max="1" step="0.05" value="0.90" />
+              <label class="input-label" for="ops-assisted-gate-world-allowlist">World Allowlist</label>
+              <textarea id="ops-assisted-gate-world-allowlist" class="field-input" rows="2" placeholder="urban_mystery_lotus_lane, jade_court_romance"></textarea>
+              <div class="composer-actions">
+                <button id="ops-set-assisted-shadow" class="ghost-action">Save Shadow Only</button>
+                <button id="ops-set-assisted-active" class="primary-action">Enable Assisted Gate</button>
+                <button id="ops-disable-assisted-gate" class="ghost-action">Disable Experiment</button>
+              </div>
+            </section>
+            <section class="panel panel-subtle">
+              <div class="panel-head">
+                <p class="panel-label">Assisted Rerank Experiment</p>
+                <h3>shadow -> assisted rerank 受控实验</h3>
+              </div>
+              <div id="ops-learned-assisted-rerank" class="list-stack empty-state">这里会显示 assisted rerank experiment 的 config、guardrails、recent decisions 与 rollback 条件。</div>
+              <label class="input-label" for="ops-assisted-rerank-reviewer-id">Reviewer ID</label>
+              <input id="ops-assisted-rerank-reviewer-id" class="field-input" type="text" value="ops_web" />
+              <label class="input-label" for="ops-assisted-rerank-reason">Reason</label>
+              <textarea id="ops-assisted-rerank-reason" class="field-input" rows="3" placeholder="说明为什么启用或关闭 assisted rerank experiment。"></textarea>
+              <label class="input-label" for="ops-assisted-rerank-bucket">Bucket Percentage</label>
+              <input id="ops-assisted-rerank-bucket" class="field-input" type="number" min="0" max="100" value="10" />
+              <label class="input-label" for="ops-assisted-rerank-confidence">Confidence Threshold</label>
+              <input id="ops-assisted-rerank-confidence" class="field-input" type="number" min="0" max="1" step="0.05" value="0.65" />
+              <label class="input-label" for="ops-assisted-rerank-candidate-window">Candidate Window</label>
+              <input id="ops-assisted-rerank-candidate-window" class="field-input" type="number" min="2" max="6" value="3" />
+              <label class="input-label" for="ops-assisted-rerank-max-score-gap">Max Score Gap</label>
+              <input id="ops-assisted-rerank-max-score-gap" class="field-input" type="number" min="0" max="1" step="0.01" value="0.08" />
+              <label class="input-label" for="ops-assisted-rerank-world-allowlist">World Allowlist</label>
+              <textarea id="ops-assisted-rerank-world-allowlist" class="field-input" rows="2" placeholder="urban_mystery_lotus_lane, jade_court_romance"></textarea>
+              <div class="composer-actions">
+                <button id="ops-set-assisted-rerank-shadow" class="ghost-action">Save Shadow Only</button>
+                <button id="ops-set-assisted-rerank-active" class="primary-action">Enable Assisted Rerank</button>
+                <button id="ops-disable-assisted-rerank" class="ghost-action">Disable Experiment</button>
+              </div>
+            </section>
+            <section class="panel panel-subtle">
+              <div class="panel-head">
                 <p class="panel-label">Training Automation</p>
                 <h3>训练自动化与 Evidence Pack</h3>
               </div>
@@ -1142,6 +1204,13 @@
                 <h3>补数据的下一步动作</h3>
               </div>
               <div id="ops-learned-data-ops" class="list-stack empty-state">这里会显示 review backlog、pair coverage backlog 和 action queue。</div>
+              <section class="panel panel-subtle">
+                <div class="panel-head">
+                  <p class="panel-label">Human Review Coverage</p>
+                  <h3>Human Review Coverage &amp; Quality</h3>
+                </div>
+                <div id="ops-learned-review-quality" class="list-stack empty-state">这里会显示 human review coverage、reviewer diversity、样本质量告警与高覆盖补样 backlog。</div>
+              </section>
               <div class="split-grid">
                 <section class="panel panel-subtle">
                   <div class="panel-head">
@@ -1158,10 +1227,10 @@
                   <div id="ops-pair-coverage-backlog" class="list-stack empty-state">这里会显示需要更多 revision / review 才能长出 inferred pairs 的位置。</div>
                 </section>
               </div>
-              <section class="panel panel-subtle">
-                <div class="panel-head">
-                  <p class="panel-label">Quick Capture Review</p>
-                  <h3>快速补一条 Human Review</h3>
+            <section class="panel panel-subtle">
+              <div class="panel-head">
+                <p class="panel-label">Quick Capture Review</p>
+                <h3>快速补一条 Human Review</h3>
                 </div>
                 <div id="ops-review-capture-context" class="list-stack empty-state">点击 Review Backlog 里的章节后，这里会自动填充上下文。</div>
                 <label class="input-label" for="ops-reviewer-id">Reviewer ID</label>
@@ -1179,6 +1248,44 @@
                 <div class="composer-actions">
                   <button id="ops-submit-review-capture" class="primary-action">提交 Human Review</button>
                 </div>
+              </section>
+              <section class="panel panel-subtle">
+                <div class="panel-head">
+                  <p class="panel-label">Preference Capture</p>
+                  <h3>快速补一条 Pairwise Preference</h3>
+                </div>
+                <label class="input-label" for="ops-preference-left-revision-id">Left Revision ID</label>
+                <input id="ops-preference-left-revision-id" class="field-input" type="text" placeholder="rev_before" />
+                <label class="input-label" for="ops-preference-right-revision-id">Right Revision ID</label>
+                <input id="ops-preference-right-revision-id" class="field-input" type="text" placeholder="rev_after" />
+                <label class="input-label" for="ops-preference-preferred-revision-id">Preferred Revision ID</label>
+                <input id="ops-preference-preferred-revision-id" class="field-input" type="text" placeholder="更偏好的 revision" />
+                <label class="input-label" for="ops-preference-strength">Preference Strength</label>
+                <select id="ops-preference-strength" class="field-select">
+                  <option value="medium">medium</option>
+                  <option value="strong">strong</option>
+                  <option value="weak">weak</option>
+                </select>
+                <label class="input-label" for="ops-preference-notes">Preference Notes</label>
+                <textarea id="ops-preference-notes" class="field-input" rows="3" placeholder="说明为什么更偏好某个 revision。"></textarea>
+                <div class="composer-actions">
+                  <button id="ops-submit-preference-capture" class="ghost-action">提交 Preference</button>
+                </div>
+                <div id="ops-preference-samples" class="list-stack empty-state">这里会显示最近采集的 preference samples。</div>
+              </section>
+              <section class="panel panel-subtle">
+                <div class="panel-head">
+                  <p class="panel-label">Ranking Capture</p>
+                  <h3>快速补一条 Revision Ranking</h3>
+                </div>
+                <label class="input-label" for="ops-ranking-revision-ids">Ranked Revision IDs</label>
+                <input id="ops-ranking-revision-ids" class="field-input" type="text" placeholder="rev_best,rev_mid,rev_worst" />
+                <label class="input-label" for="ops-ranking-notes">Ranking Notes</label>
+                <textarea id="ops-ranking-notes" class="field-input" rows="3" placeholder="说明这个排序背后的偏好判断。"></textarea>
+                <div class="composer-actions">
+                  <button id="ops-submit-ranking-capture" class="ghost-action">提交 Ranking</button>
+                </div>
+                <div id="ops-ranking-samples" class="list-stack empty-state">这里会显示最近采集的 ranking samples。</div>
               </section>
               <section class="panel panel-subtle">
                 <div class="panel-head">
@@ -1220,6 +1327,14 @@
               <h2>Postgres / Migration 状态</h2>
             </div>
             <div id="ops-schema-lifecycle" class="list-stack empty-state">这里会显示当前数据库 backend、migration pending 状态和 schema drift 摘要。</div>
+            <p class="panel-copy">Data Integrity / Repair</p>
+            <label class="input-label" for="ops-data-integrity-actions">Safe Repair Actions</label>
+            <textarea id="ops-data-integrity-actions" class="field-input" rows="2" placeholder="reconcile_session_chapter_pointers, prune_orphan_route_choices">reconcile_session_chapter_pointers, prune_orphan_route_choices</textarea>
+            <div class="composer-actions">
+              <button id="ops-run-data-integrity-dry-run" class="ghost-action">Run Integrity Dry-run</button>
+              <button id="ops-apply-data-integrity-repair" class="primary-action">Apply Safe Repair</button>
+            </div>
+            <div id="ops-data-integrity" class="list-stack empty-state">这里会显示热点索引覆盖、session drift、orphan route choices 与 repair backlog。</div>
           </section>
 
           <section class="panel">
@@ -1231,9 +1346,24 @@
             <input id="ops-backup-label" class="field-input" type="text" placeholder="pre_release / nightly / manual" />
             <label class="input-label" for="ops-restore-path">Restore Backup Path</label>
             <input id="ops-restore-path" class="field-input" type="text" placeholder="/abs/path/to/backup.sqlite3 or manifest.json" />
+            <label class="input-label" for="ops-restore-request-id">Restore Request ID</label>
+            <input id="ops-restore-request-id" class="field-input" type="text" placeholder="restore_request_xxx" />
+            <label class="input-label" for="ops-restore-requester-id">Restore Requester ID</label>
+            <input id="ops-restore-requester-id" class="field-input" type="text" value="ops_web" />
+            <label class="input-label" for="ops-restore-approver-id">Restore Approver ID</label>
+            <input id="ops-restore-approver-id" class="field-input" type="text" value="ops_approver" />
+            <label class="input-label" for="ops-restore-reason">Restore Reason</label>
+            <textarea id="ops-restore-reason" class="field-input" rows="3" placeholder="说明 restore request / approval / revoke / execute 的原因。"></textarea>
             <div class="composer-actions">
               <button id="ops-create-runtime-backup" class="primary-action">Create Backup</button>
               <button id="ops-restore-runtime-backup" class="ghost-action">Restore Backup</button>
+              <button id="ops-run-recovery-drill" class="ghost-action">Run Recovery Drill</button>
+            </div>
+            <div class="composer-actions">
+              <button id="ops-request-runtime-restore" class="ghost-action">Request Restore</button>
+              <button id="ops-approve-runtime-restore" class="ghost-action">Approve Restore</button>
+              <button id="ops-revoke-runtime-restore" class="ghost-action">Revoke Restore</button>
+              <button id="ops-execute-runtime-restore" class="primary-action">Execute Approved Restore</button>
             </div>
             <div id="ops-deployment-health-gate" class="list-stack empty-state">这里会显示 Deployment Health Gate 和总体放行状态。</div>
             <div id="ops-preflight-verification" class="list-stack empty-state">这里会显示 preflight verification bundle 与推荐验证命令。</div>
@@ -1287,6 +1417,26 @@
             </div>
             <div id="ops-runtime-incident-snapshot" class="list-stack empty-state">这里会显示 runtime incident snapshot、provider fallback、budget block 与 cache hit 概况。</div>
             <div id="ops-runtime-receipts" class="list-stack empty-state">这里会显示最近的 runtime receipts。</div>
+            <div id="ops-provider-routing" class="list-stack empty-state">这里会显示 Provider Routing Policy，以及 candidate / renderer 当前的 routing policy。</div>
+            <div id="ops-provider-rollout" class="list-stack empty-state">这里会显示 candidate / renderer 的 canary / active / rollback 控制。</div>
+            <label class="input-label" for="ops-provider-rollout-reviewer-id">Reviewer ID</label>
+            <input id="ops-provider-rollout-reviewer-id" class="field-input" type="text" value="ops_web" />
+            <label class="input-label" for="ops-provider-rollout-reason">Reason</label>
+            <textarea id="ops-provider-rollout-reason" class="field-input" rows="3" placeholder="说明为什么开启 canary、全量激活或回滚 provider rollout。"></textarea>
+            <label class="input-label" for="ops-provider-rollout-bucket">Canary Bucket Percentage</label>
+            <input id="ops-provider-rollout-bucket" class="field-input" type="number" min="0" max="100" value="10" />
+            <label class="input-label" for="ops-provider-rollout-world-allowlist">World Allowlist</label>
+            <textarea id="ops-provider-rollout-world-allowlist" class="field-input" rows="2" placeholder="urban_mystery_lotus_lane, jade_court_romance"></textarea>
+            <div class="composer-actions">
+              <button id="ops-provider-candidate-canary" class="ghost-action">Candidate Canary</button>
+              <button id="ops-provider-candidate-activate" class="primary-action">Candidate Active</button>
+              <button id="ops-provider-candidate-rollback" class="ghost-action">Candidate Rollback</button>
+            </div>
+            <div class="composer-actions">
+              <button id="ops-provider-renderer-canary" class="ghost-action">Renderer Canary</button>
+              <button id="ops-provider-renderer-activate" class="primary-action">Renderer Active</button>
+              <button id="ops-provider-renderer-rollback" class="ghost-action">Renderer Rollback</button>
+            </div>
             <div id="ops-provider-runtime-metrics" class="list-stack empty-state">这里会显示 Provider Runtime Metrics 与 cost trend dashboard。</div>
           </section>
         </section>

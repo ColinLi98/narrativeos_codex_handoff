@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+from time import perf_counter
 from typing import Any, Dict, Optional
 
 from ..core.linter import lint_chapter_draft
 from ..intent import SimpleIntentParser
 from ..models import CandidateBatch, NarrativeState, StepRecord
-from ..pipeline import plan_next_turn_from_events
+from ..pipeline import plan_next_turn
 from ..persistence.repositories import SQLAlchemyPlatformRepository
+from ..providers import StaticCandidateProvider
 from ..rendering import TemplateRenderer
 from ..eval.service import evaluate_chapter
 from .analytics import AnalyticsService
 from .billing import BillingService
 from .observability import ObservabilityService
+from .provider_routing import ProviderRoutingService
 
 
 class ReaderContinueCommand:
@@ -31,6 +34,7 @@ class SessionService:
         billing_service: Optional[BillingService] = None,
         analytics_service: Optional[AnalyticsService] = None,
         observability_service: Optional[ObservabilityService] = None,
+        provider_routing_service: Optional[ProviderRoutingService] = None,
     ) -> None:
         self.repository = repository
         self.intent_parser = intent_parser or SimpleIntentParser()
@@ -38,6 +42,22 @@ class SessionService:
         self.billing = billing_service or BillingService(repository)
         self.analytics = analytics_service or AnalyticsService(repository)
         self.observability = observability_service or ObservabilityService(repository)
+        self.provider_routing = provider_routing_service
+
+    def _candidate_reranker(self, *, world_id: str, world_version_id: str):
+        def _rerank(**context: Any) -> Dict[str, Any]:
+            from ..eval.learned_assisted_rerank import evaluate_assisted_rerank_candidates
+
+            return evaluate_assisted_rerank_candidates(
+                repository=self.repository,
+                world_id=world_id,
+                world_version_id=world_version_id,
+                ranked_candidates=context.get("ranked_candidates") or [],
+                beat_index=int(context.get("beat_index") or 1),
+                persist_receipt=True,
+            )
+
+        return _rerank
 
     def _entitlement_snapshot(self, access: Dict[str, Any]) -> Dict[str, Any]:
         return {
@@ -141,13 +161,42 @@ class SessionService:
         state_before = NarrativeState.from_dict(session_record.current_state.to_dict())
         player_input = command.freeform_intent or command.choice_id or "继续读下去。"
         state_before.player_intent = self.intent_parser.parse(player_input)
-        result = plan_next_turn_from_events(
+        candidate_provider = (
+            self.provider_routing.build_candidate_provider(
+                runtime.event_atoms,
+                surface="reader",
+                account_id=account_id,
+                session_id=command.session_id,
+                world_id=runtime.worldpack.world_id,
+                world_version_id=runtime.world_version_id,
+            )
+            if self.provider_routing
+            else StaticCandidateProvider(runtime.event_atoms)
+        )
+        active_renderer = (
+            self.provider_routing.build_renderer(
+                surface="reader",
+                account_id=account_id,
+                session_id=command.session_id,
+                world_id=runtime.worldpack.world_id,
+                world_version_id=runtime.world_version_id,
+            )
+            if self.provider_routing
+            else self.renderer
+        )
+        started = perf_counter()
+        result = plan_next_turn(
             state_before,
-            runtime.event_atoms,
             world=runtime.world_record.world,
-            renderer=self.renderer,
+            candidate_provider=candidate_provider,
+            renderer=active_renderer,
+            candidate_reranker=self._candidate_reranker(
+                world_id=runtime.worldpack.world_id,
+                world_version_id=runtime.world_version_id,
+            ),
             debug=True,
         )
+        runtime_latency_ms = round((perf_counter() - started) * 1000.0, 3)
         if result["status"] != "ok":
             self.observability.record_runtime_receipt(
                 surface="reader",
@@ -162,6 +211,7 @@ class SessionService:
                 rendered_scene=result.get("rendered_scene"),
                 reader_view=result.get("reader_view"),
                 estimated_cost=0.0,
+                runtime_latency_ms=runtime_latency_ms,
             )
             return {
                 "session_id": command.session_id,
@@ -191,7 +241,10 @@ class SessionService:
                 "state_after": updated_state.to_dict(),
                 "critic_trace": result["critic_trace"],
                 "promise_ledger_snapshot": [promise.to_dict() for promise in updated_state.open_promises],
-                "metadata": {"access_tier": access["access_tier"]},
+                "metadata": {
+                    "access_tier": access["access_tier"],
+                    "assisted_rerank_receipts": list(result.get("assisted_rerank_receipts") or []),
+                },
             }
         )
         chapter_id = "chapter_%s_%s" % (command.session_id, updated_state.chapter_index)
@@ -293,6 +346,30 @@ class SessionService:
             overall_score=evaluation_report.scores.overall_score,
             access_tier=consumed_access.get("access_tier"),
         )
+        for receipt in result.get("assisted_rerank_receipts") or []:
+            self.analytics.track(
+                "learned_assisted_rerank_evaluated",
+                reader_id=reader_id,
+                account_id=account_id,
+                session_id=command.session_id,
+                world_id=runtime.worldpack.world_id,
+                world_version_id=runtime.world_version_id,
+                chapter_index=updated_state.chapter_index,
+                access_tier=consumed_access.get("access_tier"),
+                payload_json=receipt,
+            )
+            if receipt.get("assisted_action") == "rerank_top_candidate":
+                self.analytics.track(
+                    "learned_assisted_rerank_applied",
+                    reader_id=reader_id,
+                    account_id=account_id,
+                    session_id=command.session_id,
+                    world_id=runtime.worldpack.world_id,
+                    world_version_id=runtime.world_version_id,
+                    chapter_index=updated_state.chapter_index,
+                    access_tier=consumed_access.get("access_tier"),
+                    payload_json=receipt,
+                )
         runtime_cost = round(max(1, len(result["reader_view"]["body"])) / 1200.0, 3)
         self.observability.record_runtime_receipt(
             surface="reader",
@@ -307,6 +384,7 @@ class SessionService:
             rendered_scene=result.get("rendered_scene"),
             reader_view=result.get("reader_view"),
             estimated_cost=runtime_cost,
+            runtime_latency_ms=runtime_latency_ms,
         )
         chapter_view = {
             "sessionId": command.session_id,

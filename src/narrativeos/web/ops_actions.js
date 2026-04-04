@@ -9,6 +9,13 @@ function opsGovernanceHeaders() {
   };
 }
 
+function opsRestoreHeaders(actorId, actorRole) {
+  return {
+    "X-NarrativeOS-Actor-Id": actorId,
+    "X-NarrativeOS-Actor-Role": actorRole,
+  };
+}
+
 
 async function submitPromotionDecision(action) {
   const reviewerId = els.opsPromotionReviewerId?.value.trim() || "ops_web";
@@ -65,6 +72,142 @@ async function submitRerankerPromotionDecision(action) {
     await refreshOpsJobsFlow();
   } catch (error) {
     alert(`更新 reranker promotion 状态失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function submitProviderRollout(track, action) {
+  const reviewerId = els.opsProviderRolloutReviewerId?.value.trim() || "ops_web";
+  const reason = els.opsProviderRolloutReason?.value.trim() || "";
+  if (!reviewerId || !reason) {
+    alert("请填写 provider rollout reviewer_id 和 reason。");
+    return;
+  }
+  const bucketPercentage = Number(els.opsProviderRolloutBucket?.value || 0);
+  const worldAllowlist = (els.opsProviderRolloutWorldAllowlist?.value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  let button = els.opsProviderCandidateCanary;
+  if (track === "candidate" && action === "activate") button = els.opsProviderCandidateActivate;
+  if (track === "candidate" && action === "rollback") button = els.opsProviderCandidateRollback;
+  if (track === "renderer" && action === "canary") button = els.opsProviderRendererCanary;
+  if (track === "renderer" && action === "activate") button = els.opsProviderRendererActivate;
+  if (track === "renderer" && action === "rollback") button = els.opsProviderRendererRollback;
+  const restore = setBusy(button, action === "rollback" ? "回滚中…" : "保存中…");
+  try {
+    appState.opsProviderRollout = await api(`/v1/ops/provider-rollout/${encodeURIComponent(track)}/${encodeURIComponent(action)}`, {
+      method: "POST",
+      body: JSON.stringify({
+        reviewer_id: reviewerId,
+        reason,
+        bucket_percentage: bucketPercentage,
+        world_allowlist: worldAllowlist,
+      }),
+    });
+    await refreshOpsSurface({ scopes: ["runtime"] });
+  } catch (error) {
+    alert(`更新 provider rollout 失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function runDataIntegrityRepair(apply) {
+  const rawActions = (els.opsDataIntegrityActions?.value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const button = apply ? els.opsApplyDataIntegrityRepair : els.opsRunDataIntegrityDryRun;
+  const restore = setBusy(button, apply ? "修复中…" : "扫描中…");
+  try {
+    appState.opsDataIntegrityRepair = await api("/v1/ops/data-integrity/repair", {
+      method: "POST",
+      body: JSON.stringify({
+        apply,
+        actions: rawActions,
+        limit: 20,
+      }),
+    });
+    await refreshOpsSurface({ scopes: ["runtime"] });
+  } catch (error) {
+    alert(`执行 data integrity repair 失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function submitAssistedGateConfig(mode, enabled) {
+  const reviewerId = els.opsAssistedGateReviewerId?.value.trim() || "ops_web";
+  const reason = els.opsAssistedGateReason?.value.trim() || "";
+  if (!reviewerId || !reason) {
+    alert("请填写 assisted gate reviewer_id 和 reason。");
+    return;
+  }
+  const button = enabled
+    ? (mode === "assisted_gate" ? els.opsSetAssistedActive : els.opsSetAssistedShadow)
+    : els.opsDisableAssistedGate;
+  const restore = setBusy(button, enabled ? "保存中…" : "关闭中…");
+  try {
+    appState.opsLearnedAssistedGate = await api("/v1/ops/learned-assisted-gate/configure", {
+      method: "POST",
+      body: JSON.stringify({
+        reviewer_id: reviewerId,
+        reason,
+        enabled,
+        mode,
+        bucket_percentage: Number(els.opsAssistedGateBucket?.value || 0),
+        confidence_threshold: Number(els.opsAssistedGateConfidence?.value || 0.9),
+        min_example_count: 3,
+        min_high_confidence_blocks: 2,
+        required_block_share: 0.5,
+        world_allowlist: (els.opsAssistedGateWorldAllowlist?.value || "")
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      }),
+    });
+    await refreshOpsLearnedFlow();
+  } catch (error) {
+    alert(`更新 assisted gate experiment 失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function submitAssistedRerankConfig(mode, enabled) {
+  const reviewerId = els.opsAssistedRerankReviewerId?.value.trim() || "ops_web";
+  const reason = els.opsAssistedRerankReason?.value.trim() || "";
+  if (!reviewerId || !reason) {
+    alert("请填写 assisted rerank reviewer_id 和 reason。");
+    return;
+  }
+  const button = enabled
+    ? (mode === "assisted_rerank" ? els.opsSetAssistedRerankActive : els.opsSetAssistedRerankShadow)
+    : els.opsDisableAssistedRerank;
+  const restore = setBusy(button, enabled ? "保存中…" : "关闭中…");
+  try {
+    appState.opsLearnedAssistedRerank = await api("/v1/ops/learned-assisted-rerank/configure", {
+      method: "POST",
+      body: JSON.stringify({
+        reviewer_id: reviewerId,
+        reason,
+        enabled,
+        mode,
+        bucket_percentage: Number(els.opsAssistedRerankBucket?.value || 0),
+        confidence_threshold: Number(els.opsAssistedRerankConfidence?.value || 0.65),
+        candidate_window: Number(els.opsAssistedRerankCandidateWindow?.value || 3),
+        max_score_gap: Number(els.opsAssistedRerankMaxScoreGap?.value || 0.08),
+        world_allowlist: (els.opsAssistedRerankWorldAllowlist?.value || "")
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      }),
+    });
+    await refreshOpsLearnedFlow();
+  } catch (error) {
+    alert(`更新 assisted rerank experiment 失败：${error.message}`);
   } finally {
     restore();
   }
@@ -320,7 +463,7 @@ async function createRuntimeBackup() {
       method: "POST",
       body: JSON.stringify({
         label: (els.opsBackupLabel?.value || "").trim() || undefined,
-        requested_by: (els.opsGovernanceReviewerId?.value || "ops_web").trim() || "ops_web",
+        requested_by: (els.opsRestoreRequesterId?.value || "ops_web").trim() || "ops_web",
         account_id: els.opsAccountId?.value.trim() || activeReaderId(),
       }),
     });
@@ -355,6 +498,128 @@ async function restoreRuntimeBackup() {
     await refreshOpsJobsFlow();
   } catch (error) {
     alert(`恢复 runtime backup 失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function runRecoveryDrill() {
+  const backupPath = (els.opsRestorePath?.value || "").trim() || undefined;
+  const restore = setBusy(els.opsRunRecoveryDrill, "演练中…");
+  try {
+    const payload = await api("/v1/ops/recovery-drill", {
+      method: "POST",
+      body: JSON.stringify({
+        backup_path: backupPath,
+      }),
+    });
+    appState.opsRecoveryDrillResult = payload.recovery_drill || null;
+    await refreshOpsSurface({ scopes: ["runtime"] });
+  } catch (error) {
+    alert(`执行 recovery drill 失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function requestRuntimeRestore() {
+  const backupPath = (els.opsRestorePath?.value || "").trim();
+  const requestedBy = (els.opsRestoreRequesterId?.value || "").trim() || "ops_web";
+  const reason = (els.opsRestoreReason?.value || "").trim();
+  if (!backupPath || !reason) {
+    alert("请填写 restore backup path 和 restore reason。");
+    return;
+  }
+  const restore = setBusy(els.opsRequestRuntimeRestore, "请求中…");
+  try {
+    const payload = await api("/v1/ops/runtime-restore/request", {
+      method: "POST",
+      headers: opsRestoreHeaders(requestedBy, "ops"),
+      body: JSON.stringify({
+        backup_path: backupPath,
+        reason,
+      }),
+    });
+    if (els.opsRestoreRequestId && payload.restore_request?.request_id) {
+      els.opsRestoreRequestId.value = payload.restore_request.request_id;
+    }
+    await refreshOpsSurface({ scopes: ["runtime"] });
+  } catch (error) {
+    alert(`创建 restore request 失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function approveRuntimeRestore() {
+  const requestId = (els.opsRestoreRequestId?.value || "").trim();
+  const approverId = (els.opsRestoreApproverId?.value || "").trim() || "ops_approver";
+  const reason = (els.opsRestoreReason?.value || "").trim();
+  if (!requestId || !reason) {
+    alert("请填写 restore request id 和 restore reason。");
+    return;
+  }
+  const restore = setBusy(els.opsApproveRuntimeRestore, "批准中…");
+  try {
+    await api(`/v1/ops/runtime-restore/${encodeURIComponent(requestId)}/approve`, {
+      method: "POST",
+      headers: opsRestoreHeaders(approverId, "admin"),
+      body: JSON.stringify({
+        reason,
+      }),
+    });
+    await refreshOpsSurface({ scopes: ["runtime"] });
+  } catch (error) {
+    alert(`批准 restore request 失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function revokeRuntimeRestore() {
+  const requestId = (els.opsRestoreRequestId?.value || "").trim();
+  const reviewerId = (els.opsRestoreApproverId?.value || "").trim() || "ops_approver";
+  const reason = (els.opsRestoreReason?.value || "").trim();
+  if (!requestId || !reason) {
+    alert("请填写 restore request id 和 restore reason。");
+    return;
+  }
+  const restore = setBusy(els.opsRevokeRuntimeRestore, "撤销中…");
+  try {
+    await api(`/v1/ops/runtime-restore/${encodeURIComponent(requestId)}/revoke`, {
+      method: "POST",
+      headers: opsRestoreHeaders(reviewerId, "admin"),
+      body: JSON.stringify({
+        reason,
+      }),
+    });
+    await refreshOpsSurface({ scopes: ["runtime"] });
+  } catch (error) {
+    alert(`撤销 restore request 失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function executeRuntimeRestore() {
+  const requestId = (els.opsRestoreRequestId?.value || "").trim();
+  const executorId = (els.opsRestoreApproverId?.value || "").trim() || "ops_approver";
+  if (!requestId) {
+    alert("请填写 restore request id。");
+    return;
+  }
+  const restore = setBusy(els.opsExecuteRuntimeRestore, "执行中…");
+  try {
+    await api("/v1/ops/jobs/runtime-restores", {
+      method: "POST",
+      headers: opsRestoreHeaders(executorId, "admin"),
+      body: JSON.stringify({
+        request_id: requestId,
+      }),
+    });
+    await refreshOpsSurface({ scopes: ["runtime", "jobs"] });
+  } catch (error) {
+    alert(`执行 approved restore 失败：${error.message}`);
   } finally {
     restore();
   }

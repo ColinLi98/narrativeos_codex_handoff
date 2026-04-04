@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from sqlalchemy import desc, select
+from sqlalchemy.exc import IntegrityError
 
 from ..models import (
     CandidateBatch,
@@ -397,29 +398,39 @@ class SQLAlchemyPlatformRepository:
             if session_row is None:
                 raise KeyError("unknown_session:%s" % step_record.session_id)
             chapter_id = "chapter_%s_%s" % (step_record.session_id, step_record.step_index)
-            session.add(
-                ChapterRow(
-                    chapter_id=chapter_id,
-                    session_id=step_record.session_id,
-                    world_version_id=world_version_id or session_row.world_version_id,
-                    chapter_index=step_record.step_index,
-                    plan_json={
-                        "step_record": step_record.to_dict(),
-                        "chapter_plan": step_record.chapter_plan.to_dict() if step_record.chapter_plan else None,
-                    },
-                    rendered_body=step_record.reader_view.body if step_record.reader_view else (step_record.rendered_scene.premium_prose if step_record.rendered_scene else ""),
-                    choices_json=step_record.reader_view.choices if step_record.reader_view else [],
-                    cost_estimate=cost_estimate,
-                    review_flags_json={"critic_trace": step_record.critic_trace},
-                    created_at=created_at,
+            try:
+                session.add(
+                    ChapterRow(
+                        chapter_id=chapter_id,
+                        session_id=step_record.session_id,
+                        world_version_id=world_version_id or session_row.world_version_id,
+                        chapter_index=step_record.step_index,
+                        plan_json={
+                            "step_record": step_record.to_dict(),
+                            "chapter_plan": step_record.chapter_plan.to_dict() if step_record.chapter_plan else None,
+                        },
+                        rendered_body=step_record.reader_view.body if step_record.reader_view else (step_record.rendered_scene.premium_prose if step_record.rendered_scene else ""),
+                        choices_json=step_record.reader_view.choices if step_record.reader_view else [],
+                        cost_estimate=cost_estimate,
+                        review_flags_json={"critic_trace": step_record.critic_trace},
+                        created_at=created_at,
+                    )
                 )
-            )
-            session_row.chapter_index = step_record.state_after.chapter_index
-            session_row.story_phase = step_record.state_after.story_phase
-            session_row.narrative_state_json = step_record.state_after.to_dict()
-            session_row.entitlements_snapshot_json = dict(entitlements_snapshot or (session_row.entitlements_snapshot_json or {}))
-            session_row.updated_at = created_at
-            session.commit()
+                session_row.chapter_index = step_record.state_after.chapter_index
+                session_row.story_phase = step_record.state_after.story_phase
+                session_row.narrative_state_json = step_record.state_after.to_dict()
+                session_row.entitlements_snapshot_json = dict(entitlements_snapshot or (session_row.entitlements_snapshot_json or {}))
+                session_row.updated_at = created_at
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+                existing = session.get(ChapterRow, chapter_id)
+                if existing is None:
+                    raise
+                payload = dict(existing.plan_json or {})
+                if payload.get("step_record"):
+                    return StepRecord.from_dict(payload["step_record"])
+                return step_record
         return step_record
 
     def save_evaluation_report(self, chapter_id: str, report: EvaluationReport) -> Dict[str, Any]:

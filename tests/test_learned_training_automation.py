@@ -30,6 +30,8 @@ def test_learned_training_automation_runs_tracks_and_writes_evidence(tmp_path: P
     assert Path(result["evidence_results"]["reranker"]["evidence_path"]).exists()
     assert "promotion_summary" in result["evidence_results"]["evaluator"]["evidence_pack"]
     assert "promotion_workflow" in result["evidence_results"]["reranker"]["evidence_pack"]
+    assert result["cadence_results"]["evaluator"]["track_summary"]["track"] == "evaluator"
+    assert result["evidence_results"]["evaluator"]["evidence_pack"]["cadence_snapshot"]["track"] == "evaluator"
 
 
 def test_build_promotion_evidence_pack_handles_missing_artifacts(tmp_path: Path):
@@ -72,6 +74,7 @@ def test_ops_learned_training_and_evidence_endpoints(tmp_path: Path):
     assert evaluator_evidence.status_code == 200
     assert "evidence_pack" in evaluator_evidence.json()
     assert evaluator_evidence.json()["evidence_pack"]["promotion_summary"]["track"] == "evaluator"
+    assert evaluator_evidence.json()["evidence_pack"]["cadence_snapshot"]["track"] == "evaluator"
 
     approve = client.post(
         "/v1/ops/learned-promotion/approve",

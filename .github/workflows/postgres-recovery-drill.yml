@@ -1,0 +1,65 @@
+name: postgres-recovery-drill
+
+on:
+  workflow_dispatch:
+
+jobs:
+  postgres-recovery-drill:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: narrativeos_integration
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d narrativeos_integration"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Postgres client binaries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run Postgres recovery integration
+        env:
+          NARRATIVEOS_POSTGRES_INTEGRATION: "1"
+          NARRATIVEOS_POSTGRES_TEST_URL: "postgresql://postgres:postgres@localhost:5432/narrativeos_integration"
+          NARRATIVEOS_PG_DUMP_BIN: "/usr/bin/pg_dump"
+          NARRATIVEOS_PG_RESTORE_BIN: "/usr/bin/pg_restore"
+          NARRATIVEOS_PSQL_BIN: "/usr/bin/psql"
+          NARRATIVEOS_POSTGRES_TEST_OUTPUT_DIR: "artifacts/postgres_integration"
+        run: |
+          . .venv/bin/activate
+          python -m pytest tests/test_postgres_recovery_integration.py -q
+
+      - name: Upload Postgres recovery artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgres-recovery-drill-artifacts
+          path: |
+            artifacts/postgres_integration
+            artifacts/runtime_postgres_ops
+            artifacts/runtime_backups
+            artifacts/recovery_drills

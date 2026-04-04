@@ -35,4 +35,7 @@ Before destructive recovery actions:
 
 1. create a runtime backup
 2. record the backup path
-3. restore only from a known-good snapshot
+3. compare current runtime verification against the backup manifest verification snapshot
+4. run a recovery drill dry-run if time permits
+5. for Postgres, ensure the restore request is approved by a second operator
+6. restore only from a known-good snapshot

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from .critics import BaseCritic, default_critics
 from .memory import advance_story_phase_if_needed, apply_event
@@ -405,12 +405,14 @@ def simulate_scene_beats(
     weights: SearchWeights,
     scene_intent: SceneIntent,
     beat_target: int,
+    candidate_reranker: Optional[Callable[..., Dict[str, object]]] = None,
     min_candidates: int = 6,
     max_candidates: int = 10,
-) -> Tuple[List[SceneBeat], NarrativeState]:
+) -> Tuple[List[SceneBeat], NarrativeState, List[Dict[str, object]]]:
     current_state = NarrativeState.from_dict(state.to_dict())
     scene_beats: List[SceneBeat] = []
     chosen_events: List[EventAtom] = []
+    rerank_receipts: List[Dict[str, object]] = []
     beat_blueprint = BEAT_BLUEPRINTS.get(beat_target, BEAT_BLUEPRINTS[3])
     progression_target = _progression_event_target(state.story_phase, len(beat_blueprint))
 
@@ -459,6 +461,24 @@ def simulate_scene_beats(
         if not ranked_candidates:
             break
 
+        if candidate_reranker is not None:
+            rerank_result = candidate_reranker(
+                current_state=current_state,
+                world=world,
+                ranked_candidates=ranked_candidates,
+                beat_index=beat_index,
+                dramatic_job=job,
+                scene_intent=scene_intent,
+                candidate_batch=candidate_batch,
+                chosen_events=chosen_events,
+            )
+            reranked = list(rerank_result.get("ranked_candidates") or [])
+            if reranked:
+                ranked_candidates = reranked
+            receipt = rerank_result.get("receipt")
+            if receipt:
+                rerank_receipts.append(dict(receipt))
+
         chosen_candidate = next(
             (
                 candidate
@@ -480,7 +500,7 @@ def simulate_scene_beats(
             )
         )
 
-    return scene_beats, current_state
+    return scene_beats, current_state, rerank_receipts
 
 
 def plan_next_scene(
@@ -490,12 +510,13 @@ def plan_next_scene(
     candidate_provider: CandidateProvider,
     critics: Sequence[BaseCritic],
     weights: SearchWeights,
+    candidate_reranker: Optional[Callable[..., Dict[str, object]]] = None,
     min_candidates: int = 6,
     max_candidates: int = 10,
-) -> Tuple[Optional[ChapterPlan], List[SceneBeat], NarrativeState, SceneRenderSpec]:
+) -> Tuple[Optional[ChapterPlan], List[SceneBeat], NarrativeState, SceneRenderSpec, List[Dict[str, object]]]:
     scene_intent = _pick_scene_intent(state, world)
     beat_target = _beat_target_for_phase(state.story_phase)
-    scene_beats, scene_state = simulate_scene_beats(
+    scene_beats, scene_state, rerank_receipts = simulate_scene_beats(
         state,
         world=world,
         candidate_provider=candidate_provider,
@@ -503,11 +524,12 @@ def plan_next_scene(
         weights=weights,
         scene_intent=scene_intent,
         beat_target=beat_target,
+        candidate_reranker=candidate_reranker,
         min_candidates=min_candidates,
         max_candidates=max_candidates,
     )
     if not scene_beats:
-        return None, [], state, _render_spec_for_scene(state, scene_intent)
+        return None, [], state, _render_spec_for_scene(state, scene_intent), rerank_receipts
 
     finalized_state = NarrativeState.from_dict(scene_state.to_dict())
     advance_story_phase_if_needed(finalized_state, scene_intent_id=scene_intent.intent_id)
@@ -521,7 +543,7 @@ def plan_next_scene(
         ending_ready=is_terminal_scene_function(scene_beats[-1].event.scene_function, scene_beats[-1].event.metadata),
         selected_event_ids=[beat.event.event_id for beat in scene_beats],
     )
-    return chapter_plan, scene_beats, finalized_state, render_spec
+    return chapter_plan, scene_beats, finalized_state, render_spec, rerank_receipts
 
 
 def render_scene(
@@ -563,6 +585,7 @@ def plan_next_turn(
     beam_width: int = 3,
     depth: int = 2,
     weights: Optional[SearchWeights] = None,
+    candidate_reranker: Optional[Callable[..., Dict[str, object]]] = None,
     min_candidates: int = 6,
     max_candidates: int = 10,
     debug: bool = False,
@@ -593,12 +616,13 @@ def plan_next_turn(
         max_candidates=max_candidates,
     )
 
-    chapter_plan, scene_beats, updated_state, render_spec = plan_next_scene(
+    chapter_plan, scene_beats, updated_state, render_spec, assisted_rerank_receipts = plan_next_scene(
         state,
         world=world,
         candidate_provider=candidate_provider,
         critics=active_critics,
         weights=resolved_weights,
+        candidate_reranker=candidate_reranker,
         min_candidates=min_candidates,
         max_candidates=max_candidates,
     )
@@ -617,6 +641,7 @@ def plan_next_turn(
             "chapter_plan": None,
             "scene_beats": [],
             "scene_render_spec": render_spec.to_dict(),
+            "assisted_rerank_receipts": assisted_rerank_receipts,
         }
 
     rendered_scene = active_renderer.render_scene(
@@ -660,6 +685,7 @@ def plan_next_turn(
                 "chapter_plan": chapter_plan.to_dict(),
                 "scene_beats": [beat.to_dict() for beat in scene_beats],
                 "scene_render_spec": render_spec.to_dict(),
+                "assisted_rerank_receipts": assisted_rerank_receipts,
             }
         )
 
@@ -676,6 +702,7 @@ def plan_next_turn_from_events(
     beam_width: int = 3,
     depth: int = 2,
     weights: Optional[SearchWeights] = None,
+    candidate_reranker: Optional[Callable[..., Dict[str, object]]] = None,
     min_candidates: int = 6,
     max_candidates: int = 10,
     debug: bool = False,
@@ -690,6 +717,7 @@ def plan_next_turn_from_events(
         beam_width=beam_width,
         depth=depth,
         weights=weights,
+        candidate_reranker=candidate_reranker,
         min_candidates=min_candidates,
         max_candidates=max_candidates,
         debug=debug,

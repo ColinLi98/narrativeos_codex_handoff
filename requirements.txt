@@ -4,6 +4,7 @@ pydantic>=2.8
 pyyaml>=6.0
 jsonschema>=4.0
 sqlalchemy>=2.0
+alembic>=1.14
 httpx>=0.28
 pytest>=8.0
 scikit-learn>=1.4,<1.6

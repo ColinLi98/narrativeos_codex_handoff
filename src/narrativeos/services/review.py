@@ -45,6 +45,7 @@ class ReviewService:
         previous_world_version_id: Optional[str] = None,
         entitlement_reason: Optional[str] = None,
         risk_summary: Optional[Dict[str, Any]] = None,
+        assisted_gate_receipt: Optional[Dict[str, Any]] = None,
     ) -> str:
         simulation = dict(simulation or {})
         payload = {
@@ -59,6 +60,7 @@ class ReviewService:
             "previous_world_version_id": previous_world_version_id,
             "entitlement_reason": entitlement_reason,
             "risk_summary": dict(risk_summary or {}),
+            "assisted_gate_receipt": dict(assisted_gate_receipt or {}),
         }
         return json.dumps(payload, ensure_ascii=False)
 
@@ -126,6 +128,7 @@ class ReviewService:
             "publish_gate_errors": list(note_payload.get("publish_gate_errors", [])),
             "entitlement_reason": note_payload.get("entitlement_reason"),
             "risk_summary": dict(note_payload.get("risk_summary", {})),
+            "assisted_gate_receipt": dict(note_payload.get("assisted_gate_receipt", {})),
             "timeline_group": "rollback" if record.get("status") == "rolled_back" else "review",
         }
 
@@ -484,9 +487,31 @@ class ReviewService:
         )
 
     def publish(self, world_version_id: str, *, reviewer_id: Optional[str] = None) -> Dict[str, Any]:
+        from ..eval.learned_assisted_gate import evaluate_assisted_gate_decision
+
         world_version = self.repository.get_world_version(world_version_id)
         simulation = dict(world_version.simulation_report_json or {})
         errors = self._publish_gate_errors(simulation)
+        assisted_gate_receipt = evaluate_assisted_gate_decision(
+            repository=self.repository,
+            world_version_id=world_version_id,
+            simulation={**simulation, "world_id": world_version.world_id},
+            rule_gate_errors=errors,
+        )
+        if not errors and assisted_gate_receipt.get("assisted_action") == "block_publish":
+            errors = list(assisted_gate_receipt.get("final_gate_errors", []))
+        self.analytics.track(
+            "learned_assisted_gate_evaluated",
+            world_id=world_version.world_id,
+            world_version_id=world_version_id,
+            payload_json={
+                "mode": assisted_gate_receipt.get("mode"),
+                "bucket_match": assisted_gate_receipt.get("bucket_match"),
+                "guardrail_status": assisted_gate_receipt.get("guardrail_status"),
+                "assisted_action": assisted_gate_receipt.get("assisted_action"),
+                "would_block": assisted_gate_receipt.get("would_block"),
+            },
+        )
         if errors:
             risk_summary = {"publish_gate_errors": errors, "publish_ready": False}
             self._record_lifecycle(
@@ -502,14 +527,29 @@ class ReviewService:
                     publish_gate_errors=errors,
                     entitlement_reason="publish_blocked",
                     risk_summary=risk_summary,
+                    assisted_gate_receipt=assisted_gate_receipt,
                 ),
             )
             self.analytics.track(
                 "publish_blocked",
                 world_id=world_version.world_id,
                 world_version_id=world_version_id,
-                payload_json={"publish_gate_errors": errors},
+                payload_json={
+                    "publish_gate_errors": errors,
+                    "assisted_gate_action": assisted_gate_receipt.get("assisted_action"),
+                },
             )
+            if assisted_gate_receipt.get("assisted_action") == "block_publish":
+                self.analytics.track(
+                    "learned_assisted_gate_blocked",
+                    world_id=world_version.world_id,
+                    world_version_id=world_version_id,
+                    payload_json={
+                        "publish_gate_errors": errors,
+                        "mode": assisted_gate_receipt.get("mode"),
+                        "bucket_match": assisted_gate_receipt.get("bucket_match"),
+                    },
+                )
             raise ValueError(errors[0])
 
         previous_world_version_id = next(
@@ -528,6 +568,7 @@ class ReviewService:
                 simulation=simulation,
                 previous_world_version_id=previous_world_version_id,
                 published_world_version_id=world_version_id,
+                assisted_gate_receipt=assisted_gate_receipt,
             ),
         )
         result = self.repository.publish_world_version(world_version_id, reviewer_id=reviewer_id)
@@ -543,6 +584,7 @@ class ReviewService:
                 simulation=simulation,
                 previous_world_version_id=previous_world_version_id,
                 published_world_version_id=world_version_id,
+                assisted_gate_receipt=assisted_gate_receipt,
             ),
         )
         return {**result, "review": review}

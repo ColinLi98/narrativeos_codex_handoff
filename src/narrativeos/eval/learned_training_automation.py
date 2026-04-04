@@ -14,6 +14,7 @@ from .artifact_registry import (
 )
 from .learned_analysis import run_learned_analysis
 from .learned_baseline import train_learned_evaluator_baseline
+from .learned_cadence import build_learned_cadence_track_detail
 from .learned_dashboard import build_learned_dashboard_summary
 from .learned_compare import build_learned_compare_from_dashboard
 from .learned_data_ops import build_learned_data_ops_summary
@@ -170,6 +171,15 @@ def build_promotion_evidence_pack(
             "warning_count": len(artifact_state.get("warnings", [])),
         },
     }
+    evidence_pack["cadence_snapshot"] = build_learned_cadence_track_detail(
+        repository=repository,
+        track=track,
+        world_id=world_id,
+        world_version_id=world_version_id,
+        limit=limit,
+        evaluator_artifact_dir=artifact_dirs["evaluator"],
+        reranker_artifact_dir=artifact_dirs["reranker"],
+    )
     evidence_path = output_dir / f"{track}_promotion_evidence.json"
     _write_json(evidence_path, evidence_pack)
     return {
@@ -234,6 +244,7 @@ def run_learned_training_automation(
             }
 
     evidence_results: Dict[str, Dict[str, Any]] = {}
+    cadence_results: Dict[str, Dict[str, Any]] = {}
     for track in selected_tracks:
         track_output_dir = run_dir / f"{track}_evidence"
         try:
@@ -253,6 +264,21 @@ def run_learned_training_automation(
                 "output_dir": str(track_output_dir),
                 "error": str(exc),
             }
+        try:
+            cadence_results[track] = build_learned_cadence_track_detail(
+                repository=repository,
+                track=track,
+                world_id=world_id,
+                world_version_id=world_version_id,
+                limit=limit,
+                evaluator_artifact_dir=artifact_dirs["evaluator"],
+                reranker_artifact_dir=artifact_dirs["reranker"],
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            cadence_results[track] = {
+                "track": track,
+                "error": str(exc),
+            }
 
     summary = {
         "run_id": run_id,
@@ -269,12 +295,14 @@ def run_learned_training_automation(
             "summary": summary,
             "training_results": training_results,
             "evidence_results": evidence_results,
+            "cadence_results": cadence_results,
         },
     )
     return {
         "summary": summary,
         "training_results": training_results,
         "evidence_results": evidence_results,
+        "cadence_results": cadence_results,
         "artifacts": {
             "summary": str(summary_path),
         },

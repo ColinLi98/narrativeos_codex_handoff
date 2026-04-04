@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RankingSample",
+  "type": "object",
+  "required": [
+    "ranking_id",
+    "world_id",
+    "world_version_id",
+    "reviewer_id",
+    "ranked_revision_ids",
+    "freeform_notes",
+    "created_at",
+    "source"
+  ],
+  "properties": {
+    "ranking_id": {"type": "string"},
+    "world_id": {"type": "string"},
+    "world_version_id": {"type": "string"},
+    "chapter_id": {"type": ["string", "null"]},
+    "session_id": {"type": ["string", "null"]},
+    "reviewer_id": {"type": "string"},
+    "ranked_revision_ids": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"type": "string"}
+    },
+    "top_revision_id": {"type": "string"},
+    "freeform_notes": {"type": "string"},
+    "linked_issue_codes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "created_at": {"type": "string"},
+    "source": {
+      "type": "string",
+      "enum": ["human_ranking"]
+    },
+    "ingestion_meta": {
+      "type": "object",
+      "properties": {
+        "ingestion_key": {"type": "string"},
+        "reference_status": {"type": "string"},
+        "ingested_at": {"type": "string"},
+        "storage_mode": {"type": "string"},
+        "ingestion_warnings": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    }
+  }
+}

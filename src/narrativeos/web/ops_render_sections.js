@@ -353,8 +353,10 @@ function renderOpsReviewReleaseSection() {
 
 function renderOpsRuntimeSection() {
   clearNode(els.opsSchemaLifecycle);
+  clearNode(els.opsDataIntegrity);
   if (!appState.opsSchemaLifecycle) {
     clearNode(els.opsSchemaLifecycle, "这里会显示当前数据库 backend、migration pending 状态和 schema drift 摘要。");
+    clearNode(els.opsDataIntegrity, "这里会显示热点索引覆盖、session drift、orphan route choices 与 repair backlog。");
   } else {
     const lifecycle = appState.opsSchemaLifecycle;
     els.opsSchemaLifecycle.appendChild(
@@ -366,8 +368,33 @@ function renderOpsRuntimeSection() {
           `latest available ${lifecycle.latest_available_version || "-"} · latest applied ${lifecycle.latest_applied_version || "-"}\n` +
           `pending ${(lifecycle.pending_versions || []).join(" / ") || "-"}\n` +
           `schema matches migrations ${lifecycle.schema_matches_migrations ? "yes" : "no"}\n` +
+          `alembic ${lifecycle.alembic?.status || "-"} · current ${lifecycle.alembic?.current_revision || "-"} · head ${lifecycle.alembic?.head_revision || "-"}\n` +
           `schema fp ${(lifecycle.schema_sql_fingerprint || "-").slice(0, 12)}\n` +
           `migrations fp ${(lifecycle.migrations_fingerprint || "-").slice(0, 12)}`
+      })
+    );
+  }
+  if (!appState.opsDataIntegrity) {
+    clearNode(els.opsDataIntegrity, "这里会显示热点索引覆盖、session drift、orphan route choices 与 repair backlog。");
+  } else {
+    const integrity = appState.opsDataIntegrity;
+    const repairResult = appState.opsDataIntegrityRepair;
+    els.opsDataIntegrity.appendChild(
+      createListCard({
+        title: "Data Integrity / Repair",
+        score: integrity.status || "-",
+        body:
+          `backend ${integrity.backend || "-"} · schema ${integrity.schema_lifecycle?.status || "-"}\n` +
+          `indexes ${integrity.hotspot_index_summary?.covered_count ?? 0}/${integrity.hotspot_index_summary?.expected_count ?? 0} · missing ${integrity.hotspot_index_summary?.missing_count ?? 0}\n` +
+          `session drift ${integrity.concurrency_summary?.session_pointer_drift_count ?? 0} · orphan choices ${integrity.concurrency_summary?.orphan_route_choice_count ?? 0}\n` +
+          `duplicate active subscriptions ${integrity.concurrency_summary?.duplicate_active_subscription_count ?? 0}\n` +
+          `warnings ${(integrity.warnings || []).join(" / ") || "-"}\n\n` +
+          `safe repairs:\n${(integrity.repair_actions || []).map((item) => `${item.action} · ${item.target_count} · ${item.reason || "-"}`).join("\n") || "-"}\n\n` +
+          `manual backlog:\n${(integrity.manual_backlog || []).map((item) => `${item.action} · ${item.target_count} · ${item.reason || "-"}`).join("\n") || "-"}${
+            repairResult
+              ? `\n\nlast repair ${repairResult.apply ? "apply" : "dry-run"} · changed ${repairResult.changed ? "yes" : "no"}\n${(repairResult.action_results || []).map((item) => `${item.action}: ${item.applied_count ?? 0}/${item.planned_count ?? 0}`).join(" / ") || "-"}`
+              : ""
+          }`
       })
     );
   }
@@ -403,6 +430,7 @@ function renderOpsRuntimeSection() {
         body:
           `recommended ${preflight.verification_summary?.recommended_action || "-"}\n` +
           `schema ${preflight.verification_summary?.schema_status || "-"} · incidents ${preflight.verification_summary?.incident_count ?? 0}\n` +
+          `restore verify:\n${(preflight.restore_verification_steps || []).join("\n") || "-"}\n\n` +
           `commands:\n${(preflight.verification_commands || []).join("\n") || "-"}`
       })
     );
@@ -418,11 +446,19 @@ function renderOpsRuntimeSection() {
           `preflight ${((runbook.preflight_checks || []).map((item) => `${item.key}:${item.ok ? "ok" : item.reason}`).join(" / ")) || "-"}\n\n` +
           `deploy steps:\n${(runbook.deploy_steps || []).join("\n") || "-"}\n\n` +
           `rollback steps:\n${(runbook.rollback_steps || []).join("\n") || "-"}\n\n` +
+          `restore verify:\n${(runbook.restore_verification_steps || []).join("\n") || "-"}\n\n` +
+          `restore hints:\n${(runbook.restore_decision_hints || []).join("\n") || "-"}\n\n` +
+          `restore requests:\n${(runbook.recent_restore_requests || []).map((item) => `${item.request_id} · ${item.approval_status || item.latest_status || "-"}\nrequested ${item.requested_by || "-"} · approved ${item.approved_by || "-"} · executed ${item.executed_by || "-"}\nexpires ${item.approval_expires_at || "-"}\n${item.backup_format || "-"} · ${item.target_database_identity || "-"}\n${item.reason || "-"}\njob ${item.executed_job_id || "-"} · artifact ${item.artifact_path || "-"}`).join("\n\n") || "-"}\n\n` +
+          `restore jobs:\n${(runbook.recent_restore_jobs || []).map((item) => `${item.job_id} · ${item.status || "-"}\nrequest ${item.payload?.request_id || "-"} · artifact ${(item.result_summary || {}).result_json || (item.result_summary || {}).artifact_dir || "-"}`).join("\n\n") || "-"}\n\n` +
+          `recent recovery drills:\n${(runbook.recent_recovery_drills || []).map((item) => `${item.drill_id || "-"} · ${item.status || "-"}\n${item.backup_path || "-"}\nartifact ${item.artifact_path || "-"}`).join("\n\n") || "-"}\n\n` +
           `recent backups:\n${(runbook.recent_backups || []).map((item) => `${item.backup_id} · ${item.status}\n${item.backup_path || "-"} · ${item.created_at}`).join("\n\n") || "-"}`
       })
     );
     if (!els.opsRestorePath?.value && runbook.recent_backups?.[0]?.backup_path && els.opsRestorePath) {
       els.opsRestorePath.value = runbook.recent_backups[0].backup_path;
+    }
+    if (!els.opsRestoreRequestId?.value && runbook.recent_restore_requests?.[0]?.request_id && els.opsRestoreRequestId) {
+      els.opsRestoreRequestId.value = runbook.recent_restore_requests[0].request_id;
     }
   }
 
@@ -436,18 +472,25 @@ function renderOpsRuntimeSection() {
         score: `${playbook.incident_snapshot?.incident_count ?? 0} incidents`,
         body:
           `schema ${playbook.deployment_runbook?.schema_lifecycle?.status || "-"}\n` +
+          `restore hints ${(playbook.deployment_runbook?.restore_decision_hints || []).join(" / ") || "-"}\n` +
           `triage:\n${(playbook.triage_steps || []).join("\n") || "-"}\n\n` +
-          `recovery:\n${(playbook.recovery_steps || []).join("\n") || "-"}`
+          `recovery:\n${(playbook.recovery_steps || []).join("\n") || "-"}\n\n` +
+          `restore verify:\n${(playbook.restore_verification_steps || []).join("\n") || "-"}\n\n` +
+          `decision matrix:\n${(playbook.decision_matrix || []).map((item) => `${item.preferred_action} · ${item.when ? "active" : "standby"}\n${item.scenario}\ninspect ${(item.inspect || []).join(" / ") || "-"}`).join("\n\n") || "-"}`
       })
     );
   }
 
   clearNode(els.opsRuntimeIncidentSnapshot);
   clearNode(els.opsRuntimeReceipts);
+  clearNode(els.opsProviderRouting);
+  clearNode(els.opsProviderRollout);
   clearNode(els.opsProviderRuntimeMetrics);
   if (!appState.opsRuntimeIncidentSnapshot) {
     clearNode(els.opsRuntimeIncidentSnapshot, "这里会显示 runtime incident snapshot、provider fallback、budget block 与 cache hit 概况。");
     clearNode(els.opsRuntimeReceipts, "这里会显示最近的 runtime receipts。");
+    clearNode(els.opsProviderRouting, "这里会显示 candidate / renderer 当前的 routing policy。");
+    clearNode(els.opsProviderRollout, "这里会显示 candidate / renderer 的 canary / active / rollback 控制。");
     clearNode(els.opsProviderRuntimeMetrics, "这里会显示 provider runtime metrics 与 cost trend dashboard。");
   } else {
     const snapshot = appState.opsRuntimeIncidentSnapshot;
@@ -458,10 +501,12 @@ function renderOpsRuntimeSection() {
         body:
           `health ${snapshot.health_status || "-"} · schema ${snapshot.schema_lifecycle_status || "-"}\n` +
           `receipts ${snapshot.receipt_count ?? 0} · cache hit ${snapshot.cache_hit_rate !== null && snapshot.cache_hit_rate !== undefined ? Number(snapshot.cache_hit_rate).toFixed(3) : "-"} · cost ${Number(snapshot.total_estimated_cost || 0).toFixed(3)}\n` +
+          `latency runtime ${snapshot.latency_summary?.runtime?.avg_latency_ms !== null && snapshot.latency_summary?.runtime?.avg_latency_ms !== undefined ? Number(snapshot.latency_summary.runtime.avg_latency_ms).toFixed(1) : "-"}ms / p95 ${snapshot.latency_summary?.runtime?.p95_latency_ms !== null && snapshot.latency_summary?.runtime?.p95_latency_ms !== undefined ? Number(snapshot.latency_summary.runtime.p95_latency_ms).toFixed(1) : "-"}ms\n` +
+          `candidate ${snapshot.latency_summary?.candidate?.avg_latency_ms !== null && snapshot.latency_summary?.candidate?.avg_latency_ms !== undefined ? Number(snapshot.latency_summary.candidate.avg_latency_ms).toFixed(1) : "-"}ms · renderer ${snapshot.latency_summary?.renderer?.avg_latency_ms !== null && snapshot.latency_summary?.renderer?.avg_latency_ms !== undefined ? Number(snapshot.latency_summary.renderer.avg_latency_ms).toFixed(1) : "-"}ms\n` +
           `incident type ${Object.entries(snapshot.by_incident_type || {}).map(([key, value]) => `${key}=${value}`).join(" / ") || "-"}\n` +
           `provider ${Object.entries(snapshot.by_provider || {}).map(([key, value]) => `${key}=${value}`).join(" / ") || "-"}\n` +
           `surface ${Object.entries(snapshot.by_surface || {}).map(([key, value]) => `${key}=${value}`).join(" / ") || "-"}\n\n` +
-          `latest incidents:\n${(snapshot.latest_incidents || []).map((item) => `${item.action} · ${item.response_status} · ${(item.incident_flags || []).join("/") || "-"}\n${item.selected_provider || item.provider || "-"} · ${item.session_id || "-"} · ${item.world_version_id || "-"}`).join("\n\n") || "-"}`
+          `latest incidents:\n${(snapshot.latest_incidents || []).map((item) => `${item.action} · ${item.response_status} · ${(item.incident_flags || []).join("/") || "-"}\n${item.selected_provider || item.provider || "-"} · ${item.session_id || "-"} · ${item.world_version_id || "-"}\nlatency ${item.runtime_latency_ms !== null && item.runtime_latency_ms !== undefined ? Number(item.runtime_latency_ms).toFixed(1) : "-"}ms`).join("\n\n") || "-"}`
       })
     );
 
@@ -476,27 +521,75 @@ function renderOpsRuntimeSection() {
             <h3>${item.action || "-"}</h3>
             <span class="list-card-score">${item.response_status || "-"}</span>
           </div>
-          <p class="list-card-body">${formatTimestamp(item.occurred_at)}\n${item.surface || "-"} · provider ${item.selected_provider || item.provider || "-"}\nflags ${(item.incident_flags || []).join(" / ") || "-"}\ncache ${item.cache_hit === null || item.cache_hit === undefined ? "-" : item.cache_hit ? "hit" : "miss"} · budget ${item.budget_blocked ? "blocked" : "ok"} · fallback ${item.fallback_used ? "yes" : "no"}\nerror ${item.backend_error || "-"}\ncandidates ${(item.candidate_counts?.raw ?? 0)}/${(item.candidate_counts?.legal ?? 0)} · output ${item.output_chars ?? 0} · cost ${Number(item.estimated_cost || 0).toFixed(3)}</p>
+          <p class="list-card-body">${formatTimestamp(item.occurred_at)}\n${item.surface || "-"} · provider ${item.selected_provider || item.provider || "-"}\nflags ${(item.incident_flags || []).join(" / ") || "-"}\nrollout candidate ${item.candidate_rollout_status || "-"}${item.candidate_canary_match === null || item.candidate_canary_match === undefined ? "" : ` (${item.candidate_canary_match ? "bucket" : "no bucket"})`} · renderer ${item.renderer_rollout_status || "-"}${item.renderer_canary_match === null || item.renderer_canary_match === undefined ? "" : ` (${item.renderer_canary_match ? "bucket" : "no bucket"})`}\ncache ${item.cache_hit === null || item.cache_hit === undefined ? "-" : item.cache_hit ? "hit" : "miss"} · budget ${item.budget_blocked ? "blocked" : "ok"} · fallback ${item.fallback_used ? "yes" : "no"}\nlatency ${item.runtime_latency_ms !== null && item.runtime_latency_ms !== undefined ? Number(item.runtime_latency_ms).toFixed(1) : "-"}ms · candidate ${item.candidate_latency_ms !== null && item.candidate_latency_ms !== undefined ? Number(item.candidate_latency_ms).toFixed(1) : "-"}ms · renderer ${item.renderer_latency_ms !== null && item.renderer_latency_ms !== undefined ? Number(item.renderer_latency_ms).toFixed(1) : "-"}ms\nattempts ${item.attempt_count ?? 0} · candidate ${item.candidate_attempt_count ?? 0} · renderer ${item.renderer_attempt_count ?? 0}\nrequest cost ${item.candidate_estimated_request_cost_usd !== null && item.candidate_estimated_request_cost_usd !== undefined ? Number(item.candidate_estimated_request_cost_usd).toFixed(4) : "-"} / ${item.renderer_estimated_request_cost_usd !== null && item.renderer_estimated_request_cost_usd !== undefined ? Number(item.renderer_estimated_request_cost_usd).toFixed(4) : "-"}\nerror ${item.backend_error || "-"}\ncandidates ${(item.candidate_counts?.raw ?? 0)}/${(item.candidate_counts?.legal ?? 0)} · output ${item.output_chars ?? 0} · cost ${Number(item.estimated_cost || 0).toFixed(3)}</p>
         `;
         els.opsRuntimeReceipts.appendChild(card);
       });
     }
   }
 
+  if (!appState.opsProviderRouting) {
+    clearNode(els.opsProviderRouting, "这里会显示 candidate / renderer 当前的 routing policy。");
+  } else {
+    const policy = appState.opsProviderRouting;
+    els.opsProviderRouting.appendChild(
+      createListCard({
+        title: "Provider Routing Policy",
+        score: `${policy.candidate?.backend_present ? "candidate:on" : "candidate:off"} · ${policy.renderer?.backend_present ? "renderer:on" : "renderer:off"}`,
+        body:
+          `candidate providers ${(policy.candidate?.provider_order || []).join(" / ") || "-"}\n` +
+          `candidate retry ${policy.candidate?.retry_policy?.max_attempts ?? "-"} · cache ${policy.candidate?.cache_policy?.enabled ? `on:${policy.candidate?.cache_policy?.max_entries}` : "off"} · budget ${policy.candidate?.budget_policy?.max_prompt_chars ?? "-"}/${policy.candidate?.budget_policy?.max_estimated_cost_usd ?? "-"}\n` +
+          `candidate fallback ${(policy.candidate?.fallback_chain || []).join(" -> ") || "-"}\n\n` +
+          `renderer providers ${(policy.renderer?.provider_order || []).join(" / ") || "-"}\n` +
+          `renderer retry ${policy.renderer?.retry_policy?.max_attempts ?? "-"} · cache ${policy.renderer?.cache_policy?.enabled ? `on:${policy.renderer?.cache_policy?.max_entries}` : "off"} · budget ${policy.renderer?.budget_policy?.max_prompt_chars ?? "-"}/${policy.renderer?.budget_policy?.max_estimated_cost_usd ?? "-"}\n` +
+          `renderer fallback ${(policy.renderer?.fallback_chain || []).join(" -> ") || "-"}`
+      })
+    );
+  }
+
+  if (!appState.opsProviderRollout) {
+    clearNode(els.opsProviderRollout, "这里会显示 candidate / renderer 的 canary / active / rollback 控制。");
+  } else {
+    const rollout = appState.opsProviderRollout;
+    const candidate = rollout.tracks?.candidate || {};
+    const renderer = rollout.tracks?.renderer || {};
+    els.opsProviderRollout.appendChild(
+      createListCard({
+        title: "Provider Rollout Summary",
+        score: rollout.recommended_next_action || "-",
+        body:
+          `active ${(rollout.active_tracks || []).join(" / ") || "-"} · canary ${(rollout.canary_tracks || []).join(" / ") || "-"} · rolled_back ${(rollout.rolled_back_tracks || []).join(" / ") || "-"}\n` +
+          `candidate ${candidate.rollout_status || "-"} · bucket ${candidate.bucket_percentage ?? 0}% · allowlist ${(candidate.world_allowlist || []).join(" / ") || "-"}\n` +
+          `renderer ${renderer.rollout_status || "-"} · bucket ${renderer.bucket_percentage ?? 0}% · allowlist ${(renderer.world_allowlist || []).join(" / ") || "-"}`
+      })
+    );
+  }
+
   if (!appState.opsProviderRuntimeMetrics) {
     clearNode(els.opsProviderRuntimeMetrics, "这里会显示 provider runtime metrics 与 cost trend dashboard。");
   } else {
     const metrics = appState.opsProviderRuntimeMetrics;
+    const rolloutStageCard = createListCard({
+      title: "Rollout Stage Comparison",
+      score: "shadow / canary / active",
+      body:
+        `candidate:\n${(metrics.rollout_stage_summary?.candidate || []).map((item) => `${item.rollout_status}\nreceipts ${item.receipt_count} · incident ${Number(item.incident_rate || 0).toFixed(3)} · fallback ${Number(item.fallback_rate || 0).toFixed(3)} · backend err ${Number(item.backend_error_rate || 0).toFixed(3)}\ncost ${Number(item.total_estimated_cost || 0).toFixed(3)} · avg ${Number(item.avg_estimated_cost || 0).toFixed(3)}\nlatency ${item.runtime_latency?.avg_latency_ms !== null && item.runtime_latency?.avg_latency_ms !== undefined ? Number(item.runtime_latency.avg_latency_ms).toFixed(1) : "-"}ms / p95 ${item.runtime_latency?.p95_latency_ms !== null && item.runtime_latency?.p95_latency_ms !== undefined ? Number(item.runtime_latency.p95_latency_ms).toFixed(1) : "-"}ms · candidate ${item.track_latency?.avg_latency_ms !== null && item.track_latency?.avg_latency_ms !== undefined ? Number(item.track_latency.avg_latency_ms).toFixed(1) : "-"}ms\ncanary hits ${item.canary_match_count ?? 0}`).join("\n\n") || "-"}\n\n` +
+        `renderer:\n${(metrics.rollout_stage_summary?.renderer || []).map((item) => `${item.rollout_status}\nreceipts ${item.receipt_count} · incident ${Number(item.incident_rate || 0).toFixed(3)} · fallback ${Number(item.fallback_rate || 0).toFixed(3)} · backend err ${Number(item.backend_error_rate || 0).toFixed(3)}\ncost ${Number(item.total_estimated_cost || 0).toFixed(3)} · avg ${Number(item.avg_estimated_cost || 0).toFixed(3)}\nlatency ${item.runtime_latency?.avg_latency_ms !== null && item.runtime_latency?.avg_latency_ms !== undefined ? Number(item.runtime_latency.avg_latency_ms).toFixed(1) : "-"}ms / p95 ${item.runtime_latency?.p95_latency_ms !== null && item.runtime_latency?.p95_latency_ms !== undefined ? Number(item.runtime_latency.p95_latency_ms).toFixed(1) : "-"}ms · renderer ${item.track_latency?.avg_latency_ms !== null && item.track_latency?.avg_latency_ms !== undefined ? Number(item.track_latency.avg_latency_ms).toFixed(1) : "-"}ms\ncanary hits ${item.canary_match_count ?? 0}`).join("\n\n") || "-"}`
+    });
+    els.opsProviderRuntimeMetrics.appendChild(rolloutStageCard);
     els.opsProviderRuntimeMetrics.appendChild(
       createListCard({
         title: "Provider Runtime Metrics",
         score: `${metrics.receipt_count ?? 0} receipts`,
         body:
           `total cost ${Number(metrics.total_estimated_cost || 0).toFixed(3)}\n` +
+          `latency runtime ${metrics.latency_summary?.runtime?.avg_latency_ms !== null && metrics.latency_summary?.runtime?.avg_latency_ms !== undefined ? Number(metrics.latency_summary.runtime.avg_latency_ms).toFixed(1) : "-"}ms / p95 ${metrics.latency_summary?.runtime?.p95_latency_ms !== null && metrics.latency_summary?.runtime?.p95_latency_ms !== undefined ? Number(metrics.latency_summary.runtime.p95_latency_ms).toFixed(1) : "-"}ms\n` +
+          `candidate ${metrics.latency_summary?.candidate?.avg_latency_ms !== null && metrics.latency_summary?.candidate?.avg_latency_ms !== undefined ? Number(metrics.latency_summary.candidate.avg_latency_ms).toFixed(1) : "-"}ms · renderer ${metrics.latency_summary?.renderer?.avg_latency_ms !== null && metrics.latency_summary?.renderer?.avg_latency_ms !== undefined ? Number(metrics.latency_summary.renderer.avg_latency_ms).toFixed(1) : "-"}ms\n` +
           `surface ${Object.entries(metrics.surface_summary || {}).map(([key, value]) => `${key}=${value}`).join(" / ") || "-"}\n` +
           `action ${Object.entries(metrics.action_summary || {}).map(([key, value]) => `${key}=${value}`).join(" / ") || "-"}\n\n` +
-          `providers:\n${(metrics.provider_summary || []).map((item) => `${item.provider}\nreceipts ${item.receipt_count} · incidents ${item.incident_count}\nfallback ${Number(item.fallback_rate || 0).toFixed(3)} · budget ${Number(item.budget_block_rate || 0).toFixed(3)} · cache ${item.cache_hit_rate === null || item.cache_hit_rate === undefined ? "-" : Number(item.cache_hit_rate).toFixed(3)}\ncost ${Number(item.total_estimated_cost || 0).toFixed(3)} · avg ${Number(item.avg_estimated_cost || 0).toFixed(3)} · chars ${Number(item.avg_output_chars || 0).toFixed(1)}`).join("\n\n") || "-" }\n\n` +
-          `cost trend:\n${(metrics.cost_trend || []).map((item) => `${item.bucket} · cost ${Number(item.total_estimated_cost || 0).toFixed(3)} · receipts ${item.receipt_count} · incidents ${item.incident_count}`).join("\n") || "-"}`
+          `providers:\n${(metrics.provider_summary || []).map((item) => `${item.provider}\nreceipts ${item.receipt_count} · incidents ${item.incident_count} · candidate ${item.selected_as_candidate_count ?? 0} · renderer ${item.selected_as_renderer_count ?? 0}\nfallback ${Number(item.fallback_rate || 0).toFixed(3)} · budget ${Number(item.budget_block_rate || 0).toFixed(3)} · backend err ${Number(item.backend_error_rate || 0).toFixed(3)} · cache ${item.cache_hit_rate === null || item.cache_hit_rate === undefined ? "-" : Number(item.cache_hit_rate).toFixed(3)}\nlatency ${item.avg_runtime_latency_ms !== null && item.avg_runtime_latency_ms !== undefined ? Number(item.avg_runtime_latency_ms).toFixed(1) : "-"}ms / p95 ${item.p95_runtime_latency_ms !== null && item.p95_runtime_latency_ms !== undefined ? Number(item.p95_runtime_latency_ms).toFixed(1) : "-"}ms\ncandidate ${item.avg_candidate_latency_ms !== null && item.avg_candidate_latency_ms !== undefined ? Number(item.avg_candidate_latency_ms).toFixed(1) : "-"}ms · renderer ${item.avg_renderer_latency_ms !== null && item.avg_renderer_latency_ms !== undefined ? Number(item.avg_renderer_latency_ms).toFixed(1) : "-"}ms\ncost ${Number(item.total_estimated_cost || 0).toFixed(3)} · avg ${Number(item.avg_estimated_cost || 0).toFixed(3)} · req ${Number(item.candidate_estimated_request_cost || 0).toFixed(4)}/${Number(item.renderer_estimated_request_cost || 0).toFixed(4)} · chars ${Number(item.avg_output_chars || 0).toFixed(1)}`).join("\n\n") || "-" }\n\n` +
+          `cost trend:\n${(metrics.cost_trend || []).map((item) => `${item.bucket} · cost ${Number(item.total_estimated_cost || 0).toFixed(3)} · receipts ${item.receipt_count} · incidents ${item.incident_count}`).join("\n") || "-"}\n\n` +
+          `latency trend:\n${(metrics.latency_trend || []).map((item) => `${item.bucket} · runtime ${item.runtime?.avg_latency_ms !== null && item.runtime?.avg_latency_ms !== undefined ? Number(item.runtime.avg_latency_ms).toFixed(1) : "-"}ms · candidate ${item.candidate?.avg_latency_ms !== null && item.candidate?.avg_latency_ms !== undefined ? Number(item.candidate.avg_latency_ms).toFixed(1) : "-"}ms · renderer ${item.renderer?.avg_latency_ms !== null && item.renderer?.avg_latency_ms !== undefined ? Number(item.renderer.avg_latency_ms).toFixed(1) : "-"}ms`).join("\n") || "-"}`
       })
     );
   }
@@ -1499,14 +1592,28 @@ function renderOpsLearnedSection() {
   }
 
   clearNode(els.opsLearnedDashboard);
+  clearNode(els.opsLearnedImpact);
+  clearNode(els.opsLearnedCadence);
+  clearNode(els.opsLearnedAssistedGate);
+  clearNode(els.opsLearnedAssistedRerank);
+  clearNode(els.opsLearnedReviewQuality);
   clearNode(els.opsLearnedTraining);
   clearNode(els.opsLearnedEvidence);
   if (!appState.opsLearnedDashboard) {
     clearNode(els.opsLearnedDashboard, "这里会显示 evaluator / reranker 的统一 learned summary。");
+    clearNode(els.opsLearnedImpact, "这里会显示 evaluator / reranker 的 learned impact summary、retention proxy 与 monetization proxy。");
+    clearNode(els.opsLearnedCadence, "这里会显示 evaluator / reranker 当前处于 collect data、train、validate、promotion 还是 activate 阶段。");
+    clearNode(els.opsLearnedAssistedGate, "这里会显示 assisted gate experiment 的 config、guardrails、recent decisions 与 rollback 条件。");
+    clearNode(els.opsLearnedAssistedRerank, "这里会显示 assisted rerank experiment 的 config、guardrails、recent decisions 与 rollback 条件。");
+    clearNode(els.opsLearnedReviewQuality, "这里会显示 human review coverage、reviewer diversity、样本质量告警与高覆盖补样 backlog。");
     clearNode(els.opsLearnedTraining, "这里会显示最近一次 learned training automation 结果。");
     clearNode(els.opsLearnedEvidence, "这里会显示 evaluator / reranker 的 promotion evidence pack 摘要。");
   } else {
     const dashboard = appState.opsLearnedDashboard;
+    const learnedImpact = appState.opsLearnedImpact || {};
+    const learnedCadence = appState.opsLearnedCadence || {};
+    const assistedGate = appState.opsLearnedAssistedGate || {};
+    const assistedRerank = appState.opsLearnedAssistedRerank || {};
     const overviewCard = document.createElement("article");
     overviewCard.className = "list-card";
     overviewCard.innerHTML = `
@@ -1517,6 +1624,247 @@ function renderOpsLearnedSection() {
       <p class="list-card-body">generated ${formatTimestamp(dashboard.generated_at)}\nwarnings ${(dashboard.warnings || []).join(" / ") || "-"}\nshared weak worlds ${(dashboard.shared_weak_worlds || []).join(" / ") || "-"}\nshared weak issues ${(dashboard.shared_weak_issue_codes || []).join(" / ") || "-"}\nnext ${dashboard.recommended_next_focus || "-"}</p>
     `;
     els.opsLearnedDashboard.appendChild(overviewCard);
+
+    if (!learnedImpact.track_summaries?.length) {
+      clearNode(els.opsLearnedImpact, "这里会显示 evaluator / reranker 的 learned impact summary、retention proxy 与 monetization proxy。");
+    } else {
+      const trackCard = document.createElement("article");
+      trackCard.className = "list-card";
+      trackCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>Track Impact Summary</h3>
+          <span class="list-card-score">${learnedImpact.track_summaries.length} tracks</span>
+        </div>
+        <p class="list-card-body">${(learnedImpact.track_summaries || []).map((item) => `${item.track}\nstatus ${item.impact_status} · sufficiency ${item.evidence_sufficiency}\nsamples ${item.sample_count ?? 0} · worlds ${item.world_coverage_count ?? 0} · issues ${item.issue_coverage_count ?? 0}\ncontinuation ${item.continuation_correlation !== null && item.continuation_correlation !== undefined ? Number(item.continuation_correlation).toFixed(2) : "-"} · monetization ${item.monetization_correlation !== null && item.monetization_correlation !== undefined ? Number(item.monetization_correlation).toFixed(2) : "-"}\nshadow ${item.shadow_agreement_or_accuracy !== null && item.shadow_agreement_or_accuracy !== undefined ? Number(item.shadow_agreement_or_accuracy).toFixed(2) : "-"} · next ${item.recommended_next_action || "-"}`).join("\n\n") || "-"}</p>
+      `;
+      els.opsLearnedImpact.appendChild(trackCard);
+
+      const proxyCard = document.createElement("article");
+      proxyCard.className = "list-card";
+      proxyCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>Retention / Monetization Proxies</h3>
+          <span class="list-card-score">${Number(learnedImpact.retention_proxies?.online_continuation_correlation || 0).toFixed(2)}</span>
+        </div>
+        <p class="list-card-body">continuation samples ${learnedImpact.retention_proxies?.continuation_signal_summary?.sample_count ?? 0} · positive ${learnedImpact.retention_proxies?.continuation_signal_summary?.positive_count ?? 0} · negative ${learnedImpact.retention_proxies?.continuation_signal_summary?.negative_count ?? 0}\ncheckout ${learnedImpact.monetization_proxies?.checkout_started_count ?? 0} · activated ${learnedImpact.monetization_proxies?.subscription_activated_count ?? 0} · paywall ${learnedImpact.monetization_proxies?.payment_required_count ?? 0}\nstory credits ${learnedImpact.monetization_proxies?.story_credit_consumed_count ?? 0} · studio credits ${learnedImpact.monetization_proxies?.studio_credit_consumed_count ?? 0}\nquality->checkout ${learnedImpact.monetization_proxies?.quality_to_checkout_correlation !== null && learnedImpact.monetization_proxies?.quality_to_checkout_correlation !== undefined ? Number(learnedImpact.monetization_proxies.quality_to_checkout_correlation).toFixed(2) : "-"}\nquality->subscription ${learnedImpact.monetization_proxies?.quality_to_subscription_correlation !== null && learnedImpact.monetization_proxies?.quality_to_subscription_correlation !== undefined ? Number(learnedImpact.monetization_proxies.quality_to_subscription_correlation).toFixed(2) : "-"}\nquality->paywall ${learnedImpact.monetization_proxies?.quality_to_paywall_correlation !== null && learnedImpact.monetization_proxies?.quality_to_paywall_correlation !== undefined ? Number(learnedImpact.monetization_proxies.quality_to_paywall_correlation).toFixed(2) : "-"}</p>
+      `;
+      els.opsLearnedImpact.appendChild(proxyCard);
+
+      const experiment = learnedImpact.experiment_summaries?.assisted_gate || {};
+      const experimentCard = document.createElement("article");
+      experimentCard.className = "list-card";
+      experimentCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>Assisted Gate Impact</h3>
+          <span class="list-card-score">${experiment.impact_status || "-"}</span>
+        </div>
+        <p class="list-card-body">mode ${experiment.mode || "-"} · enabled ${experiment.enabled ? "yes" : "no"} · sufficiency ${experiment.evidence_sufficiency || "-"}\ndecisions ${experiment.decision_count ?? 0} · worlds ${experiment.world_coverage_count ?? 0} · in bucket ${experiment.in_bucket_count ?? 0}\nwould block ${experiment.would_block_count ?? 0} · assisted block ${experiment.assisted_block_count ?? 0}\ncontinuation ${experiment.continuation_correlation !== null && experiment.continuation_correlation !== undefined ? Number(experiment.continuation_correlation).toFixed(2) : "-"} · monetization ${experiment.monetization_correlation !== null && experiment.monetization_correlation !== undefined ? Number(experiment.monetization_correlation).toFixed(2) : "-"}\nblock->checkout ${experiment.assisted_block_to_checkout_correlation !== null && experiment.assisted_block_to_checkout_correlation !== undefined ? Number(experiment.assisted_block_to_checkout_correlation).toFixed(2) : "-"} · block->subscription ${experiment.assisted_block_to_subscription_correlation !== null && experiment.assisted_block_to_subscription_correlation !== undefined ? Number(experiment.assisted_block_to_subscription_correlation).toFixed(2) : "-"} · block->paywall ${experiment.assisted_block_to_paywall_correlation !== null && experiment.assisted_block_to_paywall_correlation !== undefined ? Number(experiment.assisted_block_to_paywall_correlation).toFixed(2) : "-"}\nnext ${experiment.recommended_next_action || "-"}</p>
+      `;
+      els.opsLearnedImpact.appendChild(experimentCard);
+
+      const worldCard = document.createElement("article");
+      worldCard.className = "list-card";
+      worldCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>World Impact Drill-down</h3>
+          <span class="list-card-score">${(learnedImpact.world_impact_details || []).length} worlds</span>
+        </div>
+        <p class="list-card-body">${(learnedImpact.world_impact_details || []).slice(0, 5).map((item) => `${item.world_id}\ncontinuation ${item.continuation_correlation !== null && item.continuation_correlation !== undefined ? Number(item.continuation_correlation).toFixed(2) : "-"} · samples ${item.continuation_sample_count ?? 0} · gap ${item.continuation_sample_gap ?? 0}\ncheckout ${item.checkout_started_count ?? 0} · activated ${item.subscription_activated_count ?? 0} · paywall ${item.payment_required_count ?? 0}\nassisted decisions ${item.assisted_gate_decision_count ?? 0} · in bucket ${item.assisted_gate_in_bucket_count ?? 0} · assisted block ${item.assisted_gate_assisted_block_count ?? 0}\nevaluator ${item.evaluator_agreement_rate !== null && item.evaluator_agreement_rate !== undefined ? Number(item.evaluator_agreement_rate).toFixed(2) : "-"} · reranker ${item.reranker_accuracy !== null && item.reranker_accuracy !== undefined ? Number(item.reranker_accuracy).toFixed(2) : "-"}\nnext ${item.recommended_next_action || "-"}`).join("\n\n") || "-"}</p>
+      `;
+      els.opsLearnedImpact.appendChild(worldCard);
+
+      const issueCard = document.createElement("article");
+      issueCard.className = "list-card";
+      issueCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>Issue Impact Drill-down</h3>
+          <span class="list-card-score">${(learnedImpact.issue_impact_details || []).length} issues</span>
+        </div>
+        <p class="list-card-body">${(learnedImpact.issue_impact_details || []).slice(0, 5).map((item) => `${item.issue_code}\naffected worlds ${item.affected_world_count ?? 0} · evaluator samples ${item.evaluator_sample_count ?? 0} · reranker samples ${item.reranker_sample_count ?? 0}\ncontinuation ${item.continuation_correlation !== null && item.continuation_correlation !== undefined ? Number(item.continuation_correlation).toFixed(2) : "-"} · monetization ${item.monetization_correlation !== null && item.monetization_correlation !== undefined ? Number(item.monetization_correlation).toFixed(2) : "-"}\npaywall ${item.payment_required_count ?? 0} · checkout ${item.checkout_started_count ?? 0} · activated ${item.subscription_activated_count ?? 0}\nassisted decisions ${item.assisted_gate_decision_count ?? 0} · assisted block ${item.assisted_gate_assisted_block_count ?? 0}\nnext ${item.recommended_next_action || "-"}`).join("\n\n") || "-"}</p>
+      `;
+      els.opsLearnedImpact.appendChild(issueCard);
+
+      const accumulationCard = document.createElement("article");
+      accumulationCard.className = "list-card";
+      accumulationCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>Impact Sample Accumulation</h3>
+          <span class="list-card-score">${learnedImpact.sample_accumulation?.retention?.worlds_below_target_count ?? 0} retention gaps</span>
+        </div>
+        <p class="list-card-body">retention target/world ${learnedImpact.sample_accumulation?.retention?.target_sample_count_per_world ?? 0} · worlds below ${learnedImpact.sample_accumulation?.retention?.worlds_below_target_count ?? 0}\nevaluator target/world ${learnedImpact.sample_accumulation?.evaluator?.target_sample_count_per_world ?? 0} · worlds below ${learnedImpact.sample_accumulation?.evaluator?.worlds_below_target_count ?? 0}\nreranker target/world ${learnedImpact.sample_accumulation?.reranker?.target_sample_count_per_world ?? 0} · worlds below ${learnedImpact.sample_accumulation?.reranker?.worlds_below_target_count ?? 0}\n\nwarnings:\n${(learnedImpact.warnings || []).join("\n") || "-"}</p>
+      `;
+      els.opsLearnedImpact.appendChild(accumulationCard);
+    }
+
+    if (!learnedCadence.track_summaries?.length) {
+      clearNode(els.opsLearnedCadence, "这里会显示 evaluator / reranker 当前处于 collect data、train、validate、promotion 还是 activate 阶段。");
+    } else {
+      const cadenceSummaryCard = document.createElement("article");
+      cadenceSummaryCard.className = "list-card";
+      cadenceSummaryCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>Learned Cadence Summary</h3>
+          <span class="list-card-score">${learnedCadence.cadence_summary?.recommended_next_action || "-"}</span>
+        </div>
+        <p class="list-card-body">active ${(learnedCadence.cadence_summary?.active_tracks || []).join(" / ") || "-"}\nready ${(learnedCadence.cadence_summary?.ready_queue || []).join(" / ") || "-"} · attention ${(learnedCadence.cadence_summary?.attention_queue || []).join(" / ") || "-"}\nactivate ${(learnedCadence.cadence_summary?.activation_queue || []).join(" / ") || "-"}\npromotion ${(learnedCadence.cadence_summary?.promotion_queue || []).join(" / ") || "-"}\nvalidate ${(learnedCadence.cadence_summary?.validation_queue || []).join(" / ") || "-"}\ntraining ${(learnedCadence.cadence_summary?.training_queue || []).join(" / ") || "-"}\ncollect ${(learnedCadence.cadence_summary?.collection_queue || []).join(" / ") || "-"}\nrebuild ${(learnedCadence.cadence_summary?.rebuild_queue || []).join(" / ") || "-"}\n\nwarnings:\n${(learnedCadence.warnings || []).join("\n") || "-"}</p>
+      `;
+      els.opsLearnedCadence.appendChild(cadenceSummaryCard);
+
+      (learnedCadence.track_summaries || []).forEach((item) => {
+        const card = document.createElement("article");
+        card.className = "list-card";
+        card.innerHTML = `
+          <div class="list-card-head">
+            <h3>${item.track}</h3>
+            <span class="list-card-score">${item.cadence_stage || "-"} · ${item.cadence_health || "-"}</span>
+          </div>
+          <p class="list-card-body">next ${item.recommended_next_action || "-"}\nexamples ${item.relevant_example_count ?? 0} · worlds ${item.world_coverage_count ?? 0} · issues ${item.issue_coverage_count ?? 0}\nlatest sample ${item.latest_sample_at ? formatTimestamp(item.latest_sample_at) : "-"}\nartifact ${item.artifact_state?.artifact_present ? "present" : "missing"} · freshness ${item.freshness?.status || "-"}\ncheckpoint ${item.checkpoint_summary?.split_status || "-"} · train ${item.checkpoint_summary?.train_count ?? 0} / val ${item.checkpoint_summary?.val_count ?? 0} / test ${item.checkpoint_summary?.test_count ?? 0}\nshadow ${item.validation_summary?.shadow_status || "-"} · impact ${item.validation_summary?.impact_status || "-"} · sufficiency ${item.validation_summary?.evidence_sufficiency || "-"}\nshadow metric ${item.validation_summary?.shadow_agreement_or_accuracy !== null && item.validation_summary?.shadow_agreement_or_accuracy !== undefined ? Number(item.validation_summary.shadow_agreement_or_accuracy).toFixed(3) : "-"}\npromotion ${item.promotion_summary?.recommendation_status || "-"} · approval ${item.promotion_summary?.approval_status || "-"} · age ${item.promotion_summary?.hours_since_approval !== null && item.promotion_summary?.hours_since_approval !== undefined ? Number(item.promotion_summary.hours_since_approval).toFixed(1) : "-"}h\nrollout ${item.rollout_summary?.rollout_status || "-"} · safe ${item.rollout_summary?.safe_to_rollout ? "yes" : "no"} · age ${item.rollout_summary?.hours_since_rollout !== null && item.rollout_summary?.hours_since_rollout !== undefined ? Number(item.rollout_summary.hours_since_rollout).toFixed(1) : "-"}h\ntraining run ${(item.latest_training_run?.run_id || "-")} · ${(item.latest_training_run?.status || "never")}\nsource counts ${Object.entries(item.source_sample_counts || {}).map(([key, value]) => `${key}=${value}`).join(" / ") || "-"}\ncoverage gaps review ${item.coverage_gaps?.review_sample_backlog_count ?? 0} · pair ${item.coverage_gaps?.pair_coverage_backlog_count ?? 0} · disagreement ${item.coverage_gaps?.disagreement_issue_count ?? 0}\nstale ${(item.stale_reasons || []).join(" / ") || "-"}\nrecent events:\n${(item.recent_events || []).map((event) => `${event.event_type} · ${event.status || "-"} · ${event.occurred_at ? formatTimestamp(event.occurred_at) : "-"}\n${event.summary || "-"}`).join("\n\n") || "-"}\n\nwarnings:\n${(item.warnings || []).join("\n") || "-"}</p>
+        `;
+        els.opsLearnedCadence.appendChild(card);
+      });
+    }
+
+    if (!assistedGate.config) {
+      clearNode(els.opsLearnedAssistedGate, "这里会显示 assisted gate experiment 的 config、guardrails、recent decisions 与 rollback 条件。");
+    } else {
+      const config = assistedGate.config || {};
+      if (els.opsAssistedGateBucket) {
+        els.opsAssistedGateBucket.value = String(config.config?.bucket_percentage ?? 0);
+      }
+      if (els.opsAssistedGateConfidence) {
+        els.opsAssistedGateConfidence.value = String(config.config?.confidence_threshold ?? 0.9);
+      }
+      if (els.opsAssistedGateWorldAllowlist) {
+        els.opsAssistedGateWorldAllowlist.value = (config.config?.world_allowlist || []).join(", ");
+      }
+      const configCard = document.createElement("article");
+      configCard.className = "list-card";
+      configCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>Assisted Gate Experiment</h3>
+          <span class="list-card-score">${config.config?.enabled ? config.config?.mode || "-" : "disabled"}</span>
+        </div>
+        <p class="list-card-body">track ${assistedGate.track || "evaluator"}\nrecommended ${assistedGate.recommended_next_action || "-"}\nreviewer ${config.reviewer_id || "-"} · updated ${config.updated_at ? formatTimestamp(config.updated_at) : "-"}\nreason ${config.reason || "-"}\nbucket ${config.config?.bucket_percentage ?? 0}% · threshold ${config.config?.confidence_threshold ?? 0}\nallowlist ${(config.config?.world_allowlist || []).join(" / ") || "-"}\nrollout ${assistedGate.rollout_summary?.rollout_status || "-"} · candidate ${assistedGate.rollout_summary?.candidate_ready ? "yes" : "no"} · approval ${assistedGate.rollout_summary?.latest_approval_status || "-"}\n\nguardrails:\n${(assistedGate.guardrails || []).join("\n") || "-"}\n\nrollback:\n${(assistedGate.rollback_conditions || []).join("\n") || "-"}</p>
+      `;
+      els.opsLearnedAssistedGate.appendChild(configCard);
+
+      const counterCard = document.createElement("article");
+      counterCard.className = "list-card";
+      counterCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>Experiment Counters</h3>
+          <span class="list-card-score">${assistedGate.counters?.assisted_block_count ?? 0} assisted blocks</span>
+        </div>
+        <p class="list-card-body">decisions ${assistedGate.counters?.decision_count ?? 0}\nshadow ${assistedGate.counters?.shadow_count ?? 0} · skipped ${assistedGate.counters?.skipped_count ?? 0}\nwould block ${assistedGate.counters?.would_block_count ?? 0} · in bucket ${assistedGate.counters?.in_bucket_count ?? 0}\nassisted block ${assistedGate.counters?.assisted_block_count ?? 0}</p>
+      `;
+      els.opsLearnedAssistedGate.appendChild(counterCard);
+
+      if ((assistedGate.recent_decisions || []).length) {
+        const decisionsCard = document.createElement("article");
+        decisionsCard.className = "list-card";
+        decisionsCard.innerHTML = `
+          <div class="list-card-head">
+            <h3>Recent Assisted Decisions</h3>
+            <span class="list-card-score">${(assistedGate.recent_decisions || []).length} receipts</span>
+          </div>
+          <p class="list-card-body">${(assistedGate.recent_decisions || []).slice(0, 6).map((item) => `${item.world_version_id || "-"}\n${item.status || "-"} · ${item.mode || "-"} · ${item.guardrail_status || "-"}\nbucket ${item.bucket_match ? "yes" : "no"} · would_block ${item.would_block ? "yes" : "no"} · action ${item.assisted_action || "-"}\nfinal ${(item.final_gate_errors || []).join(" / ") || "-"}\nupdated ${item.updated_at ? formatTimestamp(item.updated_at) : "-"}`).join("\n\n")}</p>
+        `;
+        els.opsLearnedAssistedGate.appendChild(decisionsCard);
+      }
+    }
+
+    if (!assistedRerank.config) {
+      clearNode(els.opsLearnedAssistedRerank, "这里会显示 assisted rerank experiment 的 config、guardrails、recent decisions 与 rollback 条件。");
+    } else {
+      const config = assistedRerank.config || {};
+      if (els.opsAssistedRerankBucket) {
+        els.opsAssistedRerankBucket.value = String(config.config?.bucket_percentage ?? 0);
+      }
+      if (els.opsAssistedRerankConfidence) {
+        els.opsAssistedRerankConfidence.value = String(config.config?.confidence_threshold ?? 0.65);
+      }
+      if (els.opsAssistedRerankCandidateWindow) {
+        els.opsAssistedRerankCandidateWindow.value = String(config.config?.candidate_window ?? 3);
+      }
+      if (els.opsAssistedRerankMaxScoreGap) {
+        els.opsAssistedRerankMaxScoreGap.value = String(config.config?.max_score_gap ?? 0.08);
+      }
+      if (els.opsAssistedRerankWorldAllowlist) {
+        els.opsAssistedRerankWorldAllowlist.value = (config.config?.world_allowlist || []).join(", ");
+      }
+      const configCard = document.createElement("article");
+      configCard.className = "list-card";
+      configCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>Assisted Rerank Experiment</h3>
+          <span class="list-card-score">${config.config?.enabled ? config.config?.mode || "-" : "disabled"}</span>
+        </div>
+        <p class="list-card-body">track ${assistedRerank.track || "reranker"}\nrecommended ${assistedRerank.recommended_next_action || "-"}\nreviewer ${config.reviewer_id || "-"} · updated ${config.updated_at ? formatTimestamp(config.updated_at) : "-"}\nreason ${config.reason || "-"}\nbucket ${config.config?.bucket_percentage ?? 0}% · threshold ${config.config?.confidence_threshold ?? 0}\nwindow ${config.config?.candidate_window ?? 0} · max gap ${config.config?.max_score_gap ?? 0}\nallowlist ${(config.config?.world_allowlist || []).join(" / ") || "-"}\nrollout ${assistedRerank.rollout_summary?.rollout_status || "-"} · candidate ${assistedRerank.rollout_summary?.candidate_ready ? "yes" : "no"} · approval ${assistedRerank.rollout_summary?.latest_approval_status || "-"}\n\nguardrails:\n${(assistedRerank.guardrails || []).join("\n") || "-"}\n\nrollback:\n${(assistedRerank.rollback_conditions || []).join("\n") || "-"}</p>
+      `;
+      els.opsLearnedAssistedRerank.appendChild(configCard);
+
+      const counterCard = document.createElement("article");
+      counterCard.className = "list-card";
+      counterCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>Rerank Experiment Counters</h3>
+          <span class="list-card-score">${assistedRerank.counters?.assisted_swap_count ?? 0} assisted swaps</span>
+        </div>
+        <p class="list-card-body">decisions ${assistedRerank.counters?.decision_count ?? 0}\nshadow ${assistedRerank.counters?.shadow_count ?? 0} · skipped ${assistedRerank.counters?.skipped_count ?? 0}\nwould swap ${assistedRerank.counters?.would_swap_count ?? 0} · in bucket ${assistedRerank.counters?.in_bucket_count ?? 0}\nassisted swap ${assistedRerank.counters?.assisted_swap_count ?? 0}</p>
+      `;
+      els.opsLearnedAssistedRerank.appendChild(counterCard);
+
+      if ((assistedRerank.recent_decisions || []).length) {
+        const decisionsCard = document.createElement("article");
+        decisionsCard.className = "list-card";
+        decisionsCard.innerHTML = `
+          <div class="list-card-head">
+            <h3>Recent Assisted Rerank Decisions</h3>
+            <span class="list-card-score">${(assistedRerank.recent_decisions || []).length} receipts</span>
+          </div>
+          <p class="list-card-body">${(assistedRerank.recent_decisions || []).slice(0, 6).map((item) => `${item.world_version_id || "-"}\n${item.status || "-"} · ${item.mode || "-"} · beat ${item.beat_index || "-"}\nbucket ${item.bucket_match ? "yes" : "no"} · would_swap ${item.would_swap ? "yes" : "no"} · action ${item.assisted_action || "-"}\nbaseline ${item.baseline_event_id || "-"} -> selected ${item.selected_event_id || "-"}\nupdated ${item.updated_at ? formatTimestamp(item.updated_at) : "-"}`).join("\n\n")}</p>
+        `;
+        els.opsLearnedAssistedRerank.appendChild(decisionsCard);
+      }
+    }
+
+    if (!appState.opsLearnedReviewQuality) {
+      clearNode(els.opsLearnedReviewQuality, "这里会显示 human review coverage、reviewer diversity、样本质量告警与高覆盖补样 backlog。");
+    } else {
+      const reviewQuality = appState.opsLearnedReviewQuality;
+      const qualityCard = document.createElement("article");
+      qualityCard.className = "list-card";
+      qualityCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>Human Review Coverage & Quality</h3>
+          <span class="list-card-score">${reviewQuality.coverage_summary?.worlds_below_target_count ?? 0} gaps</span>
+        </div>
+        <p class="list-card-body">samples ${reviewQuality.quality_summary?.sample_count ?? 0} · worlds ${reviewQuality.quality_summary?.world_coverage_count ?? 0} · versions ${reviewQuality.quality_summary?.version_coverage_count ?? 0}\nvalidated refs ${reviewQuality.quality_summary?.validated_reference_rate !== null && reviewQuality.quality_summary?.validated_reference_rate !== undefined ? Number(reviewQuality.quality_summary.validated_reference_rate).toFixed(2) : "-"}\nwarning samples ${reviewQuality.quality_summary?.warning_sample_count ?? 0}\nmissing session ${reviewQuality.quality_summary?.missing_session_context_count ?? 0} · missing issues ${reviewQuality.quality_summary?.missing_linked_issue_codes_count ?? 0} · ref not validated ${reviewQuality.quality_summary?.reference_not_validated_count ?? 0}\ntarget/world ${reviewQuality.coverage_summary?.target_sample_count_per_world ?? 0} · reviewer diversity ${reviewQuality.coverage_summary?.target_reviewer_diversity_per_world ?? 0}\nworld gaps ${reviewQuality.coverage_summary?.worlds_below_target_count ?? 0} · low diversity ${reviewQuality.coverage_summary?.low_diversity_world_count ?? 0} · focus issue gaps ${reviewQuality.coverage_summary?.focus_issue_gap_world_count ?? 0}\nshared weak worlds ${(reviewQuality.coverage_summary?.shared_weak_worlds || []).join(" / ") || "-"}\nwarnings:\n${(reviewQuality.warnings || []).join("\n") || "-"}</p>
+      `;
+      els.opsLearnedReviewQuality.appendChild(qualityCard);
+
+      const backlogCard = document.createElement("article");
+      backlogCard.className = "list-card";
+      backlogCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>High-coverage Replenishment Backlog</h3>
+          <span class="list-card-score">${(reviewQuality.replenishment_backlog || []).length} worlds</span>
+        </div>
+        <p class="list-card-body">${(reviewQuality.replenishment_backlog || []).slice(0, 5).map((item) => `${item.world_id}\npriority ${item.priority} · action ${item.recommended_action}\ncoverage ${item.human_review_count ?? 0}/${reviewQuality.coverage_summary?.target_sample_count_per_world ?? 0} · gap ${item.coverage_gap ?? 0}\nreviewers ${item.reviewer_diversity_count ?? 0}/${reviewQuality.coverage_summary?.target_reviewer_diversity_per_world ?? 0} · gap ${item.reviewer_diversity_gap ?? 0}\nfocus issue gaps ${(item.focus_issue_gaps || []).join(" / ") || "-"}\nwarning samples ${item.warning_sample_count ?? 0}\ncandidate chapters ${(item.candidate_backlog_chapters || []).join(" / ") || "-"}`).join("\n\n") || "-"}</p>
+      `;
+      els.opsLearnedReviewQuality.appendChild(backlogCard);
+
+      const flaggedCard = document.createElement("article");
+      flaggedCard.className = "list-card";
+      flaggedCard.innerHTML = `
+        <div class="list-card-head">
+          <h3>Flagged Human Review Samples</h3>
+          <span class="list-card-score">${(reviewQuality.flagged_samples || []).length} flagged</span>
+        </div>
+        <p class="list-card-body">${(reviewQuality.flagged_samples || []).slice(0, 5).map((item) => `${item.sample_id}\n${item.world_id} · ${item.chapter_id} · reviewer ${item.reviewer_id || "-"}\nref ${item.reference_status || "-"} · warnings ${(item.ingestion_warnings || []).join(" / ") || "-"}\nlinked issues ${(item.linked_issue_codes || []).join(" / ") || "-"}\nnotes ${item.freeform_notes || "-"}`).join("\n\n") || "-"}</p>
+      `;
+      els.opsLearnedReviewQuality.appendChild(flaggedCard);
+    }
 
     const artifactCard = document.createElement("article");
     artifactCard.className = "list-card";
@@ -1792,6 +2140,42 @@ function renderOpsLearnedSection() {
       `;
       card.addEventListener("click", () => selectReviewBacklogItem(item));
       els.opsReviewSampleBacklog.appendChild(card);
+    });
+  }
+
+  clearNode(els.opsPreferenceSamples);
+  if (!(appState.opsPreferenceSamples || []).length) {
+    clearNode(els.opsPreferenceSamples, "这里会显示最近采集的 preference samples。");
+  } else {
+    (appState.opsPreferenceSamples || []).slice(0, 5).forEach((item) => {
+      const card = document.createElement("article");
+      card.className = "list-card";
+      card.innerHTML = `
+        <div class="list-card-head">
+          <h3>${item.preference_id}</h3>
+          <span class="list-card-score">${item.preference_strength || "-"}</span>
+        </div>
+        <p class="list-card-body">${item.left_revision_id} vs ${item.right_revision_id}\npreferred ${item.preferred_revision_id}\nissues ${(item.linked_issue_codes || []).join(" / ") || "-"}\nnotes ${item.freeform_notes || "-"}</p>
+      `;
+      els.opsPreferenceSamples.appendChild(card);
+    });
+  }
+
+  clearNode(els.opsRankingSamples);
+  if (!(appState.opsRankingSamples || []).length) {
+    clearNode(els.opsRankingSamples, "这里会显示最近采集的 ranking samples。");
+  } else {
+    (appState.opsRankingSamples || []).slice(0, 5).forEach((item) => {
+      const card = document.createElement("article");
+      card.className = "list-card";
+      card.innerHTML = `
+        <div class="list-card-head">
+          <h3>${item.ranking_id}</h3>
+          <span class="list-card-score">${item.top_revision_id || "-"}</span>
+        </div>
+        <p class="list-card-body">ranked ${(item.ranked_revision_ids || []).join(" > ") || "-"}\nissues ${(item.linked_issue_codes || []).join(" / ") || "-"}\nnotes ${item.freeform_notes || "-"}</p>
+      `;
+      els.opsRankingSamples.appendChild(card);
     });
   }
 

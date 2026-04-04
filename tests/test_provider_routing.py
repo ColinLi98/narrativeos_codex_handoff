@@ -8,7 +8,9 @@ from src.narrativeos.providers import (
     RetryingLLMBackend,
     RoutingLLMBackend,
     build_llm_backend_from_env,
+    build_llm_policy_from_env,
 )
+from src.narrativeos.services.provider_routing import ProviderRoutingService
 from src.narrativeos.rendering import LLMRenderer, TemplateRenderer
 
 
@@ -85,6 +87,40 @@ def test_build_llm_backend_from_env_can_construct_local_routing(monkeypatch):
     backend = build_llm_backend_from_env()
     assert backend is not None
     assert backend.generate_json(system_prompt="a", user_prompt="b") == {"candidate_events": []}
+
+
+def test_build_llm_backend_from_env_supports_scope_specific_policy(monkeypatch):
+    monkeypatch.setenv("NARRATIVEOS_LLM_CANDIDATE_ROUTING_ENABLED", "true")
+    monkeypatch.setenv("NARRATIVEOS_LLM_CANDIDATE_PROVIDER_ORDER", "local")
+    monkeypatch.setenv("NARRATIVEOS_LLM_RENDERER_ROUTING_ENABLED", "true")
+    monkeypatch.setenv("NARRATIVEOS_LLM_RENDERER_PROVIDER_ORDER", "local")
+    monkeypatch.setenv("NARRATIVEOS_LLM_RENDERER_CACHE_ENABLED", "true")
+
+    candidate = build_llm_backend_from_env(scope="candidate")
+    renderer = build_llm_backend_from_env(scope="renderer")
+    candidate_policy = build_llm_policy_from_env("candidate")
+    renderer_policy = build_llm_policy_from_env("renderer")
+
+    assert candidate is not None
+    assert renderer is not None
+    assert candidate_policy["provider_order"] == ["local"]
+    assert renderer_policy["provider_order"] == ["local"]
+    assert renderer_policy["cache_policy"]["enabled"] is True
+
+
+def test_provider_routing_service_exposes_policy_summary(monkeypatch):
+    monkeypatch.setenv("NARRATIVEOS_LLM_CANDIDATE_ROUTING_ENABLED", "true")
+    monkeypatch.setenv("NARRATIVEOS_LLM_CANDIDATE_PROVIDER_ORDER", "local")
+    monkeypatch.setenv("NARRATIVEOS_LLM_RENDERER_ROUTING_ENABLED", "true")
+    monkeypatch.setenv("NARRATIVEOS_LLM_RENDERER_PROVIDER_ORDER", "local")
+
+    service = ProviderRoutingService.from_env()
+    summary = service.policy_summary()
+
+    assert summary["candidate"]["backend_present"] is True
+    assert summary["renderer"]["backend_present"] is True
+    assert summary["candidate"]["fallback_chain"] == ["llm_routing", "static_candidate_provider"]
+    assert summary["renderer"]["fallback_chain"] == ["llm_renderer", "template_renderer"]
 
 
 def test_cached_backend_hits_runtime_cache_without_recalling_delegate():

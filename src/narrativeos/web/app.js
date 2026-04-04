@@ -52,10 +52,13 @@ const appState = {
   opsReleaseWorkspace: null,
   opsMeters: [],
   opsSchemaLifecycle: null,
+  opsDataIntegrity: null,
+  opsDataIntegrityRepair: null,
   opsDeploymentHealthGate: null,
   opsPreflightVerification: null,
   opsDeploymentRunbook: null,
   opsIncidentPlaybook: null,
+  opsRecoveryDrillResult: null,
   opsAsyncJobSummary: null,
   opsAsyncJobBootReconcile: null,
   opsAsyncJobIncidents: null,
@@ -74,6 +77,8 @@ const appState = {
   opsAsyncJobs: [],
   opsRuntimeIncidentSnapshot: null,
   opsRuntimeReceipts: [],
+  opsProviderRouting: null,
+  opsProviderRollout: null,
   opsProviderRuntimeMetrics: null,
   opsSubscriptionAudit: null,
   opsAccountDetail: null,
@@ -88,6 +93,11 @@ const appState = {
   opsEvalMetrics: null,
   opsCrossPackQuality: null,
   opsLearnedDashboard: null,
+  opsLearnedImpact: null,
+  opsLearnedCadence: null,
+  opsLearnedAssistedGate: null,
+  opsLearnedAssistedRerank: null,
+  opsLearnedReviewQuality: null,
   opsLearnedTrainingResult: null,
   opsLearnedEvidence: null,
   opsLearnedCompare: null,
@@ -95,6 +105,8 @@ const appState = {
   opsLearnedDataOps: null,
   opsLearnedPromotion: null,
   opsLearnedRerankerPromotion: null,
+  opsPreferenceSamples: [],
+  opsRankingSamples: [],
   opsLearnedDetail: null,
   opsLastActionImpact: null,
   opsReviewCaptureTarget: null,
@@ -309,10 +321,23 @@ const els = {
   opsReviewHistory: document.querySelector("#ops-review-history"),
   opsQualityTrend: document.querySelector("#ops-quality-trend"),
   opsSchemaLifecycle: document.querySelector("#ops-schema-lifecycle"),
+  opsDataIntegrityActions: document.querySelector("#ops-data-integrity-actions"),
+  opsRunDataIntegrityDryRun: document.querySelector("#ops-run-data-integrity-dry-run"),
+  opsApplyDataIntegrityRepair: document.querySelector("#ops-apply-data-integrity-repair"),
+  opsDataIntegrity: document.querySelector("#ops-data-integrity"),
   opsBackupLabel: document.querySelector("#ops-backup-label"),
   opsRestorePath: document.querySelector("#ops-restore-path"),
+  opsRestoreRequestId: document.querySelector("#ops-restore-request-id"),
+  opsRestoreRequesterId: document.querySelector("#ops-restore-requester-id"),
+  opsRestoreApproverId: document.querySelector("#ops-restore-approver-id"),
+  opsRestoreReason: document.querySelector("#ops-restore-reason"),
   opsCreateRuntimeBackup: document.querySelector("#ops-create-runtime-backup"),
   opsRestoreRuntimeBackup: document.querySelector("#ops-restore-runtime-backup"),
+  opsRunRecoveryDrill: document.querySelector("#ops-run-recovery-drill"),
+  opsRequestRuntimeRestore: document.querySelector("#ops-request-runtime-restore"),
+  opsApproveRuntimeRestore: document.querySelector("#ops-approve-runtime-restore"),
+  opsRevokeRuntimeRestore: document.querySelector("#ops-revoke-runtime-restore"),
+  opsExecuteRuntimeRestore: document.querySelector("#ops-execute-runtime-restore"),
   opsDeploymentHealthGate: document.querySelector("#ops-deployment-health-gate"),
   opsPreflightVerification: document.querySelector("#ops-preflight-verification"),
   opsDeploymentRunbook: document.querySelector("#ops-deployment-runbook"),
@@ -346,6 +371,18 @@ const els = {
   opsAsyncJobs: document.querySelector("#ops-async-jobs"),
   opsRuntimeIncidentSnapshot: document.querySelector("#ops-runtime-incident-snapshot"),
   opsRuntimeReceipts: document.querySelector("#ops-runtime-receipts"),
+  opsProviderRouting: document.querySelector("#ops-provider-routing"),
+  opsProviderRollout: document.querySelector("#ops-provider-rollout"),
+  opsProviderRolloutReviewerId: document.querySelector("#ops-provider-rollout-reviewer-id"),
+  opsProviderRolloutReason: document.querySelector("#ops-provider-rollout-reason"),
+  opsProviderRolloutBucket: document.querySelector("#ops-provider-rollout-bucket"),
+  opsProviderRolloutWorldAllowlist: document.querySelector("#ops-provider-rollout-world-allowlist"),
+  opsProviderCandidateCanary: document.querySelector("#ops-provider-candidate-canary"),
+  opsProviderCandidateActivate: document.querySelector("#ops-provider-candidate-activate"),
+  opsProviderCandidateRollback: document.querySelector("#ops-provider-candidate-rollback"),
+  opsProviderRendererCanary: document.querySelector("#ops-provider-renderer-canary"),
+  opsProviderRendererActivate: document.querySelector("#ops-provider-renderer-activate"),
+  opsProviderRendererRollback: document.querySelector("#ops-provider-renderer-rollback"),
   opsProviderRuntimeMetrics: document.querySelector("#ops-provider-runtime-metrics"),
   opsMeterList: document.querySelector("#ops-meter-list"),
   opsAccountId: document.querySelector("#ops-account-id"),
@@ -425,6 +462,29 @@ const els = {
   opsEvalMetrics: document.querySelector("#ops-eval-metrics"),
   opsCrossPackQuality: document.querySelector("#ops-cross-pack-quality"),
   opsLearnedDashboard: document.querySelector("#ops-learned-dashboard"),
+  opsLearnedImpact: document.querySelector("#ops-learned-impact"),
+  opsLearnedCadence: document.querySelector("#ops-learned-cadence"),
+  opsLearnedAssistedGate: document.querySelector("#ops-learned-assisted-gate"),
+  opsLearnedAssistedRerank: document.querySelector("#ops-learned-assisted-rerank"),
+  opsLearnedReviewQuality: document.querySelector("#ops-learned-review-quality"),
+  opsAssistedGateReviewerId: document.querySelector("#ops-assisted-gate-reviewer-id"),
+  opsAssistedGateReason: document.querySelector("#ops-assisted-gate-reason"),
+  opsAssistedGateBucket: document.querySelector("#ops-assisted-gate-bucket"),
+  opsAssistedGateConfidence: document.querySelector("#ops-assisted-gate-confidence"),
+  opsAssistedGateWorldAllowlist: document.querySelector("#ops-assisted-gate-world-allowlist"),
+  opsSetAssistedShadow: document.querySelector("#ops-set-assisted-shadow"),
+  opsSetAssistedActive: document.querySelector("#ops-set-assisted-active"),
+  opsDisableAssistedGate: document.querySelector("#ops-disable-assisted-gate"),
+  opsAssistedRerankReviewerId: document.querySelector("#ops-assisted-rerank-reviewer-id"),
+  opsAssistedRerankReason: document.querySelector("#ops-assisted-rerank-reason"),
+  opsAssistedRerankBucket: document.querySelector("#ops-assisted-rerank-bucket"),
+  opsAssistedRerankConfidence: document.querySelector("#ops-assisted-rerank-confidence"),
+  opsAssistedRerankCandidateWindow: document.querySelector("#ops-assisted-rerank-candidate-window"),
+  opsAssistedRerankMaxScoreGap: document.querySelector("#ops-assisted-rerank-max-score-gap"),
+  opsAssistedRerankWorldAllowlist: document.querySelector("#ops-assisted-rerank-world-allowlist"),
+  opsSetAssistedRerankShadow: document.querySelector("#ops-set-assisted-rerank-shadow"),
+  opsSetAssistedRerankActive: document.querySelector("#ops-set-assisted-rerank-active"),
+  opsDisableAssistedRerank: document.querySelector("#ops-disable-assisted-rerank"),
   opsRunEvaluatorTraining: document.querySelector("#ops-run-evaluator-training"),
   opsRunRerankerTraining: document.querySelector("#ops-run-reranker-training"),
   opsRunBothTraining: document.querySelector("#ops-run-both-training"),
@@ -457,6 +517,17 @@ const els = {
   opsReviewWouldContinue: document.querySelector("#ops-review-would-continue"),
   opsReviewWouldPay: document.querySelector("#ops-review-would-pay"),
   opsSubmitReviewCapture: document.querySelector("#ops-submit-review-capture"),
+  opsPreferenceLeftRevisionId: document.querySelector("#ops-preference-left-revision-id"),
+  opsPreferenceRightRevisionId: document.querySelector("#ops-preference-right-revision-id"),
+  opsPreferencePreferredRevisionId: document.querySelector("#ops-preference-preferred-revision-id"),
+  opsPreferenceStrength: document.querySelector("#ops-preference-strength"),
+  opsPreferenceNotes: document.querySelector("#ops-preference-notes"),
+  opsSubmitPreferenceCapture: document.querySelector("#ops-submit-preference-capture"),
+  opsPreferenceSamples: document.querySelector("#ops-preference-samples"),
+  opsRankingRevisionIds: document.querySelector("#ops-ranking-revision-ids"),
+  opsRankingNotes: document.querySelector("#ops-ranking-notes"),
+  opsSubmitRankingCapture: document.querySelector("#ops-submit-ranking-capture"),
+  opsRankingSamples: document.querySelector("#ops-ranking-samples"),
   tonePills: [...document.querySelectorAll(".tone-pill")],
   suggestionTemplate: document.querySelector("#suggested-input-template"),
   listCardTemplate: document.querySelector("#list-card-template"),
@@ -2469,6 +2540,12 @@ function selectReviewBacklogItem(item) {
   if (els.opsReviewWouldPay) {
     els.opsReviewWouldPay.checked = item.decision === "pass";
   }
+  if (els.opsPreferenceNotes) {
+    els.opsPreferenceNotes.value = item.summary || "";
+  }
+  if (els.opsRankingNotes) {
+    els.opsRankingNotes.value = item.summary || "";
+  }
   renderOpsSurface();
 }
 
@@ -2507,6 +2584,161 @@ async function submitOpsReviewCapture() {
     await refreshOpsSurface({ preserveLastActionImpact: true });
   } catch (error) {
     alert(`提交 Human Review 失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function submitOpsPreferenceCapture() {
+  if (!appState.opsReviewCaptureTarget) {
+    alert("先从 Review Backlog 里选择一条章节，作为 preference 的上下文。");
+    return;
+  }
+  const reviewerId = els.opsReviewerId?.value.trim() || "ops_web";
+  const leftRevisionId = els.opsPreferenceLeftRevisionId?.value.trim() || "";
+  const rightRevisionId = els.opsPreferenceRightRevisionId?.value.trim() || "";
+  const preferredRevisionId = els.opsPreferencePreferredRevisionId?.value.trim() || "";
+  if (!reviewerId || !leftRevisionId || !rightRevisionId || !preferredRevisionId) {
+    alert("请填写 reviewer_id、left/right revision id 和 preferred revision id。");
+    return;
+  }
+  const restore = setBusy(els.opsSubmitPreferenceCapture, "提交中…");
+  try {
+    await api("/v1/ops/preference-samples", {
+      method: "POST",
+      body: JSON.stringify({
+        world_id: appState.opsReviewCaptureTarget.world_id,
+        world_version_id: appState.opsReviewCaptureTarget.world_version_id,
+        chapter_id: appState.opsReviewCaptureTarget.chapter_id,
+        session_id: appState.opsReviewCaptureTarget.session_id,
+        reviewer_id: reviewerId,
+        left_revision_id: leftRevisionId,
+        right_revision_id: rightRevisionId,
+        preferred_revision_id: preferredRevisionId,
+        freeform_notes: els.opsPreferenceNotes?.value || "",
+        linked_issue_codes: parseIssueCodes(els.opsReviewIssueCodes?.value || ""),
+        preference_strength: els.opsPreferenceStrength?.value || "medium",
+      }),
+    });
+    if (els.opsPreferenceNotes) els.opsPreferenceNotes.value = "";
+    await refreshOpsLearnedFlow();
+  } catch (error) {
+    alert(`提交 Preference 失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function submitOpsRankingCapture() {
+  if (!appState.opsReviewCaptureTarget) {
+    alert("先从 Review Backlog 里选择一条章节，作为 ranking 的上下文。");
+    return;
+  }
+  const reviewerId = els.opsReviewerId?.value.trim() || "ops_web";
+  const rankedRevisionIds = (els.opsRankingRevisionIds?.value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (!reviewerId || rankedRevisionIds.length < 2) {
+    alert("请填写 reviewer_id，且 ranked revision ids 至少包含两个。");
+    return;
+  }
+  const restore = setBusy(els.opsSubmitRankingCapture, "提交中…");
+  try {
+    await api("/v1/ops/ranking-samples", {
+      method: "POST",
+      body: JSON.stringify({
+        world_id: appState.opsReviewCaptureTarget.world_id,
+        world_version_id: appState.opsReviewCaptureTarget.world_version_id,
+        chapter_id: appState.opsReviewCaptureTarget.chapter_id,
+        session_id: appState.opsReviewCaptureTarget.session_id,
+        reviewer_id: reviewerId,
+        ranked_revision_ids: rankedRevisionIds,
+        freeform_notes: els.opsRankingNotes?.value || "",
+        linked_issue_codes: parseIssueCodes(els.opsReviewIssueCodes?.value || ""),
+      }),
+    });
+    if (els.opsRankingNotes) els.opsRankingNotes.value = "";
+    if (els.opsRankingRevisionIds) els.opsRankingRevisionIds.value = "";
+    await refreshOpsLearnedFlow();
+  } catch (error) {
+    alert(`提交 Ranking 失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function submitOpsPreferenceCapture() {
+  if (!appState.opsReviewCaptureTarget) {
+    alert("先从 Review Backlog 里选择一条章节，作为 preference 的上下文。");
+    return;
+  }
+  const reviewerId = els.opsReviewerId?.value.trim() || "ops_web";
+  const leftRevisionId = els.opsPreferenceLeftRevisionId?.value.trim() || "";
+  const rightRevisionId = els.opsPreferenceRightRevisionId?.value.trim() || "";
+  const preferredRevisionId = els.opsPreferencePreferredRevisionId?.value.trim() || "";
+  if (!reviewerId || !leftRevisionId || !rightRevisionId || !preferredRevisionId) {
+    alert("请填写 reviewer_id、left/right revision id 和 preferred revision id。");
+    return;
+  }
+  const restore = setBusy(els.opsSubmitPreferenceCapture, "提交中…");
+  try {
+    await api("/v1/ops/preference-samples", {
+      method: "POST",
+      body: JSON.stringify({
+        world_id: appState.opsReviewCaptureTarget.world_id,
+        world_version_id: appState.opsReviewCaptureTarget.world_version_id,
+        chapter_id: appState.opsReviewCaptureTarget.chapter_id,
+        session_id: appState.opsReviewCaptureTarget.session_id,
+        reviewer_id: reviewerId,
+        left_revision_id: leftRevisionId,
+        right_revision_id: rightRevisionId,
+        preferred_revision_id: preferredRevisionId,
+        freeform_notes: els.opsPreferenceNotes?.value || "",
+        linked_issue_codes: parseIssueCodes(els.opsReviewIssueCodes?.value || ""),
+        preference_strength: els.opsPreferenceStrength?.value || "medium",
+      }),
+    });
+    await refreshOpsLearnedFlow();
+  } catch (error) {
+    alert(`提交 Preference 失败：${error.message}`);
+  } finally {
+    restore();
+  }
+}
+
+async function submitOpsRankingCapture() {
+  if (!appState.opsReviewCaptureTarget) {
+    alert("先从 Review Backlog 里选择一条章节，作为 ranking 的上下文。");
+    return;
+  }
+  const reviewerId = els.opsReviewerId?.value.trim() || "ops_web";
+  const rankedRevisionIds = (els.opsRankingRevisionIds?.value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (!reviewerId || rankedRevisionIds.length < 2) {
+    alert("请填写 reviewer_id，且 ranked revision ids 至少包含两个。");
+    return;
+  }
+  const restore = setBusy(els.opsSubmitRankingCapture, "提交中…");
+  try {
+    await api("/v1/ops/ranking-samples", {
+      method: "POST",
+      body: JSON.stringify({
+        world_id: appState.opsReviewCaptureTarget.world_id,
+        world_version_id: appState.opsReviewCaptureTarget.world_version_id,
+        chapter_id: appState.opsReviewCaptureTarget.chapter_id,
+        session_id: appState.opsReviewCaptureTarget.session_id,
+        reviewer_id: reviewerId,
+        ranked_revision_ids: rankedRevisionIds,
+        freeform_notes: els.opsRankingNotes?.value || "",
+        linked_issue_codes: parseIssueCodes(els.opsReviewIssueCodes?.value || ""),
+      }),
+    });
+    await refreshOpsLearnedFlow();
+  } catch (error) {
+    alert(`提交 Ranking 失败：${error.message}`);
   } finally {
     restore();
   }
@@ -4104,6 +4336,13 @@ els.opsReleaseWorldId?.addEventListener("change", async () => {
 });
 els.opsCreateRuntimeBackup?.addEventListener("click", createRuntimeBackup);
 els.opsRestoreRuntimeBackup?.addEventListener("click", restoreRuntimeBackup);
+els.opsRunRecoveryDrill?.addEventListener("click", runRecoveryDrill);
+els.opsRequestRuntimeRestore?.addEventListener("click", requestRuntimeRestore);
+els.opsApproveRuntimeRestore?.addEventListener("click", approveRuntimeRestore);
+els.opsRevokeRuntimeRestore?.addEventListener("click", revokeRuntimeRestore);
+els.opsExecuteRuntimeRestore?.addEventListener("click", executeRuntimeRestore);
+els.opsRunDataIntegrityDryRun?.addEventListener("click", () => runDataIntegrityRepair(false));
+els.opsApplyDataIntegrityRepair?.addEventListener("click", () => runDataIntegrityRepair(true));
 els.opsRetryAsyncJob?.addEventListener("click", retryAsyncJob);
 els.opsResumeAsyncJob?.addEventListener("click", resumeAsyncJob);
 els.opsRecoverAsyncJobs?.addEventListener("click", recoverAsyncJobIncidents);
@@ -4145,6 +4384,12 @@ els.opsResolveAlert?.addEventListener("click", async () => {
     alert(`resolve alert 失败：${error.message}`);
   }
 });
+els.opsProviderCandidateCanary?.addEventListener("click", () => submitProviderRollout("candidate", "canary"));
+els.opsProviderCandidateActivate?.addEventListener("click", () => submitProviderRollout("candidate", "activate"));
+els.opsProviderCandidateRollback?.addEventListener("click", () => submitProviderRollout("candidate", "rollback"));
+els.opsProviderRendererCanary?.addEventListener("click", () => submitProviderRollout("renderer", "canary"));
+els.opsProviderRendererActivate?.addEventListener("click", () => submitProviderRollout("renderer", "activate"));
+els.opsProviderRendererRollback?.addEventListener("click", () => submitProviderRollout("renderer", "rollback"));
 els.opsOpenAlertInvestigation?.addEventListener("click", async () => {
   try {
     await openSelectedOpsAlertInvestigation();
@@ -4174,10 +4419,20 @@ els.opsApplyGovernanceRestriction?.addEventListener("click", applyGovernanceRest
 els.opsReleaseGovernanceRestriction?.addEventListener("click", releaseGovernanceRestriction);
 els.opsExportGovernanceAudit?.addEventListener("click", refreshGovernanceAuditExport);
 els.opsSubmitReviewCapture?.addEventListener("click", submitOpsReviewCapture);
+els.opsSubmitPreferenceCapture?.addEventListener("click", submitOpsPreferenceCapture);
+els.opsSubmitRankingCapture?.addEventListener("click", submitOpsRankingCapture);
+els.opsSubmitPreferenceCapture?.addEventListener("click", submitOpsPreferenceCapture);
+els.opsSubmitRankingCapture?.addEventListener("click", submitOpsRankingCapture);
 els.opsApprovePromotion?.addEventListener("click", () => submitPromotionDecision("approve"));
 els.opsRevokePromotion?.addEventListener("click", () => submitPromotionDecision("revoke"));
 els.opsApproveRerankerPromotion?.addEventListener("click", () => submitRerankerPromotionDecision("approve"));
 els.opsRevokeRerankerPromotion?.addEventListener("click", () => submitRerankerPromotionDecision("revoke"));
+els.opsSetAssistedShadow?.addEventListener("click", () => submitAssistedGateConfig("shadow_only", true));
+els.opsSetAssistedActive?.addEventListener("click", () => submitAssistedGateConfig("assisted_gate", true));
+els.opsDisableAssistedGate?.addEventListener("click", () => submitAssistedGateConfig("shadow_only", false));
+els.opsSetAssistedRerankShadow?.addEventListener("click", () => submitAssistedRerankConfig("shadow_only", true));
+els.opsSetAssistedRerankActive?.addEventListener("click", () => submitAssistedRerankConfig("assisted_rerank", true));
+els.opsDisableAssistedRerank?.addEventListener("click", () => submitAssistedRerankConfig("shadow_only", false));
 els.opsRunEvaluatorTraining?.addEventListener("click", () => runLearnedTraining(["evaluator"]));
 els.opsRunRerankerTraining?.addEventListener("click", () => runLearnedTraining(["reranker"]));
 els.opsRunBothTraining?.addEventListener("click", () => runLearnedTraining(["evaluator", "reranker"]));

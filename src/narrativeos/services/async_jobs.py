@@ -26,6 +26,7 @@ ASYNC_NOTIFICATION_DEAD_LETTER_ASSET_TYPE = "async_notification_dead_letter"
 JOB_ARTIFACT_RETENTION_DAYS = {
     "learned_training": 30,
     "runtime_backup": 14,
+    "runtime_restore": 14,
 }
 ARTIFACT_RETENTION_EXPIRING_SOON_DAYS = 3
 DEFAULT_HANDOFF_SLA_MINUTES = 240
@@ -41,6 +42,13 @@ JOB_STEP_TEMPLATES: Dict[str, List[Dict[str, str]]] = {
         {"key": "queued", "label": "Queued"},
         {"key": "snapshot", "label": "Snapshot Database"},
         {"key": "manifest", "label": "Write Manifest"},
+        {"key": "completed", "label": "Completed"},
+    ],
+    "runtime_restore": [
+        {"key": "queued", "label": "Queued"},
+        {"key": "verify", "label": "Verify Approval"},
+        {"key": "pre_backup", "label": "Pre-restore Backup"},
+        {"key": "restore", "label": "Restore Database"},
         {"key": "completed", "label": "Completed"},
     ],
 }
@@ -671,6 +679,18 @@ class AsyncJobService:
                 "created_at": result.get("created_at"),
                 "schema_lifecycle_status": result.get("schema_lifecycle_status"),
                 "dry_run": result.get("dry_run"),
+            }
+        if job_type == "runtime_restore":
+            return {
+                "request_id": result.get("request_id"),
+                "status": result.get("status"),
+                "backup_path": result.get("backup_path"),
+                "restore_decision": result.get("restore_decision"),
+                "verification_status": result.get("verification_status"),
+                "artifact_dir": dict(result.get("artifacts") or {}).get("artifact_dir"),
+                "result_json": dict(result.get("artifacts") or {}).get("result_json"),
+                "stdout_log": dict(result.get("artifacts") or {}).get("stdout_log"),
+                "stderr_log": dict(result.get("artifacts") or {}).get("stderr_log"),
             }
         return result
 
@@ -2200,23 +2220,27 @@ class AsyncJobService:
         started_dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
         try:
             result = runner(running)
+            job_status_override = str((result or {}).get("_job_status_override") or "").strip().lower()
             latest_running = self.get_job(job_id)
             finished_at = self._utcnow()
             finished_dt = datetime.fromisoformat(finished_at.replace("Z", "+00:00"))
+            final_status = "failed" if job_status_override == "failed" else "succeeded"
             completed = {
                 **latest_running,
-                "status": "succeeded",
+                "status": final_status,
                 "finished_at": finished_at,
                 "duration_seconds": round((finished_dt - started_dt).total_seconds(), 3),
                 "result_summary": self._compact_result(job["job_type"], dict(result or {})),
                 "artifacts": dict((result or {}).get("artifacts") or {}),
+                "error": (result or {}).get("error") if final_status == "failed" else None,
+                "last_error": (result or {}).get("error") if final_status == "failed" else latest_running.get("last_error"),
                 "lease_owner": None,
                 "lease_acquired_at": None,
                 "lease_expires_at": None,
                 "heartbeat_at": finished_at,
             }
             completed = self._save_job(completed)
-            self._track("async_job_succeeded", job=completed)
+            self._track("async_job_failed" if final_status == "failed" else "async_job_succeeded", job=completed)
             return completed
         except Exception as exc:  # pragma: no cover - exercised through API and runner failure tests
             latest_running = self.get_job(job_id)

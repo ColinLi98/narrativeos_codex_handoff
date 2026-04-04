@@ -43,6 +43,7 @@
 - shared learned analysis runner（离线）
 - unified learned dashboard contract（Ops summary）
 - learned shadow decision compare（Ops compare summary）
+- learned impact tracking（Ops retention / monetization correlation summary）
 - `Karma Character Engine v0.1` 与章节化叙事核心
 - `Story Feed + Sticky Composer + Intent Prefill` 的连续阅读流
 - `NarrativeEval v0.1` 的多层评测与 pass / rewrite / block 闸门
@@ -328,9 +329,34 @@
 - `eval/learned_data_ops.py` 现已支持：
   - 把 learned dashboard / compare / backlog 聚成可执行的 Ops 数据扩充工作流
   - 输出 `review_sample_backlog / pair_coverage_backlog / action_queue`
+- `eval/learned_review_quality.py` 现已支持：
+  - 聚合 `human review coverage / reviewer diversity / ingestion warning / reference validation`
+  - 输出 `high-coverage replenishment backlog`
+  - 提供 world 级 review quality drill-down
 - `eval/learned_data_impact.py` 现已支持：
   - 对单次 human review capture 计算 before / after impact receipt
   - 输出 `preferred_shadow_candidate / backlog count / next action` 的即时变化
+- `eval/learned_impact.py` 现已支持：
+  - 聚合 evaluator / reranker 的 learned impact summary
+  - 分开输出 `retention proxy` 与 `monetization proxy`
+  - 提供 `world / issue` 级 impact drill-down
+  - 对 `assisted_gate` experiment receipts 额外输出 experiment-aware retention / monetization correlation
+  - 让 Ops 直接看到 `assisted block` 是否和 continuation / checkout / subscription / paywall proxy 同步变化
+- `eval/learned_cadence.py` 现已支持：
+  - 把 `data coverage / latest training / shadow validation / promotion approval / rollout` 聚成统一 cadence 视图
+  - 输出每条 learned track 当前所处的 `collect_data / train_candidate / validate_shadow / request_promotion / ready_to_activate / monitor_active / rebuild_readiness`
+  - 额外输出 `cadence_health / stale_reasons / checkpoint_summary / recent_events`
+  - 提供 per-track cadence detail，且不改变现有 promotion / rollout gate
+- `eval/learned_assisted_gate.py` 现已支持：
+  - `shadow_only -> assisted_gate` 的受控实验 config / summary / decision receipt
+  - 仅在 `evaluator rollout active + promotion approved + bucket 命中` 时允许极窄的 assisted block
+  - 明确禁止 learned force-pass 一个 rule-blocked version
+  - 输出 `recent decisions / guardrails / rollback conditions`
+- `eval/learned_assisted_rerank.py` 现已支持：
+  - `shadow_only -> assisted_rerank` 的受控实验 config / summary / decision receipt
+  - 在 Reader runtime 的候选排序链路里，只对 `beat 1` 做可回滚的 top-candidate assisted rerank
+  - 仅在 `reranker rollout active + promotion approved + bucket 命中 + score gap 足够小` 时允许重排
+  - 输出 `recent decisions / guardrails / rollback conditions`
 - `eval/learned_promotion.py` 现已支持：
   - 基于 evaluator shadow / compare / data ops 计算 recommendation-only promotion summary
   - 输出 `status / blockers / advisories / checklist / evidence`
@@ -338,6 +364,7 @@
   - 一次性运行 evaluator / reranker / both baseline training
   - 产出 per-track training result
   - 生成 `promotion evidence pack`
+  - 在 training result 与 evidence pack 中附带 cadence snapshot
   - 写入 run summary artifact
 - `eval/learned_rollout.py` 现已支持：
   - `shadow -> active -> rolled_back` 的最小 rollout 状态机
@@ -379,7 +406,18 @@
   - `GET /v1/ops/learned-dashboard/worlds/{world_id}`
   - `GET /v1/ops/learned-dashboard/issues/{issue_code}`
   - `GET /v1/ops/learned-compare`
+  - `GET /v1/ops/learned-impact`
+  - `GET /v1/ops/learned-impact/worlds/{world_id}`
+  - `GET /v1/ops/learned-impact/issues/{issue_code}`
+  - `GET /v1/ops/learned-cadence`
+  - `GET /v1/ops/learned-cadence/{track}`
+  - `GET /v1/ops/learned-assisted-gate`
+  - `POST /v1/ops/learned-assisted-gate/configure`
+  - `GET /v1/ops/learned-assisted-rerank`
+  - `POST /v1/ops/learned-assisted-rerank/configure`
   - `GET /v1/ops/learned-data-ops`
+  - `GET /v1/ops/learned-review-quality`
+  - `GET /v1/ops/learned-review-quality/worlds/{world_id}`
   - `GET /v1/ops/learned-promotion`
   - `GET /v1/ops/learned-reranker-promotion`
   - `POST /v1/ops/learned-training/run`
@@ -389,11 +427,18 @@
   - `POST /v1/ops/learned-rollout/{track}/rollback`
   - `GET /v1/ops/runtime-receipts`
   - `GET /v1/ops/runtime-incident-snapshot`
+  - `GET /v1/ops/provider-routing`
+  - `GET /v1/ops/provider-rollout`
+  - `POST /v1/ops/provider-rollout/{track}/canary`
+  - `POST /v1/ops/provider-rollout/{track}/activate`
+  - `POST /v1/ops/provider-rollout/{track}/rollback`
   - `GET /v1/ops/provider-runtime-metrics`
   - `GET /v1/ops/deployment-runbook`
   - `GET /v1/ops/deployment-health-gate`
   - `GET /v1/ops/preflight-verification-bundle`
   - `GET /v1/ops/incident-playbook`
+  - `GET /v1/ops/recovery-drills`
+  - `GET /v1/ops/runtime-restore-requests`
   - `GET /v1/ops/jobs`
   - `GET /v1/ops/jobs/incidents`
   - `GET /v1/ops/jobs/boot-reconcile`
@@ -427,6 +472,11 @@
   - `POST /v1/ops/jobs/recover-incidents`
   - `POST /v1/ops/runtime-backups`
   - `POST /v1/ops/runtime-restore`
+  - `POST /v1/ops/recovery-drill`
+  - `POST /v1/ops/runtime-restore/request`
+  - `POST /v1/ops/runtime-restore/{request_id}/approve`
+  - `POST /v1/ops/runtime-restore/{request_id}/revoke`
+  - `POST /v1/ops/jobs/runtime-restores`
   - `POST /v1/ops/learned-promotion/approve`
   - `POST /v1/ops/learned-promotion/revoke`
   - `POST /v1/ops/learned-reranker-promotion/approve`
@@ -557,14 +607,24 @@
   - `RoutingLLMBackend`
   - `CachedLLMBackend`
   - `BudgetedLLMBackend`
-  - `build_llm_backend_from_env()`
+  - `build_llm_backend_from_env(scope=...)`
+  - `build_llm_policy_from_env(scope=...)`
+  - `ProviderRoutingService`
   - `LLMCandidateProvider` / `LLMRenderer` 会暴露 `backend_routing` debug
+  - Reader `continue_story` 与 Authoring `run_simulation_for_world_version` 现已接入统一的 candidate / renderer runtime
+  - primary provider 失败、budget blocked、或 retry 后仍失败时，会自动走 static candidate / template renderer fallback
   但默认开发与 benchmark 仍以 deterministic / local 路径为主
 - provider runtime metrics / cost trend 现已补：
   - `provider_summary`
   - `cost_trend`
+  - `latency_summary`
+  - `latency_trend`
+  - `rollout_stage_summary`
   - `surface_summary`
   - `action_summary`
+  - `selected_as_candidate_count / selected_as_renderer_count`
+  - `avg/p95 runtime / candidate / renderer latency`
+  - `candidate_estimated_request_cost / renderer_estimated_request_cost`
 - Postgres schema 已进入根仓库 `db/postgres_schema.sql`，但本地默认仍以 SQLite fallback 跑测试与开发
 - Postgres migration / schema lifecycle 现已补：
   - `schema_sql_fingerprint`
@@ -572,12 +632,32 @@
   - `inspect_schema_lifecycle`
   - `bootstrap_schema_lifecycle`
   - `bootstrap_postgres_runtime(..., dry_run=True)`
+  - Alembic scaffold:
+    - `alembic.ini`
+    - `db/alembic/env.py`
+    - `db/alembic/versions/20260404_0011_platform_baseline.py`
+    - `db/alembic/versions/20260404_0012_runtime_hotspot_indexes.py`
+  - Alembic lifecycle signals:
+    - `current_revision`
+    - `head_revision`
+    - `pending_revisions`
+    - `status`
+- data integrity / repair 现已补：
+  - hotspot composite index coverage summary
+  - session pointer drift detection
+  - orphan route choice detection
+  - duplicate active subscription detection
+  - safe dry-run / apply repair actions
 - runtime ops / runbook 现已补：
   - sqlite backup / restore
   - deployment runbook
   - deployment health gate
   - preflight verification bundle
   - incident playbook
+  - recovery drill dry-run artifact
+  - restore decision hints + pre/post restore verification
+  - Postgres restore request / approve / revoke workflow
+  - Postgres `pg_dump` / `pg_restore` / `psql` wrapper execution with result artifacts
   - runtime observability receipts 联动
 - Author / Ops 前端目前是最小产品骨架，还不是完整工作台
 - 真实支付、鉴权、内容审核外部服务、模型路由策略仍是占位骨架
@@ -690,6 +770,68 @@ source .venv/bin/activate
 python -m src.narrativeos.persistence.migrations \
   --database-url 'postgresql://user:password@localhost:5432/narrativeos' \
   --dry-run
+```
+
+查看 Alembic current/head：
+
+```bash
+source .venv/bin/activate
+python -m src.narrativeos.persistence.migrations \
+  --database-url 'postgresql://user:password@localhost:5432/narrativeos' \
+  --alembic-current
+```
+
+查看 Alembic revision history：
+
+```bash
+source .venv/bin/activate
+python -m src.narrativeos.persistence.migrations --alembic-history
+```
+
+如果已有 Postgres schema 需要正式 stamp 到当前 Alembic head，继续走标准 bootstrap：
+
+```bash
+source .venv/bin/activate
+python -m src.narrativeos.persistence.migrations \
+  --database-url 'postgresql://user:password@localhost:5432/narrativeos'
+```
+
+如果未来新增 forward Alembic revisions，可以显式执行：
+
+```bash
+source .venv/bin/activate
+python -m src.narrativeos.persistence.migrations \
+  --database-url 'postgresql://user:password@localhost:5432/narrativeos' \
+  --alembic-upgrade-head
+```
+
+检查数据完整性与 repair backlog：
+
+```bash
+source .venv/bin/activate
+python -m src.narrativeos.services.data_integrity \
+  --database-url 'postgresql://user:password@localhost:5432/narrativeos'
+```
+
+只对 safe actions 做 dry-run：
+
+```bash
+source .venv/bin/activate
+python -m src.narrativeos.services.data_integrity \
+  --database-url 'postgresql://user:password@localhost:5432/narrativeos' \
+  --action reconcile_session_chapter_pointers \
+  --action prune_orphan_route_choices
+```
+
+应用 safe repair：
+
+```bash
+source .venv/bin/activate
+python -m src.narrativeos.services.data_integrity \
+  --database-url 'postgresql://user:password@localhost:5432/narrativeos' \
+  --apply \
+  --action reconcile_session_chapter_pointers \
+  --action prune_orphan_route_choices
 ```
 
 NarrativeEval nightly / regression 调用方式：

@@ -6,6 +6,7 @@ import json
 import os
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+from time import perf_counter
 from typing import Any, Dict, List, Optional, Sequence
 from urllib import error as urlerror
 from urllib import request as urlrequest
@@ -37,17 +38,138 @@ def _backend_name(backend: Any) -> str:
     return str(getattr(backend, "provider_id", backend.__class__.__name__.lower()))
 
 
+def _deep_find_debug(payload: Any, key: str) -> Any:
+    if isinstance(payload, dict):
+        if key in payload:
+            return payload.get(key)
+        for value in payload.values():
+            found = _deep_find_debug(value, key)
+            if found is not None:
+                return found
+    elif isinstance(payload, list):
+        for value in payload:
+            found = _deep_find_debug(value, key)
+            if found is not None:
+                return found
+    return None
+
+
 def _is_retryable_exception(exc: Exception) -> bool:
     if isinstance(exc, ProviderExecutionError):
         return bool(exc.retryable)
     return isinstance(exc, (TimeoutError, ConnectionError, urlerror.URLError, urlerror.HTTPError))
 
 
+def _normalized_route_debug(debug: Dict[str, Any], *, provider: str) -> Dict[str, Any]:
+    normalized = dict(debug)
+    selected_provider = _deep_find_debug(normalized, "selected_provider") or normalized.get("provider") or provider
+    attempts = list(normalized.get("attempts", []))
+    attempt_count = normalized.get("attempt_count")
+    if attempt_count is None and attempts:
+        attempt_count = sum(int(_deep_find_debug(item, "attempt_count") or 1) for item in attempts)
+    if attempt_count is None:
+        attempt_count = 1
+    backend_error = (
+        normalized.get("backend_error")
+        or normalized.get("terminal_error")
+        or _deep_find_debug(normalized, "backend_error")
+        or _deep_find_debug(normalized, "terminal_error")
+    )
+    if backend_error is None:
+        errors = normalized.get("errors")
+        if isinstance(errors, list) and errors:
+            backend_error = errors[-1].get("error")
+    normalized.setdefault("provider", normalized.get("provider") or provider)
+    normalized.setdefault("selected_provider", selected_provider)
+    normalized.setdefault("fallback_used", bool(_deep_find_debug(normalized, "fallback_used")) if _deep_find_debug(normalized, "fallback_used") is not None else False)
+    normalized.setdefault("attempt_count", int(attempt_count))
+    normalized.setdefault("cache_hit", _deep_find_debug(normalized, "cache_hit"))
+    normalized.setdefault("budget_blocked", bool(_deep_find_debug(normalized, "budget_blocked")) if _deep_find_debug(normalized, "budget_blocked") is not None else False)
+    normalized.setdefault("backend_error", backend_error)
+    latency_ms = normalized.get("latency_ms")
+    if latency_ms is None and attempts:
+        latency_ms = round(
+            sum(float(_deep_find_debug(item, "latency_ms") or 0.0) for item in attempts),
+            3,
+        )
+    if latency_ms is not None:
+        normalized["latency_ms"] = round(float(latency_ms), 3)
+    budget_estimate = normalized.get("budget_estimate") or _deep_find_debug(normalized, "budget_estimate")
+    if isinstance(budget_estimate, dict):
+        normalized["budget_estimate"] = dict(budget_estimate)
+        normalized.setdefault("prompt_chars", budget_estimate.get("prompt_chars"))
+        normalized.setdefault("estimated_tokens", budget_estimate.get("estimated_tokens"))
+        normalized.setdefault("estimated_request_cost_usd", budget_estimate.get("estimated_cost_usd"))
+    return normalized
+
+
 def backend_debug_info(backend: Any) -> Dict[str, Any]:
     debug = getattr(backend, "last_route_debug", None)
     if isinstance(debug, dict):
-        return dict(debug)
-    return {"provider": _backend_name(backend)}
+        return _normalized_route_debug(debug, provider=_backend_name(backend))
+    provider = _backend_name(backend)
+    return {
+        "provider": provider,
+        "selected_provider": provider,
+        "fallback_used": False,
+        "attempt_count": 1,
+        "cache_hit": None,
+        "budget_blocked": False,
+        "backend_error": None,
+        "latency_ms": None,
+        "budget_estimate": None,
+        "prompt_chars": None,
+        "estimated_tokens": None,
+        "estimated_request_cost_usd": None,
+    }
+
+
+def _env_value(scope: Optional[str], suffix: str) -> Optional[str]:
+    scope = str(scope or "").strip().lower()
+    names: List[str] = []
+    if scope:
+        names.append(f"NARRATIVEOS_LLM_{scope.upper()}_{suffix}")
+    names.append(f"NARRATIVEOS_LLM_{suffix}")
+    for name in names:
+        value = os.getenv(name)
+        if value is not None and str(value).strip() != "":
+            return value
+    return None
+
+
+def build_llm_policy_from_env(scope: Optional[str] = None) -> Dict[str, Any]:
+    provider_order_raw = _env_value(scope, "PROVIDER_ORDER")
+    routing_enabled = _truthy_env(_env_value(scope, "ROUTING_ENABLED"))
+    max_attempts = int(_env_value(scope, "MAX_ATTEMPTS") or "2")
+    cache_enabled = _truthy_env(_env_value(scope, "CACHE_ENABLED"))
+    cache_max_entries = int(_env_value(scope, "CACHE_MAX_ENTRIES") or "128")
+    max_prompt_chars_raw = _env_value(scope, "MAX_PROMPT_CHARS")
+    max_estimated_cost_raw = _env_value(scope, "MAX_ESTIMATED_COST_USD")
+    estimated_cost_per_1k_chars = float(_env_value(scope, "ESTIMATED_COST_PER_1K_CHARS") or "0.002")
+    enabled = bool(provider_order_raw or routing_enabled)
+    provider_order = [
+        item.strip().lower()
+        for item in (provider_order_raw.split(",") if provider_order_raw else ["openai", "anthropic", "local"])
+        if item.strip()
+    ] if enabled else []
+    return {
+        "scope": scope or "shared",
+        "enabled": enabled,
+        "routing_enabled": routing_enabled,
+        "provider_order": provider_order,
+        "retry_policy": {
+            "max_attempts": max_attempts,
+        },
+        "cache_policy": {
+            "enabled": cache_enabled,
+            "max_entries": cache_max_entries,
+        },
+        "budget_policy": {
+            "max_prompt_chars": int(max_prompt_chars_raw) if max_prompt_chars_raw else None,
+            "max_estimated_cost_usd": float(max_estimated_cost_raw) if max_estimated_cost_raw else None,
+            "estimated_cost_per_1k_chars": estimated_cost_per_1k_chars,
+        },
+    }
 
 
 def estimate_request_budget(system_prompt: str, user_prompt: str, *, cost_per_1k_chars: float) -> Dict[str, float]:
@@ -125,6 +247,7 @@ class BudgetedLLMBackend(LLMBackend):
                 "budget_estimate": estimate,
                 "max_prompt_chars": self.max_prompt_chars,
                 "max_estimated_cost_usd": self.max_estimated_cost_usd,
+                "latency_ms": 0.0,
             }
             raise ProviderExecutionError(
                 self.provider_id,
@@ -139,19 +262,23 @@ class BudgetedLLMBackend(LLMBackend):
                 "budget_estimate": estimate,
                 "max_prompt_chars": self.max_prompt_chars,
                 "max_estimated_cost_usd": self.max_estimated_cost_usd,
+                "latency_ms": 0.0,
             }
             raise ProviderExecutionError(
                 self.provider_id,
                 "estimated_cost_exceeded",
                 retryable=False,
             )
+        started = perf_counter()
         payload = self.backend.generate_json(system_prompt=system_prompt, user_prompt=user_prompt)
+        latency_ms = round((perf_counter() - started) * 1000.0, 3)
         self.last_route_debug = {
             "provider": self.provider_id,
             "budget_blocked": False,
             "budget_estimate": estimate,
             "max_prompt_chars": self.max_prompt_chars,
             "max_estimated_cost_usd": self.max_estimated_cost_usd,
+            "latency_ms": latency_ms,
             "delegate": backend_debug_info(self.backend),
         }
         return payload
@@ -177,6 +304,7 @@ class CachedLLMBackend(LLMBackend):
         return digest
 
     def generate_json(self, *, system_prompt: str, user_prompt: str) -> Any:
+        started = perf_counter()
         cache_key = self._cache_key(system_prompt=system_prompt, user_prompt=user_prompt)
         cached = self.cache.get(cache_key)
         if cached is not None:
@@ -184,6 +312,7 @@ class CachedLLMBackend(LLMBackend):
                 "provider": self.provider_id,
                 "cache_hit": True,
                 "cache_key": cache_key[:12],
+                "latency_ms": round((perf_counter() - started) * 1000.0, 3),
                 "delegate": backend_debug_info(self.backend),
             }
             return cached
@@ -193,6 +322,7 @@ class CachedLLMBackend(LLMBackend):
             "provider": self.provider_id,
             "cache_hit": False,
             "cache_key": cache_key[:12],
+            "latency_ms": round((perf_counter() - started) * 1000.0, 3),
             "delegate": backend_debug_info(self.backend),
         }
         return payload
@@ -213,31 +343,54 @@ class RetryingLLMBackend(LLMBackend):
 
     def generate_json(self, *, system_prompt: str, user_prompt: str) -> Any:
         errors: List[Dict[str, Any]] = []
+        total_started = perf_counter()
         for attempt in range(1, self.max_attempts + 1):
+            attempt_started = perf_counter()
             try:
                 payload = self.backend.generate_json(system_prompt=system_prompt, user_prompt=user_prompt)
+                attempt_latency_ms = round((perf_counter() - attempt_started) * 1000.0, 3)
                 self.last_route_debug = {
                     "provider": self.provider_id,
+                    "selected_provider": _backend_name(self.backend),
                     "attempt_count": attempt,
                     "succeeded": True,
+                    "latency_ms": round((perf_counter() - total_started) * 1000.0, 3),
                     "errors": errors,
+                    "attempts": [
+                        *errors,
+                        {
+                            "attempt": attempt,
+                            "provider": _backend_name(self.backend),
+                            "latency_ms": attempt_latency_ms,
+                            "succeeded": True,
+                        },
+                    ],
+                    "delegate": backend_debug_info(self.backend),
                 }
                 return payload
             except Exception as exc:
                 retryable = _is_retryable_exception(exc)
+                attempt_latency_ms = round((perf_counter() - attempt_started) * 1000.0, 3)
                 errors.append(
                     {
                         "attempt": attempt,
+                        "provider": _backend_name(self.backend),
                         "error": str(exc),
                         "retryable": retryable,
+                        "latency_ms": attempt_latency_ms,
                     }
                 )
                 if attempt >= self.max_attempts or not retryable:
                     self.last_route_debug = {
                         "provider": self.provider_id,
+                        "selected_provider": _backend_name(self.backend),
                         "attempt_count": attempt,
                         "succeeded": False,
+                        "latency_ms": round((perf_counter() - total_started) * 1000.0, 3),
                         "errors": errors,
+                        "attempts": errors,
+                        "backend_error": str(exc),
+                        "delegate": backend_debug_info(self.backend),
                     }
                     raise ProviderExecutionError(self.provider_id, str(exc), retryable=retryable) from exc
         raise RuntimeError("unreachable_retry_backend_state")
@@ -272,6 +425,7 @@ class RoutingLLMBackend(LLMBackend):
 
     def generate_json(self, *, system_prompt: str, user_prompt: str) -> Any:
         attempts: List[Dict[str, Any]] = []
+        total_started = perf_counter()
         for index, backend in enumerate(self.routes):
             try:
                 payload = backend.generate_json(system_prompt=system_prompt, user_prompt=user_prompt)
@@ -281,6 +435,12 @@ class RoutingLLMBackend(LLMBackend):
                     "provider": "routing",
                     "selected_provider": backend.provider_id,
                     "fallback_used": index > 0,
+                    "attempt_count": int(route_debug.get("attempt_count") or 1),
+                    "cache_hit": route_debug.get("cache_hit"),
+                    "budget_blocked": bool(route_debug.get("budget_blocked")),
+                    "backend_error": route_debug.get("backend_error"),
+                    "latency_ms": round((perf_counter() - total_started) * 1000.0, 3),
+                    "budget_estimate": route_debug.get("budget_estimate"),
                     "attempts": attempts,
                     "succeeded": True,
                 }
@@ -294,6 +454,12 @@ class RoutingLLMBackend(LLMBackend):
             "provider": "routing",
             "selected_provider": None,
             "fallback_used": True,
+            "attempt_count": sum(int(item.get("attempt_count") or 1) for item in attempts) if attempts else 0,
+            "cache_hit": _deep_find_debug(attempts, "cache_hit"),
+            "budget_blocked": bool(_deep_find_debug(attempts, "budget_blocked")) if _deep_find_debug(attempts, "budget_blocked") is not None else False,
+            "backend_error": attempts[-1].get("terminal_error") if attempts else "all_llm_providers_failed",
+            "latency_ms": round((perf_counter() - total_started) * 1000.0, 3),
+            "budget_estimate": _deep_find_debug(attempts, "budget_estimate"),
             "attempts": attempts,
             "succeeded": False,
         }
@@ -712,13 +878,25 @@ class LLMCandidateProvider(CandidateProvider):
             else:
                 legal_candidates.append(candidate)
 
+        backend_routing = backend_debug_info(self.backend)
+        backend_routing["fallback_used"] = bool(
+            backend_routing.get("fallback_used")
+            or backend_error
+            or any(event.metadata.get("provider_source") != "llm" for event in raw_candidates)
+        )
+        backend_routing.setdefault("selected_provider", backend_routing.get("provider"))
+        backend_routing.setdefault("attempt_count", int(backend_routing.get("attempt_count") or 1))
+        backend_routing.setdefault("cache_hit", backend_routing.get("cache_hit"))
+        backend_routing.setdefault("budget_blocked", bool(backend_routing.get("budget_blocked")))
+        backend_routing.setdefault("backend_error", backend_error or backend_routing.get("backend_error"))
+
         return CandidateBatch(
             raw_candidates=raw_candidates,
             legal_candidates=legal_candidates,
             illegal_candidate_reasons=illegal_candidate_reasons,
             debug={
                 "provider": "llm",
-                "backend_routing": backend_debug_info(self.backend),
+                "backend_routing": backend_routing,
                 "depth": depth,
                 "llm_raw_count": len(raw_items),
                 "llm_valid_count": len(valid_candidates),
@@ -831,23 +1009,18 @@ class AnthropicProvider(LLMBackend):
         return json.loads(text_output) if text_output else payload
 
 
-def build_llm_backend_from_env() -> Optional[LLMBackend]:
-    provider_order_raw = os.getenv("NARRATIVEOS_LLM_PROVIDER_ORDER")
-    routing_enabled = _truthy_env(os.getenv("NARRATIVEOS_LLM_ROUTING_ENABLED"))
-    if not provider_order_raw and not routing_enabled:
+def build_llm_backend_from_env(scope: Optional[str] = None) -> Optional[LLMBackend]:
+    policy = build_llm_policy_from_env(scope)
+    if not policy["enabled"]:
         return None
 
-    provider_order = [
-        item.strip().lower()
-        for item in (provider_order_raw.split(",") if provider_order_raw else ["openai", "anthropic", "local"])
-        if item.strip()
-    ]
-    max_attempts = int(os.getenv("NARRATIVEOS_LLM_MAX_ATTEMPTS", "2") or "2")
-    cache_enabled = _truthy_env(os.getenv("NARRATIVEOS_LLM_CACHE_ENABLED"))
-    cache_max_entries = int(os.getenv("NARRATIVEOS_LLM_CACHE_MAX_ENTRIES", "128") or "128")
-    max_prompt_chars_raw = os.getenv("NARRATIVEOS_LLM_MAX_PROMPT_CHARS")
-    max_estimated_cost_raw = os.getenv("NARRATIVEOS_LLM_MAX_ESTIMATED_COST_USD")
-    estimated_cost_per_1k_chars = float(os.getenv("NARRATIVEOS_LLM_ESTIMATED_COST_PER_1K_CHARS", "0.002") or "0.002")
+    provider_order = list(policy["provider_order"])
+    max_attempts = int(policy["retry_policy"]["max_attempts"])
+    cache_enabled = bool(policy["cache_policy"]["enabled"])
+    cache_max_entries = int(policy["cache_policy"]["max_entries"])
+    max_prompt_chars = policy["budget_policy"]["max_prompt_chars"]
+    max_estimated_cost = policy["budget_policy"]["max_estimated_cost_usd"]
+    estimated_cost_per_1k_chars = float(policy["budget_policy"]["estimated_cost_per_1k_chars"])
     backends: List[LLMBackend] = []
     provider_ids: List[str] = []
     for provider_name in provider_order:
@@ -866,11 +1039,11 @@ def build_llm_backend_from_env() -> Optional[LLMBackend]:
         backend: LLMBackend = RetryingLLMBackend(backends[0], provider_id=provider_ids[0], max_attempts=max_attempts)
     else:
         backend = RoutingLLMBackend(backends, provider_ids=provider_ids, max_attempts_per_backend=max_attempts)
-    if max_prompt_chars_raw or max_estimated_cost_raw:
+    if max_prompt_chars is not None or max_estimated_cost is not None:
         backend = BudgetedLLMBackend(
             backend,
-            max_prompt_chars=int(max_prompt_chars_raw) if max_prompt_chars_raw else None,
-            max_estimated_cost_usd=float(max_estimated_cost_raw) if max_estimated_cost_raw else None,
+            max_prompt_chars=max_prompt_chars,
+            max_estimated_cost_usd=max_estimated_cost,
             estimated_cost_per_1k_chars=estimated_cost_per_1k_chars,
         )
     if cache_enabled:

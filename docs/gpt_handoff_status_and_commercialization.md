@@ -157,8 +157,13 @@
 #### Ops 侧现在已具备
 
 - `Learned Dashboard`
+- `Learned Impact`
+- `Learned Cadence`
+- `Assisted Gate Experiment`
+- `Assisted Rerank Experiment`
 - `Shadow Candidate Compare`
 - `Learned Data Ops`
+- `Human Review Coverage & Quality`
 - `Last Action Impact`
 - `Evaluator Promotion Gate`
 - `Reranker Promotion Gate`
@@ -166,13 +171,90 @@
 当前 learned governance 已经能让 Ops：
 
 - 看当前哪条 learned 线更成熟
+- 看 evaluator / reranker 是否和继续读 / 付费代理指标一起变好
 - 看 review / pair backlog
 - 补 human review
+- 看哪些 world 的 human review 覆盖不足、reviewer diversity 偏低、样本本身存在 ingestion warning
+- 看 evaluator / reranker 当前到底更该补样、重训、做 shadow 验证，还是申请 promotion / activate
 - 看一次补样后对 learned 层的即时影响
 - 对 evaluator / reranker 的 promotion 做 approve / revoke
 - 在 evidence 变差时看到 `stale / reconfirm required`
+- 在非常窄的 bucket 中运行 `shadow_only -> assisted_gate` 受控实验
+- 在非常窄的 bucket 中运行 `shadow_only -> assisted_rerank` 受控实验
 
 但这些都**仍然只影响治理层，不影响线上生成 / publish / simulation gate**。
+
+现在又多了一层更明确的 impact 观测：
+
+- 新增 `GET /v1/ops/learned-impact`
+- evaluator / reranker 会分别给出：
+  - `impact_status`
+  - `continuation_correlation`
+  - `monetization_correlation`
+  - `evidence_sufficiency`
+- retention proxy 与 monetization proxy 被显式分开
+- `assisted_gate` experiment receipts 现在也被接进 learned impact
+- Ops 可以直接看到：
+  - `assisted block` 是否和 continuation proxy 一起改善
+  - `assisted block` 是否和 checkout / subscription / paywall proxy 一起变化
+  - 哪些 world / issue 已经出现 assisted gate decision 痕迹
+
+同时现在也多了一层更明确的数据质量观测：
+
+- 新增 `GET /v1/ops/learned-review-quality`
+- 新增 `GET /v1/ops/learned-review-quality/worlds/{world_id}`
+- Ops 可以直接看到：
+  - human review 覆盖是否达到 target
+  - reviewer diversity 是否偏低
+  - 哪些样本带 `ingestion_warnings`
+  - 哪些 world 需要优先做 high-coverage replenishment
+
+同时现在也多了一层更明确的 cadence 观测：
+
+- 新增 `GET /v1/ops/learned-cadence`
+- 新增 `GET /v1/ops/learned-cadence/{track}`
+- 会把：
+  - `sample accumulation`
+  - `latest training run`
+  - `artifact freshness`
+  - `shadow validation`
+  - `promotion approval`
+  - `rollout status`
+  聚成统一阶段视图
+- 同时会直接显示：
+  - `stale_reasons`
+  - `checkpoint_summary`
+  - `recent_events`
+- 但它仍然是只读治理层，不直接改 promotion / rollout 判定
+
+现在又补上了一层更窄、更保守的受控实验：
+
+- 新增 `GET /v1/ops/learned-assisted-gate`
+- 新增 `POST /v1/ops/learned-assisted-gate/configure`
+- 当前实验只覆盖 `assisted gate`，不覆盖 reranker runtime
+- 当前实验现在分成两条：
+  - `assisted_gate`
+  - `assisted_rerank`
+- guardrail 固定为：
+  - 必须显式启用
+  - 必须命中 bucket / allowlist
+  - 必须保持 evaluator rollout active
+  - 必须保持 evaluator promotion approved
+  - **不会 force-pass 一个 rule-blocked version**
+- 第一版真正允许的线上影响只有：
+  - 当规则本来会放行时，learned 在高置信条件下辅助拦截
+- rerank 侧现在也有最小受控实验：
+  - 新增 `GET /v1/ops/learned-assisted-rerank`
+  - 新增 `POST /v1/ops/learned-assisted-rerank/configure`
+  - 只在 Reader runtime 的候选链路上，对 `beat 1` 做 top-candidate assisted rerank
+  - 必须保持 reranker rollout active + promotion approved
+  - 还要满足 `bucket 命中 + max_score_gap`
+- rollback 也固定为：
+  - 关闭 experiment config
+  - rollback evaluator rollout
+  - revoke evaluator promotion approval
+  - rollback reranker rollout
+  - revoke reranker promotion approval
 
 ### 1.5 Monetization & Entitlements M0 状态
 
@@ -308,6 +390,112 @@ Author 虽然已经不是 JSON 编辑器，但离真正的供给工作台还有�
 - provider-level observability
 - 风险隔离与灰度机制
 - Postgres / migration / 多人并发级别的生产化完善
+
+本轮已把 provider routing 从 skeleton 推到了更接近真实运行面：
+
+- Reader `continue_story` 现已接入统一 candidate / renderer routing runtime
+- Authoring `run_simulation_for_world_version` 也复用同一套 runtime
+- candidate / renderer 现在支持按 `scope` 分别组装 backend policy
+- primary provider 失败、budget blocked、或 retry 后仍失败时，会继续走 fallback，而不是直接中断 Reader / Authoring 主路径
+- Ops 现可通过 `GET /v1/ops/provider-routing` 看到 candidate / renderer 的当前 routing policy
+
+同时现在也补上了一层更明确的 runtime rollout control：
+
+- 新增 `GET /v1/ops/provider-rollout`
+- 新增：
+  - `POST /v1/ops/provider-rollout/{track}/canary`
+  - `POST /v1/ops/provider-rollout/{track}/activate`
+  - `POST /v1/ops/provider-rollout/{track}/rollback`
+- candidate / renderer 两条 runtime 轨都可以独立：
+  - `shadow`
+  - `canary`
+  - `active`
+  - `rolled_back`
+
+Postgres / migration / schema lifecycle 这一段也开始从 SQL skeleton 走向更正式的 migration discipline：
+
+- 仓库现在有最小 Alembic scaffold：
+  - `alembic.ini`
+  - `db/alembic/env.py`
+  - `db/alembic/versions/20260404_0011_platform_baseline.py`
+  - `db/alembic/versions/20260404_0012_runtime_hotspot_indexes.py`
+- `GET /v1/ops/schema-lifecycle` 现在不仅看 SQL migrations，也会返回：
+  - `alembic.current_revision`
+  - `alembic.head_revision`
+  - `alembic.pending_revisions`
+  - `alembic.status`
+- `python -m src.narrativeos.persistence.migrations` 现在支持：
+  - `--dry-run`
+  - `--alembic-current`
+  - `--alembic-history`
+  - `--alembic-upgrade-head`
+- 当前策略仍然是：
+  - SQL migrations 继续作为最安全的 apply source
+  - Alembic 负责 revision discipline / current-head visibility / future forward-revision path
+
+另外 Phase 6 也开始补数据层完整性与修复工具：
+
+- 新增 `GET /v1/ops/data-integrity`
+- 新增 `POST /v1/ops/data-integrity/repair`
+- 可以直接看到：
+  - hotspot composite index coverage
+  - session pointer drift
+  - orphan route choice backlog
+  - duplicate active subscription backlog
+  - missing first-class review asset references
+- 当前 safe repair 只开放两类：
+  - `reconcile_session_chapter_pointers`
+  - `prune_orphan_route_choices`
+- `duplicate active subscriptions` 仍然保留为 manual review，不自动修。
+  - `canary`
+  - `active`
+  - `rolled_back`
+- canary 命中结果现在也会进入 runtime receipts，方便在 Ops 侧确认当前请求到底是否落进了灰度桶
+
+同时 runtime observability 现在也不再只看“有没有 fallback / budget block”，而是开始接近真实运营观测：
+
+- runtime receipts 现在会记录：
+  - `runtime_latency_ms`
+  - `candidate_latency_ms`
+  - `renderer_latency_ms`
+  - `candidate_attempt_count`
+  - `renderer_attempt_count`
+  - `candidate_estimated_request_cost_usd`
+  - `renderer_estimated_request_cost_usd`
+- provider metrics 现在会汇总：
+  - `latency_summary`
+  - `latency_trend`
+  - `rollout_stage_summary`
+  - provider 级 `avg/p95 latency`
+  - `selected_as_candidate_count / selected_as_renderer_count`
+
+Phase 6 的 backup / restore / deploy / recovery runbook 这条线也继续往生产可控收了一步：
+
+- runtime backup manifest 现在会带 `verification_snapshot`
+  - backend
+  - schema/alembic 状态
+  - 核心表 row counts
+- `POST /v1/ops/runtime-restore` 现在会返回：
+  - `restore_decision`
+  - `restore_decision_hints`
+  - `pre_restore_verification`
+  - `post_restore_verification`
+  - `restore_verification_steps`
+- 新增：
+  - `GET /v1/ops/recovery-drills`
+  - `POST /v1/ops/recovery-drill`
+- 现在还继续往前推了一段：
+  - `GET /v1/ops/runtime-restore-requests`
+  - `POST /v1/ops/runtime-restore/request`
+  - `POST /v1/ops/runtime-restore/{request_id}/approve`
+  - `POST /v1/ops/runtime-restore/{request_id}/revoke`
+  - `POST /v1/ops/jobs/runtime-restores`
+- 这意味着 Postgres 不再只是“operator 看着命令手敲”：
+  - backup 现在可以走真实 `pg_dump` custom dump 执行
+  - restore 有两步 approval gate
+  - 真正执行走 async job
+  - wrapper / stdout / stderr / result.json 都会留 artifact
+- 也就是说，现在 Ops 不只是“能备份/恢复”，而是能在恢复前先做 dry-run drill，并把恢复前后验证链记录下来。
 
 ---
 

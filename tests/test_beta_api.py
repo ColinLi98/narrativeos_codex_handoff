@@ -40,7 +40,13 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     assert "Cancel At Period End" in shell.text
     assert "当前世界" in shell.text
     assert "Learned Dashboard" in shell.text
+    assert "Learned Impact" in shell.text
+    assert "Learned Cadence" in shell.text
+    assert "Assisted Gate Experiment" in shell.text
+    assert "Assisted Rerank Experiment" in shell.text
     assert "Shadow Candidate Compare" in shell.text
+    assert "Preference Capture" in shell.text
+    assert "Ranking Capture" in shell.text
     assert "Evaluator Promotion Gate" in shell.text
     assert "Reranker Promotion Gate" in shell.text
     assert "会员 / 钱包 / 订阅审计" in shell.text
@@ -56,6 +62,7 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     assert "Approve Reranker" in shell.text
     assert "Revoke Reranker" in shell.text
     assert "Learned Data Ops" in shell.text
+    assert "Human Review Coverage" in shell.text
     assert "Review Backlog" in shell.text
     assert "Pair Coverage Backlog" in shell.text
     assert "Quick Capture Review" in shell.text
@@ -105,7 +112,18 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     assert "Run Both" in shell.text
     assert "Safe Rollout" in shell.text
     assert "Schema Lifecycle" in shell.text
+    assert "Data Integrity / Repair" in shell.text
+    assert "Run Integrity Dry-run" in shell.text
+    assert "Apply Safe Repair" in shell.text
+    assert "Run Recovery Drill" in shell.text
+    assert "Request Restore" in shell.text
+    assert "Approve Restore" in shell.text
+    assert "Revoke Restore" in shell.text
+    assert "Execute Approved Restore" in shell.text
     assert "Runtime Receipts / Incident Snapshot" in shell.text
+    assert "Provider Routing Policy" in shell.text
+    assert "Candidate Canary" in shell.text
+    assert "Renderer Canary" in shell.text
     assert "Deployment / Backup / Incident" in shell.text
     assert "Deployment Health Gate" in shell.text
     assert "Async Jobs" in shell.text
@@ -429,6 +447,33 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     assert "review_sample_backlog" in learned_data_ops.json()
     assert "pair_coverage_backlog" in learned_data_ops.json()
     assert "action_queue" in learned_data_ops.json()
+    learned_review_quality = client.get("/v1/ops/learned-review-quality")
+    assert learned_review_quality.status_code == 200
+    assert "coverage_summary" in learned_review_quality.json()
+    assert "quality_summary" in learned_review_quality.json()
+    assert "replenishment_backlog" in learned_review_quality.json()
+    learned_cadence = client.get("/v1/ops/learned-cadence")
+    assert learned_cadence.status_code == 200
+    assert "cadence_summary" in learned_cadence.json()
+    assert {item["track"] for item in learned_cadence.json()["track_summaries"]} == {"evaluator", "reranker"}
+    learned_impact = client.get("/v1/ops/learned-impact")
+    assert learned_impact.status_code == 200
+    assert "retention_proxies" in learned_impact.json()
+    assert "monetization_proxies" in learned_impact.json()
+    assert "experiment_summaries" in learned_impact.json()
+    assert "assisted_gate" in learned_impact.json()["experiment_summaries"]
+    evaluator_cadence = client.get("/v1/ops/learned-cadence/evaluator")
+    assert evaluator_cadence.status_code == 200
+    assert evaluator_cadence.json()["track"] == "evaluator"
+    assert "track_summary" in evaluator_cadence.json()
+    assisted_gate = client.get("/v1/ops/learned-assisted-gate")
+    assert assisted_gate.status_code == 200
+    assert "guardrails" in assisted_gate.json()
+    assert "rollback_conditions" in assisted_gate.json()
+    assisted_rerank = client.get("/v1/ops/learned-assisted-rerank")
+    assert assisted_rerank.status_code == 200
+    assert "guardrails" in assisted_rerank.json()
+    assert "rollback_conditions" in assisted_rerank.json()
     ops_subscriptions = client.get("/v1/ops/subscriptions", params={"account_id": "web_author"})
     assert ops_subscriptions.status_code == 200
     if ops_subscriptions.json()["subscriptions"]:
@@ -438,17 +483,43 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     assert "status" in schema_lifecycle.json()
     assert "pending_versions" in schema_lifecycle.json()
     assert "schema_matches_migrations" in schema_lifecycle.json()
+    assert "alembic" in schema_lifecycle.json()
+    assert "head_revision" in schema_lifecycle.json()["alembic"]
+    data_integrity = client.get("/v1/ops/data-integrity")
+    assert data_integrity.status_code == 200
+    assert "hotspot_index_summary" in data_integrity.json()
+    assert "repair_actions" in data_integrity.json()
+    data_integrity_dry_run = client.post(
+        "/v1/ops/data-integrity/repair",
+        json={"apply": False, "actions": ["reconcile_session_chapter_pointers"], "limit": 5},
+    )
+    assert data_integrity_dry_run.status_code == 200
+    assert "action_results" in data_integrity_dry_run.json()
     runtime_receipts = client.get("/v1/ops/runtime-receipts", params={"account_id": "web_author"})
     assert runtime_receipts.status_code == 200
     assert "runtime_receipts" in runtime_receipts.json()
+    if runtime_receipts.json()["runtime_receipts"]:
+        assert "runtime_latency_ms" in runtime_receipts.json()["runtime_receipts"][0]
+        assert "candidate_attempt_count" in runtime_receipts.json()["runtime_receipts"][0]
     runtime_snapshot = client.get("/v1/ops/runtime-incident-snapshot", params={"account_id": "web_author"})
     assert runtime_snapshot.status_code == 200
     assert "incident_count" in runtime_snapshot.json()
     assert "schema_lifecycle_status" in runtime_snapshot.json()
+    assert "latency_summary" in runtime_snapshot.json()
+    provider_routing = client.get("/v1/ops/provider-routing")
+    assert provider_routing.status_code == 200
+    assert "candidate" in provider_routing.json()
+    assert "renderer" in provider_routing.json()
+    provider_rollout = client.get("/v1/ops/provider-rollout")
+    assert provider_rollout.status_code == 200
+    assert "tracks" in provider_rollout.json()
     provider_metrics = client.get("/v1/ops/provider-runtime-metrics", params={"account_id": "web_author"})
     assert provider_metrics.status_code == 200
     assert "provider_summary" in provider_metrics.json()
     assert "cost_trend" in provider_metrics.json()
+    assert "latency_summary" in provider_metrics.json()
+    assert "latency_trend" in provider_metrics.json()
+    assert "rollout_stage_summary" in provider_metrics.json()
     deployment_runbook = client.get("/v1/ops/deployment-runbook")
     assert deployment_runbook.status_code == 200
     assert "deploy_steps" in deployment_runbook.json()
@@ -458,9 +529,16 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     preflight_bundle = client.get("/v1/ops/preflight-verification-bundle", params={"account_id": "web_author"})
     assert preflight_bundle.status_code == 200
     assert "verification_summary" in preflight_bundle.json()
+    assert "restore_verification_steps" in preflight_bundle.json()
     incident_playbook = client.get("/v1/ops/incident-playbook", params={"account_id": "web_author"})
     assert incident_playbook.status_code == 200
     assert "triage_steps" in incident_playbook.json()
+    recovery_drills = client.get("/v1/ops/recovery-drills")
+    assert recovery_drills.status_code == 200
+    assert "recovery_drills" in recovery_drills.json()
+    restore_requests = client.get("/v1/ops/runtime-restore-requests")
+    assert restore_requests.status_code == 200
+    assert "restore_requests" in restore_requests.json()
     ops_entitlements = client.get("/v1/ops/entitlements", params={"account_id": "web_author"})
     assert ops_entitlements.status_code == 200
     assert "audit_summary" in ops_entitlements.json()

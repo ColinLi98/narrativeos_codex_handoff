@@ -4,6 +4,8 @@
   "type": "object",
   "required": [
     "chapter_review_samples",
+    "preference_samples",
+    "ranking_samples",
     "author_revision_logs",
     "continue_churn_events",
     "issue_fix_pairs",
@@ -21,6 +23,18 @@
       "type": "array",
       "items": {
         "$ref": "review_sample.schema.json"
+      }
+    },
+    "preference_samples": {
+      "type": "array",
+      "items": {
+        "$ref": "preference_sample.schema.json"
+      }
+    },
+    "ranking_samples": {
+      "type": "array",
+      "items": {
+        "$ref": "ranking_sample.schema.json"
       }
     },
     "author_revision_logs": {
@@ -61,12 +75,16 @@
           "type": "object",
           "required": [
             "chapter_review_samples",
+            "preference_samples",
+            "ranking_samples",
             "author_revision_logs",
             "continue_churn_events",
             "issue_fix_pairs"
           ],
           "properties": {
             "chapter_review_samples": {"type": "integer"},
+            "preference_samples": {"type": "integer"},
+            "ranking_samples": {"type": "integer"},
             "author_revision_logs": {"type": "integer"},
             "continue_churn_events": {"type": "integer"},
             "issue_fix_pairs": {"type": "integer"}
@@ -77,11 +95,15 @@
           "required": [
             "evaluation_report_auto",
             "human_review",
+            "human_preference",
+            "human_ranking",
             "inferred_session_abandoned"
           ],
           "properties": {
             "evaluation_report_auto": {"type": "integer"},
             "human_review": {"type": "integer"},
+            "human_preference": {"type": "integer"},
+            "human_ranking": {"type": "integer"},
             "inferred_session_abandoned": {"type": "integer"}
           }
         },
@@ -179,6 +201,7 @@
           "linked_issue_codes",
           "preferred_revision_id",
           "preference_strength",
+          "example_source",
           "split"
         ],
         "properties": {
@@ -191,6 +214,7 @@
           "linked_issue_codes": {"type": "array", "items": {"type": "string"}},
           "preferred_revision_id": {"type": "string"},
           "preference_strength": {"type": "string", "enum": ["strong", "medium"]},
+          "example_source": {"type": "string"},
           "split": {"type": "string", "enum": ["train", "val", "test"]}
         }
       }

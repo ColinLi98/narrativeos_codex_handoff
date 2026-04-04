@@ -100,6 +100,26 @@ class TrainingSignalService:
         ]
         return hashlib.sha256("|".join(stable_fields).encode("utf-8")).hexdigest()[:16]
 
+    def _preference_sample_ingestion_key(self, sample: Dict[str, Any]) -> str:
+        stable_fields = [
+            str(sample.get("world_version_id") or ""),
+            str(sample.get("reviewer_id") or ""),
+            str(sample.get("left_revision_id") or ""),
+            str(sample.get("right_revision_id") or ""),
+            str(sample.get("preferred_revision_id") or ""),
+            str(sample.get("source") or ""),
+        ]
+        return hashlib.sha256("|".join(stable_fields).encode("utf-8")).hexdigest()[:16]
+
+    def _ranking_sample_ingestion_key(self, sample: Dict[str, Any]) -> str:
+        stable_fields = [
+            str(sample.get("world_version_id") or ""),
+            str(sample.get("reviewer_id") or ""),
+            ",".join(str(item) for item in sample.get("ranked_revision_ids") or []),
+            str(sample.get("source") or ""),
+        ]
+        return hashlib.sha256("|".join(stable_fields).encode("utf-8")).hexdigest()[:16]
+
     def _stable_review_sample_id(self, sample: Dict[str, Any]) -> str:
         provided = payload_id = sample.get("sample_id")
         if provided:
@@ -107,6 +127,18 @@ class TrainingSignalService:
         if sample.get("source") == "evaluation_report_auto":
             return "sample_%s" % sample["chapter_id"]
         return "sample_%s" % self._review_sample_ingestion_key(sample)
+
+    def _stable_preference_sample_id(self, sample: Dict[str, Any]) -> str:
+        provided = sample.get("preference_id")
+        if provided:
+            return str(provided)
+        return "pref_%s" % self._preference_sample_ingestion_key(sample)
+
+    def _stable_ranking_sample_id(self, sample: Dict[str, Any]) -> str:
+        provided = sample.get("ranking_id")
+        if provided:
+            return str(provided)
+        return "rank_%s" % self._ranking_sample_ingestion_key(sample)
 
     def _world_version_context(self, world_version_id: str) -> Dict[str, Any]:
         version = self.repository.get_world_version(world_version_id)
@@ -123,6 +155,17 @@ class TrainingSignalService:
             for item in metadata.get("revision_history", [])
             if item.get("revision_id")
         }
+
+    def _validate_revision_ids(self, world_version_id: str, revision_ids: Sequence[Any]) -> None:
+        known = self._known_revision_ids(world_version_id)
+        normalized = [str(item) for item in revision_ids if str(item).strip()]
+        if not normalized:
+            raise ValueError("revision_ids_required")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("duplicate_revision_ids")
+        for revision_id in normalized:
+            if revision_id not in known:
+                raise ValueError("unknown_revision_id")
 
     def _validate_review_sample_refs(self, sample: Dict[str, Any]) -> Dict[str, Any]:
         try:
@@ -159,6 +202,38 @@ class TrainingSignalService:
             "reference_status": reference_status,
             **session_context,
         }
+
+    def _validate_preference_sample_refs(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        reference_context = self._validate_review_sample_refs(
+            {
+                "world_id": sample["world_id"],
+                "world_version_id": sample["world_version_id"],
+                "session_id": sample.get("session_id"),
+                "revision_id": None,
+            }
+        )
+        self._validate_revision_ids(
+            sample["world_version_id"],
+            [sample["left_revision_id"], sample["right_revision_id"]],
+        )
+        if sample["preferred_revision_id"] not in {sample["left_revision_id"], sample["right_revision_id"]}:
+            raise ValueError("preferred_revision_id_not_in_pair")
+        return reference_context
+
+    def _validate_ranking_sample_refs(self, sample: Dict[str, Any]) -> Dict[str, Any]:
+        reference_context = self._validate_review_sample_refs(
+            {
+                "world_id": sample["world_id"],
+                "world_version_id": sample["world_version_id"],
+                "session_id": sample.get("session_id"),
+                "revision_id": None,
+            }
+        )
+        ranked_revision_ids = [str(item) for item in sample.get("ranked_revision_ids") or [] if str(item).strip()]
+        if len(ranked_revision_ids) < 2:
+            raise ValueError("ranking_requires_two_or_more_revisions")
+        self._validate_revision_ids(sample["world_version_id"], ranked_revision_ids)
+        return reference_context
 
     def _build_cursor(self, timestamp: Optional[str], identifier: Optional[str]) -> Optional[str]:
         if not timestamp or not identifier:
@@ -336,6 +411,187 @@ class TrainingSignalService:
             samples,
             timestamp_key="created_at",
             identifier_key="sample_id",
+            since=since,
+            cursor=cursor,
+            limit=limit,
+        )
+
+    def save_preference_sample(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        source = str(payload.get("source") or "human_preference")
+        if source != "human_preference":
+            raise ValueError("invalid_preference_sample_source")
+        sample = {
+            "preference_id": None,
+            "world_id": str(payload["world_id"]),
+            "world_version_id": str(payload["world_version_id"]),
+            "chapter_id": payload.get("chapter_id"),
+            "session_id": payload.get("session_id"),
+            "reviewer_id": str(payload["reviewer_id"]),
+            "left_revision_id": str(payload["left_revision_id"]),
+            "right_revision_id": str(payload["right_revision_id"]),
+            "preferred_revision_id": str(payload["preferred_revision_id"]),
+            "freeform_notes": str(payload.get("freeform_notes", "")),
+            "linked_issue_codes": self._normalize_issue_codes(payload.get("linked_issue_codes") or []),
+            "preference_strength": str(payload.get("preference_strength") or "medium"),
+            "created_at": str(payload.get("created_at") or self._utcnow()),
+            "source": source,
+        }
+        if sample["preference_strength"] not in {"strong", "medium", "weak"}:
+            raise ValueError("invalid_preference_strength")
+        sample["preference_id"] = self._stable_preference_sample_id({**sample, "preference_id": payload.get("preference_id")})
+        reference_context = self._validate_preference_sample_refs(sample)
+        ingestion_warnings: List[str] = []
+        if not sample["linked_issue_codes"]:
+            ingestion_warnings.append("missing_linked_issue_codes")
+        if not sample.get("session_id"):
+            ingestion_warnings.append("missing_session_context")
+        sample["ingestion_meta"] = {
+            "ingestion_key": self._preference_sample_ingestion_key(sample),
+            "reference_status": reference_context.get("reference_status"),
+            "ingested_at": self._utcnow(),
+            "storage_mode": "upsert",
+            "ingestion_warnings": ingestion_warnings,
+        }
+        validate_payload(sample, "preference_sample.schema.json")
+        self.repository.save_review_record(
+            {
+                "review_id": "preference_sample_%s" % sample["preference_id"],
+                "asset_type": "preference_sample",
+                "asset_id": sample["preference_id"],
+                "status": sample["source"],
+                "reviewer_id": sample["reviewer_id"],
+                "notes": json.dumps(sample, ensure_ascii=False),
+            }
+        )
+        return sample
+
+    def list_preference_samples(
+        self,
+        *,
+        world_id: Optional[str] = None,
+        world_version_id: Optional[str] = None,
+        reviewer_id: Optional[str] = None,
+        since: Optional[str] = None,
+        cursor: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        records = self.repository.list_review_records(asset_type="preference_sample", reviewer_id=reviewer_id)
+        samples: List[Dict[str, Any]] = []
+        for record in records:
+            sample = self._parse_note_payload(record.get("notes"))
+            if not sample:
+                continue
+            if world_version_id and sample.get("world_version_id") != world_version_id:
+                continue
+            if world_id and sample.get("world_id") != world_id:
+                continue
+            sample.setdefault("created_at", record.get("updated_at"))
+            sample["linked_issue_codes"] = self._normalize_issue_codes(sample.get("linked_issue_codes") or [])
+            sample.setdefault(
+                "ingestion_meta",
+                {
+                    "ingestion_key": self._preference_sample_ingestion_key(sample),
+                    "reference_status": "unknown",
+                    "ingested_at": sample.get("created_at"),
+                    "storage_mode": "legacy",
+                    "ingestion_warnings": [],
+                },
+            )
+            validate_payload(sample, "preference_sample.schema.json")
+            samples.append(sample)
+        return self._apply_incremental_window(
+            samples,
+            timestamp_key="created_at",
+            identifier_key="preference_id",
+            since=since,
+            cursor=cursor,
+            limit=limit,
+        )
+
+    def save_ranking_sample(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        source = str(payload.get("source") or "human_ranking")
+        if source != "human_ranking":
+            raise ValueError("invalid_ranking_sample_source")
+        ranked_revision_ids = [str(item) for item in payload.get("ranked_revision_ids") or [] if str(item).strip()]
+        sample = {
+            "ranking_id": None,
+            "world_id": str(payload["world_id"]),
+            "world_version_id": str(payload["world_version_id"]),
+            "chapter_id": payload.get("chapter_id"),
+            "session_id": payload.get("session_id"),
+            "reviewer_id": str(payload["reviewer_id"]),
+            "ranked_revision_ids": ranked_revision_ids,
+            "top_revision_id": ranked_revision_ids[0] if ranked_revision_ids else "",
+            "freeform_notes": str(payload.get("freeform_notes", "")),
+            "linked_issue_codes": self._normalize_issue_codes(payload.get("linked_issue_codes") or []),
+            "created_at": str(payload.get("created_at") or self._utcnow()),
+            "source": source,
+        }
+        sample["ranking_id"] = self._stable_ranking_sample_id({**sample, "ranking_id": payload.get("ranking_id")})
+        reference_context = self._validate_ranking_sample_refs(sample)
+        ingestion_warnings: List[str] = []
+        if not sample["linked_issue_codes"]:
+            ingestion_warnings.append("missing_linked_issue_codes")
+        if not sample.get("session_id"):
+            ingestion_warnings.append("missing_session_context")
+        sample["ingestion_meta"] = {
+            "ingestion_key": self._ranking_sample_ingestion_key(sample),
+            "reference_status": reference_context.get("reference_status"),
+            "ingested_at": self._utcnow(),
+            "storage_mode": "upsert",
+            "ingestion_warnings": ingestion_warnings,
+        }
+        validate_payload(sample, "ranking_sample.schema.json")
+        self.repository.save_review_record(
+            {
+                "review_id": "ranking_sample_%s" % sample["ranking_id"],
+                "asset_type": "ranking_sample",
+                "asset_id": sample["ranking_id"],
+                "status": sample["source"],
+                "reviewer_id": sample["reviewer_id"],
+                "notes": json.dumps(sample, ensure_ascii=False),
+            }
+        )
+        return sample
+
+    def list_ranking_samples(
+        self,
+        *,
+        world_id: Optional[str] = None,
+        world_version_id: Optional[str] = None,
+        reviewer_id: Optional[str] = None,
+        since: Optional[str] = None,
+        cursor: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        records = self.repository.list_review_records(asset_type="ranking_sample", reviewer_id=reviewer_id)
+        samples: List[Dict[str, Any]] = []
+        for record in records:
+            sample = self._parse_note_payload(record.get("notes"))
+            if not sample:
+                continue
+            if world_version_id and sample.get("world_version_id") != world_version_id:
+                continue
+            if world_id and sample.get("world_id") != world_id:
+                continue
+            sample.setdefault("created_at", record.get("updated_at"))
+            sample["linked_issue_codes"] = self._normalize_issue_codes(sample.get("linked_issue_codes") or [])
+            sample.setdefault(
+                "ingestion_meta",
+                {
+                    "ingestion_key": self._ranking_sample_ingestion_key(sample),
+                    "reference_status": "unknown",
+                    "ingested_at": sample.get("created_at"),
+                    "storage_mode": "legacy",
+                    "ingestion_warnings": [],
+                },
+            )
+            validate_payload(sample, "ranking_sample.schema.json")
+            samples.append(sample)
+        return self._apply_incremental_window(
+            samples,
+            timestamp_key="created_at",
+            identifier_key="ranking_id",
             since=since,
             cursor=cursor,
             limit=limit,
@@ -812,6 +1068,8 @@ class TrainingSignalService:
         self,
         *,
         chapter_review_samples: Sequence[Dict[str, Any]],
+        preference_samples: Sequence[Dict[str, Any]],
+        ranking_samples: Sequence[Dict[str, Any]],
         author_revision_logs: Sequence[Dict[str, Any]],
         continue_churn_events: Sequence[Dict[str, Any]],
         issue_fix_pairs: Sequence[Dict[str, Any]],
@@ -835,6 +1093,8 @@ class TrainingSignalService:
             "filters": dict(filters),
             "counts": {
                 "chapter_review_samples": len(chapter_review_samples),
+                "preference_samples": len(preference_samples),
+                "ranking_samples": len(ranking_samples),
                 "author_revision_logs": len(author_revision_logs),
                 "continue_churn_events": len(continue_churn_events),
                 "issue_fix_pairs": len(issue_fix_pairs),
@@ -842,6 +1102,8 @@ class TrainingSignalService:
             "source_breakdown": {
                 "evaluation_report_auto": sum(1 for sample in chapter_review_samples if sample.get("source") == "evaluation_report_auto"),
                 "human_review": sum(1 for sample in chapter_review_samples if sample.get("source") == "human_review"),
+                "human_preference": sum(1 for sample in preference_samples if sample.get("source") == "human_preference"),
+                "human_ranking": sum(1 for sample in ranking_samples if sample.get("source") == "human_ranking"),
                 "inferred_session_abandoned": inferred_event_count,
             },
             "issue_code_histogram": dict(issue_counter),
@@ -890,7 +1152,13 @@ class TrainingSignalService:
             examples.append(example)
         return sorted(examples, key=lambda item: item["example_id"])
 
-    def reranker_examples(self, issue_fix_pairs: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def reranker_examples(
+        self,
+        issue_fix_pairs: Sequence[Dict[str, Any]],
+        *,
+        preference_samples: Optional[Sequence[Dict[str, Any]]] = None,
+        ranking_samples: Optional[Sequence[Dict[str, Any]]] = None,
+    ) -> List[Dict[str, Any]]:
         examples: List[Dict[str, Any]] = []
         for pair in issue_fix_pairs:
             if not pair.get("improved"):
@@ -911,9 +1179,47 @@ class TrainingSignalService:
                     "linked_issue_codes": list(pair.get("linked_issue_codes", [])),
                     "preferred_revision_id": pair["after_revision_id"],
                     "preference_strength": preference_strength,
+                    "example_source": "issue_fix_pair",
                     "split": self._split_for(pair["world_version_id"], pair["pair_id"]),
                 }
             )
+        for sample in preference_samples or []:
+            examples.append(
+                {
+                    "example_id": f"rerank_pref_{sample['preference_id']}",
+                    "world_id": sample["world_id"],
+                    "world_version_id": sample["world_version_id"],
+                    "before_revision_id": sample["left_revision_id"],
+                    "after_revision_id": sample["right_revision_id"],
+                    "changed_sections": [],
+                    "linked_issue_codes": list(sample.get("linked_issue_codes", [])),
+                    "preferred_revision_id": sample["preferred_revision_id"],
+                    "preference_strength": "strong" if sample.get("preference_strength") == "weak" else sample.get("preference_strength", "medium"),
+                    "example_source": "preference_sample",
+                    "split": self._split_for(sample["world_version_id"], sample["preference_id"]),
+                }
+            )
+        for sample in ranking_samples or []:
+            ranked_revision_ids = list(sample.get("ranked_revision_ids", []))
+            for higher_index in range(len(ranked_revision_ids)):
+                for lower_index in range(higher_index + 1, len(ranked_revision_ids)):
+                    preferred_revision_id = ranked_revision_ids[higher_index]
+                    alternative_revision_id = ranked_revision_ids[lower_index]
+                    examples.append(
+                        {
+                            "example_id": f"rerank_rank_{sample['ranking_id']}_{higher_index}_{lower_index}",
+                            "world_id": sample["world_id"],
+                            "world_version_id": sample["world_version_id"],
+                            "before_revision_id": alternative_revision_id,
+                            "after_revision_id": preferred_revision_id,
+                            "changed_sections": [],
+                            "linked_issue_codes": list(sample.get("linked_issue_codes", [])),
+                            "preferred_revision_id": preferred_revision_id,
+                            "preference_strength": "strong" if lower_index - higher_index > 1 else "medium",
+                            "example_source": "ranking_sample",
+                            "split": self._split_for(sample["world_version_id"], f"{sample['ranking_id']}::{higher_index}::{lower_index}"),
+                        }
+                    )
         return sorted(examples, key=lambda item: item["example_id"])
 
     def analytics_examples(self, continue_churn_events: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -966,6 +1272,8 @@ class TrainingSignalService:
         self,
         *,
         chapter_review_samples: Sequence[Dict[str, Any]],
+        preference_samples: Sequence[Dict[str, Any]],
+        ranking_samples: Sequence[Dict[str, Any]],
         issue_fix_pairs: Sequence[Dict[str, Any]],
         evaluator_examples: Sequence[Dict[str, Any]],
         reranker_examples: Sequence[Dict[str, Any]],
@@ -976,12 +1284,20 @@ class TrainingSignalService:
             warnings.append("missing_human_review_coverage")
         if any(not example.get("linked_issue_codes") for example in evaluator_examples) or any(not pair.get("linked_issue_codes") for pair in issue_fix_pairs):
             warnings.append("missing_linked_issue_codes")
+        if len(preference_samples) < 3:
+            warnings.append("insufficient_preference_samples")
+        if len(ranking_samples) < 2:
+            warnings.append("insufficient_ranking_samples")
         if len(reranker_examples) < 5:
             warnings.append("insufficient_reranker_pairs")
         if any(pair.get("pair_quality") == "weak" for pair in issue_fix_pairs):
             warnings.append("weak_issue_fix_pairs_present")
         if any((sample.get("ingestion_meta") or {}).get("ingestion_warnings") for sample in chapter_review_samples):
             warnings.append("review_sample_ingestion_warnings_present")
+        if any((sample.get("ingestion_meta") or {}).get("ingestion_warnings") for sample in preference_samples):
+            warnings.append("preference_sample_ingestion_warnings_present")
+        if any((sample.get("ingestion_meta") or {}).get("ingestion_warnings") for sample in ranking_samples):
+            warnings.append("ranking_sample_ingestion_warnings_present")
         if len(analytics_examples) < 5:
             warnings.append("insufficient_analytics_examples")
         if (
@@ -1104,6 +1420,20 @@ class TrainingSignalService:
             cursor=cursor,
             limit=limit,
         )
+        preference_samples = self.list_preference_samples(
+            world_id=world_id,
+            world_version_id=world_version_id,
+            since=since,
+            cursor=cursor,
+            limit=limit,
+        )
+        ranking_samples = self.list_ranking_samples(
+            world_id=world_id,
+            world_version_id=world_version_id,
+            since=since,
+            cursor=cursor,
+            limit=limit,
+        )
         author_revision_logs = self.author_revision_logs(
             world_id=world_id,
             world_version_id=world_version_id,
@@ -1131,7 +1461,11 @@ class TrainingSignalService:
             else []
         )
         evaluator_examples = self.evaluator_examples(chapter_review_samples)
-        reranker_examples = self.reranker_examples(issue_fix_pairs)
+        reranker_examples = self.reranker_examples(
+            issue_fix_pairs,
+            preference_samples=preference_samples,
+            ranking_samples=ranking_samples,
+        )
         analytics_examples = self.analytics_examples(continue_churn_events)
         pack_quality_trends = self.pack_quality_trends(
             world_id=world_id,
@@ -1144,6 +1478,8 @@ class TrainingSignalService:
         cursor_candidates: List[Tuple[datetime, str]] = []
         for items, timestamp_key, id_key in [
             (chapter_review_samples, "created_at", "sample_id"),
+            (preference_samples, "created_at", "preference_id"),
+            (ranking_samples, "created_at", "ranking_id"),
             (author_revision_logs, "timestamp", "revision_id"),
             (continue_churn_events, "occurred_at", "session_id"),
             (issue_fix_pairs, "timestamp", "pair_id"),
@@ -1155,6 +1491,8 @@ class TrainingSignalService:
         generated_at = self._utcnow()
         warnings = self._warnings(
             chapter_review_samples=chapter_review_samples,
+            preference_samples=preference_samples,
+            ranking_samples=ranking_samples,
             issue_fix_pairs=issue_fix_pairs,
             evaluator_examples=evaluator_examples,
             reranker_examples=reranker_examples,
@@ -1162,6 +1500,8 @@ class TrainingSignalService:
         )
         manifest = self._manifest(
             chapter_review_samples=chapter_review_samples,
+            preference_samples=preference_samples,
+            ranking_samples=ranking_samples,
             author_revision_logs=author_revision_logs,
             continue_churn_events=continue_churn_events,
             issue_fix_pairs=issue_fix_pairs,
@@ -1194,6 +1534,8 @@ class TrainingSignalService:
 
         bundle = {
             "chapter_review_samples": chapter_review_samples,
+            "preference_samples": preference_samples,
+            "ranking_samples": ranking_samples,
             "author_revision_logs": author_revision_logs,
             "continue_churn_events": continue_churn_events,
             "issue_fix_pairs": issue_fix_pairs,

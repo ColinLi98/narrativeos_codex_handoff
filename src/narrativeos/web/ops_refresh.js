@@ -285,22 +285,28 @@ async function loadOpsRuntimeScope(activeOpsAccountId, token) {
   const [
     meterPayload,
     schemaLifecycle,
+    dataIntegrity,
     deploymentHealthGate,
     preflightVerification,
     deploymentRunbook,
     incidentPlaybook,
     runtimeIncidentSnapshot,
     receiptsPayload,
+    providerRouting,
+    providerRollout,
     providerRuntimeMetrics,
   ] = await Promise.all([
     api("/v1/ops/meters"),
     api("/v1/ops/schema-lifecycle"),
+    api("/v1/ops/data-integrity?limit=12"),
     api(`/v1/ops/deployment-health-gate?account_id=${encodeURIComponent(activeOpsAccountId)}`),
     api(`/v1/ops/preflight-verification-bundle?account_id=${encodeURIComponent(activeOpsAccountId)}`),
     api("/v1/ops/deployment-runbook"),
     api(`/v1/ops/incident-playbook?account_id=${encodeURIComponent(activeOpsAccountId)}`),
     api(`/v1/ops/runtime-incident-snapshot?account_id=${encodeURIComponent(activeOpsAccountId)}`),
     api(`/v1/ops/runtime-receipts?account_id=${encodeURIComponent(activeOpsAccountId)}&limit=20`),
+    api("/v1/ops/provider-routing"),
+    api("/v1/ops/provider-rollout"),
     api(`/v1/ops/provider-runtime-metrics?account_id=${encodeURIComponent(activeOpsAccountId)}&limit=24`),
   ]);
   if (!isActiveOpsRefresh(token)) {
@@ -308,12 +314,15 @@ async function loadOpsRuntimeScope(activeOpsAccountId, token) {
   }
   appState.opsMeters = meterPayload.meters || [];
   appState.opsSchemaLifecycle = schemaLifecycle;
+  appState.opsDataIntegrity = dataIntegrity;
   appState.opsDeploymentHealthGate = deploymentHealthGate;
   appState.opsPreflightVerification = preflightVerification;
   appState.opsDeploymentRunbook = deploymentRunbook;
   appState.opsIncidentPlaybook = incidentPlaybook;
   appState.opsRuntimeIncidentSnapshot = runtimeIncidentSnapshot;
   appState.opsRuntimeReceipts = receiptsPayload.runtime_receipts || [];
+  appState.opsProviderRouting = providerRouting;
+  appState.opsProviderRollout = providerRollout;
   appState.opsProviderRuntimeMetrics = providerRuntimeMetrics;
 }
 async function loadOpsJobsScope(token) {
@@ -390,6 +399,13 @@ async function loadOpsLearnedScope(token) {
     evalMetrics,
     crossPackQuality,
     learnedDashboard,
+    learnedImpact,
+    learnedCadence,
+    learnedAssistedGate,
+    learnedAssistedRerank,
+    learnedReviewQuality,
+    preferenceSamples,
+    rankingSamples,
     evaluatorEvidence,
     rerankerEvidence,
     learnedCompare,
@@ -401,6 +417,13 @@ async function loadOpsLearnedScope(token) {
     api("/v1/ops/eval-metrics"),
     api("/v1/ops/cross-pack-quality"),
     api("/v1/ops/learned-dashboard"),
+    api("/v1/ops/learned-impact"),
+    api("/v1/ops/learned-cadence"),
+    api("/v1/ops/learned-assisted-gate"),
+    api("/v1/ops/learned-assisted-rerank"),
+    api("/v1/ops/learned-review-quality"),
+    api("/v1/ops/preference-samples?limit=12"),
+    api("/v1/ops/ranking-samples?limit=12"),
     api("/v1/ops/learned-promotion-evidence?track=evaluator"),
     api("/v1/ops/learned-promotion-evidence?track=reranker"),
     api("/v1/ops/learned-compare"),
@@ -415,6 +438,13 @@ async function loadOpsLearnedScope(token) {
   appState.opsEvalMetrics = evalMetrics;
   appState.opsCrossPackQuality = crossPackQuality;
   appState.opsLearnedDashboard = learnedDashboard;
+  appState.opsLearnedImpact = learnedImpact;
+  appState.opsLearnedCadence = learnedCadence;
+  appState.opsLearnedAssistedGate = learnedAssistedGate;
+  appState.opsLearnedAssistedRerank = learnedAssistedRerank;
+  appState.opsLearnedReviewQuality = learnedReviewQuality;
+  appState.opsPreferenceSamples = preferenceSamples.preference_samples || [];
+  appState.opsRankingSamples = rankingSamples.ranking_samples || [];
   appState.opsLearnedEvidence = {
     evaluator: evaluatorEvidence,
     reranker: rerankerEvidence,

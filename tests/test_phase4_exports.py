@@ -68,8 +68,40 @@ def test_phase4_schema_roundtrip_examples_validate():
         "linked_issue_codes": ["Q04"],
         "timestamp": "2026-04-01T00:00:00+00:00",
     }
+    preference_sample = {
+        "preference_id": "pref_demo",
+        "world_id": "demo_world",
+        "world_version_id": "demo_world@0.1.0",
+        "chapter_id": "chapter_demo",
+        "session_id": "session_demo",
+        "reviewer_id": "ops_pref",
+        "left_revision_id": "rev_before",
+        "right_revision_id": "rev_after",
+        "preferred_revision_id": "rev_after",
+        "freeform_notes": "更偏好后一个版本。",
+        "linked_issue_codes": ["Q04"],
+        "preference_strength": "strong",
+        "created_at": "2026-04-01T00:00:00+00:00",
+        "source": "human_preference",
+    }
+    ranking_sample = {
+        "ranking_id": "rank_demo",
+        "world_id": "demo_world",
+        "world_version_id": "demo_world@0.1.0",
+        "chapter_id": "chapter_demo",
+        "session_id": "session_demo",
+        "reviewer_id": "ops_rank",
+        "ranked_revision_ids": ["rev_after", "rev_before"],
+        "top_revision_id": "rev_after",
+        "freeform_notes": "排序确认。",
+        "linked_issue_codes": ["Q04"],
+        "created_at": "2026-04-01T00:00:00+00:00",
+        "source": "human_ranking",
+    }
     bundle = {
         "chapter_review_samples": [review_sample],
+        "preference_samples": [preference_sample],
+        "ranking_samples": [ranking_sample],
         "author_revision_logs": [revision_log],
         "continue_churn_events": [continue_event],
         "issue_fix_pairs": [fix_pair],
@@ -87,6 +119,8 @@ def test_phase4_schema_roundtrip_examples_validate():
             },
             "counts": {
                 "chapter_review_samples": 1,
+                "preference_samples": 1,
+                "ranking_samples": 1,
                 "author_revision_logs": 1,
                 "continue_churn_events": 1,
                 "issue_fix_pairs": 1
@@ -94,6 +128,8 @@ def test_phase4_schema_roundtrip_examples_validate():
             "source_breakdown": {
                 "evaluation_report_auto": 1,
                 "human_review": 0,
+                "human_preference": 1,
+                "human_ranking": 1,
                 "inferred_session_abandoned": 1
             },
             "issue_code_histogram": {"Q04": 1},
@@ -142,6 +178,7 @@ def test_phase4_schema_roundtrip_examples_validate():
                 "linked_issue_codes": ["Q04"],
                 "preferred_revision_id": "rev_after",
                 "preference_strength": "strong",
+                "example_source": "issue_fix_pair",
                 "split": "train"
             }
         ],
@@ -175,6 +212,8 @@ def test_phase4_schema_roundtrip_examples_validate():
     }
 
     validate_payload(review_sample, "review_sample.schema.json")
+    validate_payload(preference_sample, "preference_sample.schema.json")
+    validate_payload(ranking_sample, "ranking_sample.schema.json")
     validate_payload(revision_log, "author_revision_log.schema.json")
     validate_payload(continue_event, "continue_churn_event.schema.json")
     validate_payload(fix_pair, "issue_fix_pair.schema.json")
@@ -280,6 +319,8 @@ def test_training_signal_service_exports_review_samples_revision_logs_and_churn(
     bundle = exporter.export_bundle(world_id="urban_mystery_lotus_lane")
 
     assert bundle["chapter_review_samples"]
+    assert "preference_samples" in bundle
+    assert "ranking_samples" in bundle
     assert bundle["author_revision_logs"]
     assert bundle["continue_churn_events"]
     assert bundle["issue_fix_pairs"]
@@ -292,6 +333,8 @@ def test_training_signal_service_exports_review_samples_revision_logs_and_churn(
     abandoned = next(item for item in bundle["continue_churn_events"] if item["event_name"] == "session_abandoned")
     assert abandoned["payload_json"]["abandon_window_hours"] == 24
     assert bundle["manifest"]["counts"]["chapter_review_samples"] == len(bundle["chapter_review_samples"])
+    assert bundle["manifest"]["counts"]["preference_samples"] == len(bundle["preference_samples"])
+    assert bundle["manifest"]["counts"]["ranking_samples"] == len(bundle["ranking_samples"])
     assert bundle["manifest"]["counts"]["issue_fix_pairs"] == len(bundle["issue_fix_pairs"])
     assert bundle["pack_quality_trends"]
     assert any(item["linked_review_sample_ids"] for item in bundle["issue_fix_pairs"])
@@ -325,6 +368,8 @@ def test_training_signal_service_exports_review_samples_revision_logs_and_churn(
     assert isinstance(reranker["reranker_examples"], list)
     assert raw["reranker_examples"] == []
     assert raw["analytics_examples"] == []
+    assert "preference_samples" in raw
+    assert "ranking_samples" in raw
     assert evaluator["filters"]["dataset_view"] == "evaluator"
     assert reranker["filters"]["dataset_view"] == "reranker"
     assert analytics["filters"]["dataset_view"] == "analytics"
@@ -358,16 +403,20 @@ def test_ops_export_training_signal_endpoint_supports_filters(tmp_path: Path):
     )
     assert payload.status_code == 200
     data = payload.json()
-    assert set(data.keys()) == {"chapter_review_samples", "author_revision_logs", "continue_churn_events", "issue_fix_pairs", "manifest", "pack_quality_trends", "evaluator_examples", "reranker_examples", "analytics_examples", "generated_at", "filters", "next_cursor"}
+    assert set(data.keys()) == {"chapter_review_samples", "preference_samples", "ranking_samples", "author_revision_logs", "continue_churn_events", "issue_fix_pairs", "manifest", "pack_quality_trends", "evaluator_examples", "reranker_examples", "analytics_examples", "generated_at", "filters", "next_cursor"}
     assert data["filters"]["world_version_id"] == draft["world_version_id"]
     assert data["filters"]["include_fix_pairs"] is True
     assert data["filters"]["include_inferred"] is False
     assert data["filters"]["dataset_view"] == "evaluator"
     assert len(data["chapter_review_samples"]) <= 1
+    assert len(data["preference_samples"]) <= 1
+    assert len(data["ranking_samples"]) <= 1
     assert len(data["author_revision_logs"]) <= 1
     assert len(data["continue_churn_events"]) <= 1
     assert len(data["issue_fix_pairs"]) <= 1
     assert data["manifest"]["counts"]["chapter_review_samples"] == len(data["chapter_review_samples"])
+    assert data["manifest"]["counts"]["preference_samples"] == len(data["preference_samples"])
+    assert data["manifest"]["counts"]["ranking_samples"] == len(data["ranking_samples"])
     assert data["pack_quality_trends"]
     assert "warnings" in data["manifest"]
     validate_payload(data, "training_signal_bundle.schema.json")

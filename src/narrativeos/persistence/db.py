@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import JSON, Column, Float, Integer, String, Text, create_engine
+from sqlalchemy import JSON, Column, Float, Index, Integer, String, Text, create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
@@ -47,6 +47,11 @@ class WorldVersionRow(PlatformBase):
 
 class SessionRow(PlatformBase):
     __tablename__ = "sessions"
+    __table_args__ = (
+        Index("idx_sessions_world_version_updated_at", "world_version_id", "updated_at"),
+        Index("idx_sessions_reader_updated_at", "reader_id", "updated_at"),
+        Index("idx_sessions_status_updated_at", "status", "updated_at"),
+    )
 
     session_id = Column(String, primary_key=True)
     reader_id = Column(String, nullable=True, index=True)
@@ -62,6 +67,10 @@ class SessionRow(PlatformBase):
 
 class ChapterRow(PlatformBase):
     __tablename__ = "chapters"
+    __table_args__ = (
+        Index("idx_chapters_session_chapter_index", "session_id", "chapter_index"),
+        Index("idx_chapters_world_version_created_at", "world_version_id", "created_at"),
+    )
 
     chapter_id = Column(String, primary_key=True)
     session_id = Column(String, nullable=False, index=True)
@@ -104,6 +113,9 @@ class EntitlementRow(PlatformBase):
 
 class SubscriptionRow(PlatformBase):
     __tablename__ = "subscriptions"
+    __table_args__ = (
+        Index("idx_subscriptions_account_status_updated_at", "account_id", "status", "updated_at"),
+    )
 
     subscription_id = Column(String, primary_key=True)
     account_id = Column(String, nullable=False, index=True)
@@ -120,6 +132,11 @@ class SubscriptionRow(PlatformBase):
 
 class UsageMeterRow(PlatformBase):
     __tablename__ = "usage_meters"
+    __table_args__ = (
+        Index("idx_usage_meters_account_created_at", "account_id", "created_at"),
+        Index("idx_usage_meters_session_created_at", "session_id", "created_at"),
+        Index("idx_usage_meters_world_version_created_at", "world_version_id", "created_at"),
+    )
 
     meter_id = Column(String, primary_key=True)
     account_id = Column(String, nullable=True, index=True)
@@ -139,6 +156,11 @@ class UsageMeterRow(PlatformBase):
 
 class ReviewRecordRow(PlatformBase):
     __tablename__ = "review_records"
+    __table_args__ = (
+        Index("idx_review_records_asset_type_status_updated_at", "asset_type", "status", "updated_at"),
+        Index("idx_review_records_asset_type_asset_id_updated_at", "asset_type", "asset_id", "updated_at"),
+        Index("idx_review_records_reviewer_updated_at", "reviewer_id", "updated_at"),
+    )
 
     review_id = Column(String, primary_key=True)
     asset_type = Column(String, nullable=False)
@@ -328,6 +350,11 @@ class BillingLifecycleEventRow(PlatformBase):
 
 class AnalyticsEventRow(PlatformBase):
     __tablename__ = "analytics_events"
+    __table_args__ = (
+        Index("idx_analytics_events_event_name_occurred_at", "event_name", "occurred_at"),
+        Index("idx_analytics_events_session_occurred_at", "session_id", "occurred_at"),
+        Index("idx_analytics_events_world_version_occurred_at", "world_version_id", "occurred_at"),
+    )
 
     event_id = Column(Integer, primary_key=True, autoincrement=True)
     event_name = Column(String, nullable=False)

@@ -262,7 +262,7 @@ class AsyncJobService:
             "status": job["status"],
             "reviewer_id": job.get("requested_by"),
             "risk_rating": job.get("job_type"),
-            "notes": json.dumps(job, ensure_ascii=False, indent=2),
+            "notes": json.dumps(job, ensure_ascii=False, indent=2, default=str),
         }
 
     def _notification_retry_record(self, retry: Dict[str, Any]) -> Dict[str, Any]:
@@ -273,7 +273,7 @@ class AsyncJobService:
             "status": retry["status"],
             "reviewer_id": retry.get("requested_by"),
             "risk_rating": str(retry.get("source_event_id") or ""),
-            "notes": json.dumps(retry, ensure_ascii=False, indent=2),
+            "notes": json.dumps(retry, ensure_ascii=False, indent=2, default=str),
         }
 
     def _notification_dead_letter_record(self, dead_letter: Dict[str, Any]) -> Dict[str, Any]:
@@ -284,7 +284,7 @@ class AsyncJobService:
             "status": dead_letter["status"],
             "reviewer_id": dead_letter.get("requested_by"),
             "risk_rating": str(dead_letter.get("source_event_id") or ""),
-            "notes": json.dumps(dead_letter, ensure_ascii=False, indent=2),
+            "notes": json.dumps(dead_letter, ensure_ascii=False, indent=2, default=str),
         }
 
     def _normalize_job(self, record: Dict[str, Any]) -> Dict[str, Any]:
@@ -2221,7 +2221,10 @@ class AsyncJobService:
         try:
             result = runner(running)
             job_status_override = str((result or {}).get("_job_status_override") or "").strip().lower()
-            latest_running = self.get_job(job_id)
+            try:
+                latest_running = self.get_job(job_id)
+            except KeyError:
+                latest_running = running
             finished_at = self._utcnow()
             finished_dt = datetime.fromisoformat(finished_at.replace("Z", "+00:00"))
             final_status = "failed" if job_status_override == "failed" else "succeeded"
@@ -2243,7 +2246,10 @@ class AsyncJobService:
             self._track("async_job_failed" if final_status == "failed" else "async_job_succeeded", job=completed)
             return completed
         except Exception as exc:  # pragma: no cover - exercised through API and runner failure tests
-            latest_running = self.get_job(job_id)
+            try:
+                latest_running = self.get_job(job_id)
+            except KeyError:
+                latest_running = running
             finished_at = self._utcnow()
             finished_dt = datetime.fromisoformat(finished_at.replace("Z", "+00:00"))
             failed = {

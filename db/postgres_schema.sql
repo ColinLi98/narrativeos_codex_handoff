@@ -61,9 +61,12 @@ create table if not exists route_choices (
 
 create table if not exists entitlements (
   entitlement_id text primary key,
+  account_id text,
   reader_id text not null,
   world_id text,
   entitlement_type text not null,
+  wallet_type text,
+  tier_id text,
   status text not null default 'active',
   balance numeric,
   expires_at timestamptz,
@@ -72,6 +75,7 @@ create table if not exists entitlements (
 
 create table if not exists usage_meters (
   meter_id text primary key,
+  account_id text,
   reader_id text,
   session_id text,
   chapter_id text,
@@ -79,6 +83,9 @@ create table if not exists usage_meters (
   action_type text not null,
   usage_units numeric not null,
   estimated_cost numeric,
+  wallet_type text,
+  subscription_tier text,
+  provider text,
   model_policy_version text,
   created_at timestamptz not null default now()
 );
@@ -247,6 +254,7 @@ create table if not exists billing_checkout_sessions (
   tier_id text not null,
   provider text not null,
   provider_ref text,
+  subscription_id text,
   status text not null default 'created',
   checkout_url text,
   idempotency_key text not null,
@@ -309,6 +317,20 @@ create index if not exists idx_chapters_world_version_created_at on chapters(wor
 create index if not exists idx_review_records_asset_type_status_updated_at on review_records(asset_type, status, updated_at);
 create index if not exists idx_review_records_asset_type_asset_id_updated_at on review_records(asset_type, asset_id, updated_at);
 create index if not exists idx_review_records_reviewer_updated_at on review_records(reviewer_id, updated_at);
+
+create table if not exists subscriptions (
+  subscription_id text primary key,
+  account_id text not null,
+  tier_id text not null,
+  provider text not null,
+  provider_ref text,
+  status text not null default 'trialing',
+  period_start timestamptz,
+  period_end timestamptz,
+  cancel_at_period_end text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
 create index if not exists idx_subscriptions_account_status_updated_at on subscriptions(account_id, status, updated_at);
 

@@ -435,3 +435,14 @@ Examples:
   - `ShellBootstrapRuntime`
   - `ShellRuntime.initializeShellRuntime()`
 - `src/narrativeos/web/ops_refresh.js` still defers expensive account/runtime/release requests until the matching workspace is active, but those refresh paths are now consumed through `OpsRefreshRuntime` instead of bare cross-file globals.
+
+## Reader And Studio Smoke Commands
+
+- `run_reader_shell_smoke.sh`
+- `run_reader_storybook_long_route_smoke.sh`
+- `run_agent_studio_smoke.sh`
+- `agent_studio_smoke_visual_review.md`
+
+Reader-only smoke and long-route Reader storybook smoke cover `jade_court_exam,jade_court_romance,urban_mystery_lotus_lane`.
+
+Long-route evidence includes title_similarity / quote_similarity / passes_min_difference, reader_storybook_title_homogenization_warnings / warning_count, reader_storybook_long_route_smoke_history.json, and reader_storybook_title_homogenization_history_summary / trend / promoted_pairs.

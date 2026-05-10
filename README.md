@@ -1,5 +1,7 @@
 # NarrativeOS · Beta Kernel Handoff
 
+最终商业化 v1 完成态 remains the repo-level acceptance standard.
+
 如果要最快理解“当前已经完成到什么状态 + 距离商业化还缺什么”，优先阅读：
 
 - [docs/gpt_handoff_status_and_commercialization.md](/Users/lili/Desktop/narrativeos_codex_handoff/docs/gpt_handoff_status_and_commercialization.md)

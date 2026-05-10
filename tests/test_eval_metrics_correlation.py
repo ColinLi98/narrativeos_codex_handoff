@@ -17,6 +17,19 @@ from src.narrativeos.persistence.db import SessionRow
 from src.narrativeos.repository import SQLAlchemyRepository
 
 
+def _ops_headers(client: TestClient, *, actor_id: str = "ops_metrics") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={"actor_id": actor_id, "actor_role": "ops", "password": "secret123", "account_id": actor_id},
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
+
+
 def _seed_reader_chapter(
     repository: SQLAlchemyRepository,
     *,
@@ -147,8 +160,9 @@ def test_eval_metrics_endpoint_exposes_correlation_summary(tmp_path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "eval_corr_api.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    headers = _ops_headers(client)
 
-    response = client.get("/v1/ops/eval-metrics")
+    response = client.get("/v1/ops/eval-metrics", headers=headers)
     assert response.status_code == 200
     payload = response.json()
     assert "continuation_signal_summary" in payload
@@ -199,9 +213,10 @@ def test_eval_metrics_detail_endpoints_return_world_and_version_drilldown(tmp_pa
 
     app = create_app(repository=repository)
     client = TestClient(app)
+    headers = _ops_headers(client, actor_id="ops_metrics_detail")
 
-    world_detail = client.get(f"/v1/ops/eval-metrics/worlds/{world['world_id']}")
-    version_detail = client.get(f"/v1/ops/eval-metrics/world-versions/{world['latest_version']}")
+    world_detail = client.get(f"/v1/ops/eval-metrics/worlds/{world['world_id']}", headers=headers)
+    version_detail = client.get(f"/v1/ops/eval-metrics/world-versions/{world['latest_version']}", headers=headers)
 
     assert world_detail.status_code == 200
     assert version_detail.status_code == 200

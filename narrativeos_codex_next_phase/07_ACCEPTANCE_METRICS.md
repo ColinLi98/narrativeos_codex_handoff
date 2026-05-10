@@ -1,5 +1,9 @@
 # 验收指标
 
+- Author 供给效率
+- Learned 数据飞轮
+- Infra 与可靠性
+
 ## 内容能力
 
 - `cross_pack_pass_rate`
@@ -39,4 +43,3 @@
 4. benchmark delta
 5. 风险
 6. 下一步建议
-

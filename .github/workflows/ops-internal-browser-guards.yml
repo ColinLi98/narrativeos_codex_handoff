@@ -1,0 +1,30 @@
+name: ops-internal-browser-guards
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run internal Ops browser guards
+        run: |
+          CI_HEADLESS=1 CHROME_BIN="${CHROME_BIN:-google-chrome}" bash scripts/run_ops_internal_browser_guards.sh
+      - name: Publish internal Ops browser guard summary
+        if: always()
+        run: |
+          python scripts/write_ops_internal_browser_guard_summary.py --artifacts-dir artifacts >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload internal Ops browser guard artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops-internal-browser-guard-artifacts
+          path: |
+            artifacts/ops_internal_*_result.json
+            artifacts/ops_internal_*_failure_snapshot.json
+            artifacts/ops_internal_*.png

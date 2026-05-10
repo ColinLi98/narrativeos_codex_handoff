@@ -10,7 +10,8 @@ def test_turn_taking_dialogue_structure_exists():
     scene_beat = type("Beat", (), {"event": beat, "dramatic_job": "entry"})()
     text = compose_dialogue(runtime.world_record.world, runtime.initial_state, scene_beat, repeated=False)
     assert "：“" in text
-    assert "最后只回了一句" in text
+    assert text.count("：“") >= 2
+    assert any(marker in text for marker in ["没有马上", "又补了一句", "停顿", "沉默"])
 
 
 def test_voice_profiles_differ_across_roles():

@@ -1,0 +1,17 @@
+{
+  "schema_version": "longform_capability_profiles/v1",
+  "profiles": {
+    "100": {
+      "label": "100 chapter structured longform",
+      "requires_structured_longform": false
+    },
+    "500": {
+      "label": "500 chapter structured longform",
+      "requires_structured_longform": true
+    },
+    "1000": {
+      "label": "1000 chapter structured longform",
+      "requires_structured_longform": true
+    }
+  }
+}

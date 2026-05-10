@@ -550,3 +550,33 @@ Phase 6 的 backup / restore / deploy / recovery runbook 这条线也继续往�
 一句最准确的话是：
 
 `我们已经做出了一个可运营、可治理、可扩展的 narrative kernel，但还没有做出一个真正成熟、稳定、可持续商业化的通用 narrative product。`
+
+## Frontend Shell Smoke Evidence Appendix
+
+The frontend shell smoke must remain part of the ready check. Run `run_author_repair_loop_smoke.sh` when Author repair loop UI changes are included.
+
+- reader_checkout_status = completed
+- author_saved_draft_version_id
+- author_simulation_completed_chapters
+- author_simulate_latest_decision / freshness_status / next_focus_chapter / shortest_loop_relationship / review_hint
+- author_repair_loop_issue_code
+- author_repair_loop_asset_target / validation_panel / baseline_issue_count / current_issue_count / remaining_chapter_count
+- ops_governance_case_id
+- ops_governance_case_type / case_severity / case_target_type / case_target_id
+- ops_governance_case_status_after_transition = in_review
+- ops_governance_evidence_count_after_append
+- ops_governance_restriction_type = checkout_block
+- ops_governance_case_status_after_release = resolved
+- ops_governance_non_owner_resolve_status = 403
+- ops_governance_non_owner_resolve_code = governance_case_owner_required
+- ops_governance_non_owner_resolve_endpoint
+- ops_governance_non_owner_denial_expected_owner_id / action_label / denial_kind
+- ops_governance_case_status_after_owner_resolution = resolved
+- ops_governance_case_status_after_dismiss = dismissed
+- Ops governance dismiss button interaction coverage
+
+## 商业化 v1 最终完成态标准
+
+内容质量与阅读价值必须达标。
+
+接下来实施计划 keeps the product moving from kernel beta toward commercial v1.

@@ -229,6 +229,28 @@ def continue_reader_story(payload: ContinueReaderRequest, request: Request) -> D
         reader_id = _resolve_reader_account_id(request, account_id=payload.account_id, reader_id=payload.reader_id)
         access = request.app.state.billing_service.access_check(payload.session_id, reader_id=reader_id, account_id=reader_id)
         if access.get("required"):
+            try:
+                session_record = request.app.state.repository.get_session(payload.session_id)
+                current_state = getattr(session_record, "narrative_state_json", {}) or {}
+                request.app.state.analytics_service.track(
+                    "payment_required",
+                    reader_id=reader_id,
+                    session_id=payload.session_id,
+                    world_id=getattr(session_record, "world_id", None),
+                    world_version_id=getattr(session_record, "world_version_id", None),
+                    chapter_index=getattr(session_record, "chapter_index", None)
+                    or current_state.get("chapter_index"),
+                    access_tier=access.get("access_tier"),
+                    payload_json={
+                        "reason": access.get("reason"),
+                        "entitlement_type": access.get("entitlement_type"),
+                        "wallet_type": access.get("wallet_type"),
+                        "required_tier": access.get("required_tier"),
+                        "suggested_checkout_tier": access.get("suggested_checkout_tier"),
+                    },
+                )
+            except Exception:
+                pass
             return {
                 "session_id": payload.session_id,
                 "status": "payment_required",

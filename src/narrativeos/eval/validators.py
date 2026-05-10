@@ -59,7 +59,7 @@ def meta_narration_validator(text: str) -> List[EvaluationIssue]:
 def paragraph_repetition_validator(
     paragraphs: Iterable[str],
     *,
-    text_unit_count_value: int,
+    text_unit_count_value: int = 0,
     coverage_context: Dict[str, object] | None = None,
     precomputed_bundle: Dict[str, object] | None = None,
 ) -> List[EvaluationIssue]:

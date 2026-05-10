@@ -112,3 +112,32 @@ Never accept these as platform progress:
 - one-pack wins without cross-pack evidence
 - broad unrelated refactors in a narrow task
 - hidden policy changes without rollback visibility
+
+## Frontend Shell Smoke Summary Contract
+
+Every frontend shell smoke summary should preserve these evidence keys:
+
+- author_saved_draft_version_id
+- author_simulation_completed_chapters
+- author_workflow_recommended_action_after_simulation
+- ops_mutation_tier_id
+- ops_governance_case_id
+- ops_governance_case_status
+- ops_governance_case_type
+- ops_governance_case_severity
+- ops_governance_case_target_type
+- ops_governance_case_target_id
+- ops_governance_case_status_after_transition
+- ops_governance_evidence_count_after_append
+- ops_governance_restriction_type
+- ops_governance_restriction_state
+- ops_governance_case_status_after_release
+- ops_governance_restriction_state_after_release
+- ops_governance_non_owner_resolve_status
+- ops_governance_non_owner_resolve_code
+- ops_governance_non_owner_resolve_endpoint
+- ops_governance_non_owner_denial_expected_owner_id
+- ops_governance_non_owner_denial_action_label
+- ops_governance_non_owner_denial_kind
+- ops_governance_case_status_after_owner_resolution
+- ops_governance_case_status_after_dismiss

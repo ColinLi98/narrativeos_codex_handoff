@@ -145,7 +145,7 @@ def derive_scoring_issues(
     scores: EvaluationScores,
     exposition_ratio: float,
     concrete_detail_density: float,
-    text_unit_count: int,
+    text_unit_count: int = 0,
     ending_ready: bool,
     state_after: NarrativeState,
 ) -> List[EvaluationIssue]:

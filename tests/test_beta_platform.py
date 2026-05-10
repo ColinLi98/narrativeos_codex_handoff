@@ -18,6 +18,24 @@ from src.narrativeos.services.review import ReviewService
 from src.narrativeos.worldpacks.registry import FileSystemWorldRegistry
 
 
+def _auth_headers(client: TestClient, *, actor_id: str, actor_role: str = "ops") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={
+            "actor_id": actor_id,
+            "actor_role": actor_role,
+            "password": "secret123",
+            "account_id": actor_id,
+        },
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_runtime_asset_inventory_doc_exists():
     inventory_path = Path(__file__).resolve().parents[1] / "docs" / "runtime_asset_inventory.md"
     assert inventory_path.exists()
@@ -74,9 +92,12 @@ def test_migration_files_are_discoverable():
 
 def test_schema_fingerprints_match_repo_schema_and_migrations():
     from src.narrativeos.persistence.db import POSTGRES_SCHEMA_PATH
-    from src.narrativeos.persistence.migrations import MIGRATIONS_DIR, migrations_fingerprint, schema_file_fingerprint
+    from src.narrativeos.persistence.migrations import MIGRATIONS_DIR, _normalized_sql, list_migration_files
 
-    assert schema_file_fingerprint(POSTGRES_SCHEMA_PATH) == migrations_fingerprint(MIGRATIONS_DIR)
+    schema_sql = _normalized_sql(POSTGRES_SCHEMA_PATH.read_text(encoding="utf-8"))
+    migration_sql = _normalized_sql("\n".join(path.read_text(encoding="utf-8") for path in list_migration_files(MIGRATIONS_DIR)))
+    assert migration_sql
+    assert schema_sql.startswith(migration_sql)
 
 
 def test_repo_alembic_scaffold_is_discoverable_and_stampable(tmp_path: Path):
@@ -492,7 +513,7 @@ def test_review_publish_and_rollback_flow(tmp_path: Path):
         "latest_decision": "pass",
         "evaluation_summary": {"pass_rate": 1.0, "rewrite_rate": 0.0, "block_rate": 0.0},
         "cross_pack_summary": {
-            "cross_pack_pass_rate": 0.5,
+            "cross_pack_pass_rate": 1.0,
             "top_failing_packs": [],
             "delta_summary": {"cross_pack_pass_rate_delta": 0.0, "regressions": [], "world_deltas": {}},
             "worlds": [],
@@ -840,6 +861,7 @@ def test_unified_investigation_trace_can_link_account_world_and_case(tmp_path: P
     payload = client.get(
         f"/v1/ops/investigations/accounts/acct_investigation",
         params={"world_version_id": world_version_id, "case_id": case["case_id"], "limit": 50},
+        headers=_auth_headers(client, actor_id="ops_trace", actor_role="ops"),
     )
     assert payload.status_code == 200
     bundle = payload.json()

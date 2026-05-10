@@ -1,0 +1,44 @@
+name: author-live-api-smoke
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+      - name: Run author live API smoke
+        run: |
+          CI_HEADLESS=1 CHROME_BIN="${CHROME_BIN:-google-chrome}" bash scripts/run_author_live_api_smoke.sh
+      - name: Publish author live API smoke summary
+        if: always()
+        run: |
+          python scripts/write_author_live_api_smoke_step_summary.py artifacts/author_live_api_smoke_result.json >> "$GITHUB_STEP_SUMMARY"
+          test -f artifacts/author_live_api_smoke_failure_snapshot.json || true
+          test -f /tmp/author_live_api_smoke_author_chrome.log || true
+          test -f /tmp/author_live_api_smoke_reviewer_chrome.log || true
+      - name: Upload author live API smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: author-live-api-smoke-artifacts
+          path: |
+            artifacts/author_live_api_smoke_result.json
+            artifacts/author_live_api_smoke_failure_snapshot.json
+            artifacts/author_live_api_smoke_failure.png
+            /tmp/author_live_api_smoke_server.log
+            /tmp/author_live_api_smoke_author_chrome.log
+            /tmp/author_live_api_smoke_reviewer_chrome.log

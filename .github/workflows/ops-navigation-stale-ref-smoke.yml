@@ -19,6 +19,8 @@ jobs:
         id: setup-chrome
       - name: Install deps
         run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
           python -m venv .venv
           . .venv/bin/activate
           pip install -r requirements.txt
@@ -37,6 +39,8 @@ jobs:
             --chrome-log /tmp/ops_navigation_stale_ref_smoke_chrome.log \
             --failure-artifact artifacts/ops_navigation_stale_ref_smoke_failure_snapshot.json \
             >> "$GITHUB_STEP_SUMMARY"
+          cp /tmp/ops_navigation_stale_ref_smoke_server.log artifacts/ops_navigation_stale_ref_smoke_server.log 2>/dev/null || true
+          cp /tmp/ops_navigation_stale_ref_smoke_chrome.log artifacts/ops_navigation_stale_ref_smoke_chrome.log 2>/dev/null || true
       - name: Upload stale-ref smoke artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -48,5 +52,5 @@ jobs:
             artifacts/ops_navigation_stale_ref_smoke_result.json
             artifacts/ops_navigation_stale_ref_smoke_failure_snapshot.json
             artifacts/ops_navigation_stale_ref_smoke_failure.png
-            /tmp/ops_navigation_stale_ref_smoke_server.log
-            /tmp/ops_navigation_stale_ref_smoke_chrome.log
+            artifacts/ops_navigation_stale_ref_smoke_server.log
+            artifacts/ops_navigation_stale_ref_smoke_chrome.log

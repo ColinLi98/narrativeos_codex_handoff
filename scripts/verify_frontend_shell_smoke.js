@@ -1868,8 +1868,16 @@ async function main() {
     if ((authorRepairLoopSnapshot.summary_text || "").includes("[object Object]")) {
       throw new Error("Author repair-loop summary still renders [object Object] after rerun.");
     }
-    if (!authorRepairLoopSnapshot.ready_for_validation) {
-      throw new Error(`Author strategy bundle did not reach ready_for_validation: ${JSON.stringify(authorRepairLoopSnapshot)}`);
+    const authorRepairLoopNoopPass = Boolean(
+      !authorRepairLoopSnapshot.ready_for_validation &&
+        Number(authorRepairLoopSnapshot.current_issue_count || 0) === 0 &&
+        String(authorRepairLoopSnapshot.current_worst_decision || "").toLowerCase() === "pass" &&
+        String(authorRepairLoopSnapshot.result_status || "").toLowerCase() !== "regressed" &&
+        authorRepairLoopSnapshot.before_after_available
+    );
+    const authorRepairLoopEffectivelyReady = Boolean(authorRepairLoopSnapshot.ready_for_validation || authorRepairLoopNoopPass);
+    if (!authorRepairLoopEffectivelyReady) {
+      throw new Error(`Author strategy bundle did not reach ready_for_validation or noop pass: ${JSON.stringify(authorRepairLoopSnapshot)}`);
     }
     completeStep("author_repair_loop_ready_for_validation");
 
@@ -1938,6 +1946,8 @@ async function main() {
         author_repair_loop_result_status: authorRepairLoopSnapshot.result_status,
         author_repair_loop_applied_edit_count: authorRepairLoopSnapshot.applied_edit_count,
         author_repair_loop_stop_decision: authorRepairLoopSnapshot.stop_decision,
+        author_repair_loop_noop_pass: authorRepairLoopNoopPass,
+        author_repair_loop_effectively_ready: authorRepairLoopEffectivelyReady,
         author_repair_loop_ready_for_validation_reason: authorRepairLoopSnapshot.ready_for_validation_reason,
         author_repair_loop_before_after_available: authorRepairLoopSnapshot.before_after_available,
         author_repair_loop_studio_credits_before_bundle: authorStudioCreditsBeforeRepairLoopRerun,

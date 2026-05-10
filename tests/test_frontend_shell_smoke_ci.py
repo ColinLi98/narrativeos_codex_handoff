@@ -262,6 +262,9 @@ def test_frontend_shell_smoke_scripts_exist_and_are_parseable():
     assert "author_repair_loop_asset_target" in verify_text
     assert "author_repair_loop_severity_trend" in verify_text
     assert "author_repair_loop_ready_for_validation" in verify_text
+    assert "author_repair_loop_noop_pass" in verify_text
+    assert "author_repair_loop_effectively_ready" in verify_text
+    assert "ready_for_validation or noop pass" in verify_text
     assert "author_repair_loop_validation_panel" in verify_text
     assert "author_repair_loop_baseline_issue_count" in verify_text
     assert "author_repair_loop_current_issue_count" in verify_text
@@ -777,6 +780,9 @@ def test_frontend_shell_smoke_workflow_wires_headless_runner_and_artifacts():
     setup_node_step = next(step for step in steps if step.get("uses") == "actions/setup-node@v4")
     assert setup_node_step["with"]["node-version"] == "22"
 
+    install_step = next(step for step in steps if step.get("name") == "Install deps")
+    assert "sudo apt-get install -y fonts-noto-cjk" in install_step["run"]
+
     run_step = next(step for step in steps if step.get("name") == "Run frontend shell smoke")
     run_script = run_step["run"]
     assert "CI_HEADLESS=1" in run_script
@@ -815,6 +821,9 @@ def test_agent_studio_smoke_workflow_wires_headless_runner_and_artifacts():
 
     setup_node_step = next(step for step in steps if step.get("uses") == "actions/setup-node@v4")
     assert setup_node_step["with"]["node-version"] == "22"
+
+    install_step = next(step for step in steps if step.get("name") == "Install deps")
+    assert "sudo apt-get install -y fonts-noto-cjk" in install_step["run"]
 
     run_step = next(step for step in steps if step.get("name") == "Run Agent Studio smoke")
     run_script = run_step["run"]

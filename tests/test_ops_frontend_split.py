@@ -14,10 +14,11 @@ def test_ops_shell_loads_split_scripts_in_order(tmp_path: Path):
     assert shell.status_code == 200
 
     script_paths = [
+        "/assets/ops_shared.js",
         "/assets/ops_refresh.js",
         "/assets/ops_actions.js",
         "/assets/ops_render_sections.js",
-        "/assets/app.js",
+        "/assets/ops_runtime.js",
     ]
     positions = [shell.text.index(path) for path in script_paths]
 
@@ -31,17 +32,17 @@ def test_ops_frontend_assets_keep_refresh_action_render_boundaries(tmp_path: Pat
     refresh_asset = client.get("/assets/ops_refresh.js")
     actions_asset = client.get("/assets/ops_actions.js")
     render_asset = client.get("/assets/ops_render_sections.js")
-    app_asset = client.get("/assets/app.js")
+    runtime_asset = client.get("/assets/ops_runtime.js")
 
     assert refresh_asset.status_code == 200
     assert actions_asset.status_code == 200
     assert render_asset.status_code == 200
-    assert app_asset.status_code == 200
+    assert runtime_asset.status_code == 200
 
     refresh_text = refresh_asset.text
     actions_text = actions_asset.text
     render_text = render_asset.text
-    app_text = app_asset.text
+    runtime_text = runtime_asset.text
 
     assert "async function refreshOpsSurface" in refresh_text
     assert "async function refreshOpsAccountFlow" in refresh_text
@@ -61,6 +62,6 @@ def test_ops_frontend_assets_keep_refresh_action_render_boundaries(tmp_path: Pat
     assert "async function refreshOpsSurface" not in render_text
     assert "async function assignGovernanceCase" not in render_text
 
-    assert "async function refreshOpsSurface" not in app_text
-    assert "function renderOpsSurface" not in app_text
-    assert "async function assignGovernanceCase" not in app_text
+    assert "async function refreshOpsSurface" not in runtime_text
+    assert "function renderOpsSurface" not in runtime_text
+    assert "async function assignGovernanceCase" not in runtime_text

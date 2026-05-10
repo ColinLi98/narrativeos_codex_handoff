@@ -178,7 +178,10 @@ def _track_stage(
     if relevant_example_count <= 0:
         return "collect_data"
     if (latest_training_run or {}).get("status") == "failed":
-        return "train_candidate"
+        failed_at = _parse_timestamp((latest_training_run or {}).get("generated_at"))
+        trained_at = _parse_timestamp(str(freshness.get("trained_at") or ""))
+        if not artifact_present or trained_at is None or failed_at is None or failed_at >= trained_at:
+            return "train_candidate"
     if not artifact_present or freshness.get("data_newer_than_artifact"):
         return "train_candidate"
     if shadow_status != "candidate":

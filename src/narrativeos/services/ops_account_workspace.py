@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ..persistence.repositories import SQLAlchemyPlatformRepository
 from .billing import BillingService
+from .customer_accounts import CustomerAccountService
 from .governance import GovernanceService
 from .ops_alerting import OpsAlertingService
 from .ops_traceability import OpsTraceabilityService
@@ -16,12 +17,14 @@ class OpsAccountWorkspaceService:
         repository: SQLAlchemyPlatformRepository,
         *,
         billing_service: BillingService,
+        customer_account_service: CustomerAccountService,
         governance_service: GovernanceService,
         ops_alerting_service: OpsAlertingService,
         ops_traceability_service: OpsTraceabilityService,
     ) -> None:
         self.repository = repository
         self.billing = billing_service
+        self.customer_accounts = customer_account_service
         self.governance = governance_service
         self.alerting = ops_alerting_service
         self.traceability = ops_traceability_service
@@ -385,6 +388,11 @@ class OpsAccountWorkspaceService:
 
     def account_workspace(self, *, account_id: str, limit: int = 12) -> Dict[str, Any]:
         detail = self.billing.account_detail(account_id=account_id, limit=limit)
+        customer_detail = (
+            self.customer_accounts.customer_account_detail(account_id=account_id)
+            if self.repository.get_customer_account_by_account_id(account_id, default=None)
+            else None
+        )
         governance_snapshot = self.governance.account_snapshot(account_id=account_id, limit=limit)
         alerts_payload = self.alerting.list_alerts(account_id=account_id, status_filter="actionable", limit=8)
         investigation = self.traceability.investigate_account(account_id=account_id, limit=min(limit, 12))
@@ -422,13 +430,21 @@ class OpsAccountWorkspaceService:
                 "health_status": health_status,
                 "subscription_status": subscription.get("status") or "inactive",
                 "tier_id": subscription.get("tier_id"),
+                "effective_tier": detail.get("effective_tier"),
+                "provider_subscription_count": len(detail.get("provider_subscriptions") or []),
                 "actionable_alert_count": int((alerts_payload.get("summary") or {}).get("actionable_alert_count") or 0),
                 "support_issue_count": len(detail.get("support_issues") or []),
                 "active_restriction_count": int((governance_snapshot.get("restriction_summary") or {}).get("active_restriction_count") or 0),
                 "open_governance_case_count": int((governance_snapshot.get("governance_summary") or {}).get("open_case_count") or 0),
                 "recommended_path": (investigation.get("recommended_paths") or [{}])[0].get("path_id"),
                 "surface_statuses": surface_statuses,
+                "provider_source_summary": detail.get("provider_source_summary") or {},
+                "email_verified": (detail.get("security_state") or {}).get("email_verified"),
+                "customer_account_status": (customer_detail or {}).get("lifecycle_summary", {}).get("status"),
+                "customer_plan_id": (customer_detail or {}).get("plan", {}).get("plan_id"),
+                "customer_renewal_risk": (customer_detail or {}).get("lifecycle_summary", {}).get("renewal_risk"),
             },
+            "customer_lifecycle_summary": customer_detail,
             "wallet_posture": wallet_posture,
             "entitlement_posture": entitlement_posture,
             "top_blockers": top_blockers,
@@ -445,6 +461,8 @@ class OpsAccountWorkspaceService:
                 "recent_session_ids": [item.get("session_id") for item in detail.get("recent_sessions", []) if item.get("session_id")],
                 "recent_world_version_ids": [item.get("world_version_id") for item in detail.get("recent_drafts", []) if item.get("world_version_id")],
                 "subscription_id": subscription.get("subscription_id"),
+                "provider_subscription_ids": [item.get("provider_subscription_id") for item in detail.get("provider_subscriptions", [])],
+                "customer_account_id": (customer_detail or {}).get("customer_account", {}).get("customer_account_id"),
             },
             "operator_timeline": operator_timeline,
         }

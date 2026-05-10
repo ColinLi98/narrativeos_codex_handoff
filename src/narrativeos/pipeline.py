@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from .critics import BaseCritic, default_critics
+from .longform import archive_longform_chapter, build_longform_context_pack, default_chapter_task, longform_terminal_allowed, sync_longform_progression
 from .memory import advance_story_phase_if_needed, apply_event
 from .models import (
     ChapterPlan,
@@ -18,7 +19,7 @@ from .presenter import present_scene_for_reader
 from .providers import CandidateProvider, StaticCandidateProvider
 from .rendering import Renderer, TemplateRenderer
 from .scene_functions import is_terminal_scene_function
-from .search import beam_search, evaluate_candidates
+from .search import evaluate_candidates
 
 
 SCENE_INTENTS = {
@@ -319,6 +320,137 @@ def _progression_event_target(phase: str, beat_target: int) -> int:
     return max(1, min(desired, beat_target))
 
 
+def _adaptive_candidate_budget(
+    state: NarrativeState,
+    *,
+    min_candidates: int,
+    max_candidates: int,
+) -> Tuple[int, int]:
+    progression = dict((state.metadata or {}).get("longform_progression") or {})
+    series_target_chapters = int(progression.get("series_target_chapters", 0) or 0)
+    current_chapter = int(progression.get("series_chapter_index", state.chapter_index or 0) or state.chapter_index or 0)
+    diagnostics_mode = str((state.metadata or {}).get("longform_diagnostics_mode") or "")
+    if series_target_chapters < 1000:
+        return min_candidates, max_candidates
+    if diagnostics_mode == "longform_1000":
+        if current_chapter >= 900:
+            return max(2, min(min_candidates, 2)), max(3, min(max_candidates, 3))
+        if current_chapter >= 800:
+            return max(2, min(min_candidates, 3)), max(4, min(max_candidates, 4))
+        if current_chapter >= 700:
+            return max(3, min(min_candidates, 4)), max(5, min(max_candidates, 5))
+    if current_chapter >= 800:
+        return max(3, min(min_candidates, 3)), max(4, min(max_candidates, 4))
+    if current_chapter >= 750:
+        return max(3, min(min_candidates, 4)), max(5, min(max_candidates, 5))
+    if current_chapter >= 600:
+        return max(4, min(min_candidates, 5)), max(7, min(max_candidates, 8))
+    return min_candidates, max_candidates
+
+
+def _adaptive_beat_target(state: NarrativeState, beat_target: int) -> int:
+    progression = dict((state.metadata or {}).get("longform_progression") or {})
+    series_target_chapters = int(progression.get("series_target_chapters", 0) or 0)
+    current_chapter = int(progression.get("series_chapter_index", state.chapter_index or 0) or state.chapter_index or 0)
+    diagnostics_mode = str((state.metadata or {}).get("longform_diagnostics_mode") or "")
+    if series_target_chapters < 1000:
+        return beat_target
+    if diagnostics_mode == "longform_1000":
+        if current_chapter >= 900:
+            return min(2, beat_target)
+        if current_chapter >= 750:
+            return min(3, beat_target)
+    if current_chapter >= 800:
+        return min(3, beat_target)
+    if current_chapter >= 600:
+        return min(4, beat_target)
+    return beat_target
+
+
+def _adaptive_progression_target(
+    state: NarrativeState,
+    progression_target: int,
+) -> int:
+    progression = dict((state.metadata or {}).get("longform_progression") or {})
+    series_target_chapters = int(progression.get("series_target_chapters", 0) or 0)
+    current_chapter = int(progression.get("series_chapter_index", state.chapter_index or 0) or state.chapter_index or 0)
+    diagnostics_mode = str((state.metadata or {}).get("longform_diagnostics_mode") or "")
+    duty_type = str((state.current_chapter_task or {}).get("duty_type") or "")
+    overdue_open_promises = sum(
+        1
+        for promise in state.open_promises
+        if getattr(promise, "status", "") == "open" and int(getattr(promise, "due_by_turn", 0) or 0) <= int(state.turn_index or 0)
+    )
+    if state.story_phase == "aftermath" and progression_target < 2 and (
+        len(state.open_promises) >= 3
+        or overdue_open_promises > 0
+        or duty_type in {"pace_breath", "expand_world", "resolve_promise", "advance_relationship", "deliver_climax"}
+    ):
+        progression_target = 2
+    if state.story_phase == "aftermath" and duty_type in {"advance_relationship", "deliver_climax"}:
+        progression_target = max(progression_target, 3)
+    if state.story_phase == "aftermath" and duty_type in {"resolve_promise", "expand_world"} and (
+        len(state.open_promises) >= 2 or overdue_open_promises > 0
+    ):
+        progression_target = max(progression_target, 3)
+    if series_target_chapters < 1000:
+        return progression_target
+    if diagnostics_mode == "longform_1000":
+        if current_chapter >= 900:
+            return min(1, progression_target)
+        if current_chapter >= 750:
+            return min(2, progression_target)
+    if current_chapter >= 800:
+        return min(2, progression_target)
+    return progression_target
+
+
+def _adaptive_search_depth(state: NarrativeState, requested_depth: int) -> int:
+    progression = dict((state.metadata or {}).get("longform_progression") or {})
+    series_target_chapters = int(progression.get("series_target_chapters", 0) or 0)
+    current_chapter = int(progression.get("series_chapter_index", state.chapter_index or 0) or state.chapter_index or 0)
+    diagnostics_mode = str((state.metadata or {}).get("longform_diagnostics_mode") or "")
+    if series_target_chapters < 1000:
+        return requested_depth
+    if diagnostics_mode == "longform_1000":
+        if current_chapter >= 900:
+            return 0
+        if current_chapter >= 750:
+            return min(1, requested_depth)
+    if current_chapter >= 800:
+        return min(1, requested_depth)
+    if current_chapter >= 600:
+        return min(1, requested_depth)
+    return requested_depth
+
+
+def _budget_profile_for_state(
+    state: NarrativeState,
+    *,
+    requested_beat_target: int,
+    min_candidates: int,
+    max_candidates: int,
+) -> Dict[str, object]:
+    adapted_beat_target = _adaptive_beat_target(state, requested_beat_target)
+    adapted_progression_target = _adaptive_progression_target(
+        state,
+        _progression_event_target(state.story_phase, len(BEAT_BLUEPRINTS.get(adapted_beat_target, BEAT_BLUEPRINTS[3]))),
+    )
+    adapted_min_candidates, adapted_max_candidates = _adaptive_candidate_budget(
+        state,
+        min_candidates=min_candidates,
+        max_candidates=max_candidates,
+    )
+    return {
+        "diagnostics_mode": str((state.metadata or {}).get("longform_diagnostics_mode") or ""),
+        "requested_beat_target": requested_beat_target,
+        "adapted_beat_target": adapted_beat_target,
+        "adapted_progression_target": adapted_progression_target,
+        "adapted_min_candidates": adapted_min_candidates,
+        "adapted_max_candidates": adapted_max_candidates,
+    }
+
+
 def _score_scene_fit(scene_intent: SceneIntent, event: EventAtom) -> float:
     score = 0.0
     if event.scene_function in scene_intent.preferred_scene_functions:
@@ -380,20 +512,114 @@ def _render_spec_for_scene(state: NarrativeState, scene_intent: SceneIntent) -> 
         "climax": "manhua_drama",
         "aftermath": "novel_light",
     }.get(state.story_phase, "novel_lush")
+    base_target_word_count = max(int(state.word_budget or 2000), 2000)
+    authoring_surface = str((state.metadata or {}).get("authoring_surface") or "")
+    if authoring_surface == "author_work_generation":
+        target_word_count = min(max(base_target_word_count, 1800), 2000)
+        min_target_word_count = 1800
+        max_target_word_count = 2200
+    elif state.story_phase in {"setup", "early_rising"}:
+        target_word_count = base_target_word_count
+        min_target_word_count = max(1800, target_word_count - 200)
+        max_target_word_count = max(target_word_count, target_word_count + 200)
+    else:
+        target_word_count = base_target_word_count
+        min_target_word_count = max(200, target_word_count - 200)
+        max_target_word_count = max(target_word_count, target_word_count + 200)
     return SceneRenderSpec(
         prose_mode=prose_mode,
         viewpoint_character="",
-        target_word_count={
-            "novel_light": 650,
-            "novel_lush": 950,
-            "manhua_drama": 780,
-        }[prose_mode],
+        target_word_count=target_word_count,
         dialogue_density=0.32 if prose_mode == "novel_light" else (0.4 if prose_mode == "manhua_drama" else 0.35),
         sensory_motifs=scene_intent.preferred_tags[:3],
         emotional_pivot=scene_intent.label,
         ending_cadence="lingering" if prose_mode != "manhua_drama" else "hard_cut",
+        min_target_word_count=min_target_word_count,
+        max_target_word_count=max_target_word_count,
         must_include_beats=[scene_intent.label],
     )
+
+
+def _trace_entry_from_scored_candidate(candidate) -> Dict[str, object]:
+    return {
+        "event_id": candidate.event.event_id,
+        "total_score": candidate.total_score,
+        "critic_penalty": candidate.critic_penalty,
+        "components": dict(candidate.components),
+        "critic_decisions": [
+            decision.to_dict() for decision in candidate.critic_decisions
+        ],
+        "explanation": candidate.explanation,
+    }
+
+
+def _chosen_candidate_summary(chosen_trace: Sequence[Dict[str, object]]) -> Dict[str, object]:
+    if not chosen_trace:
+        return {}
+    first = dict(chosen_trace[0] or {})
+    return {
+        "event_id": first.get("event_id"),
+        "total_score": first.get("total_score"),
+        "critic_penalty": first.get("critic_penalty"),
+        "components": dict(first.get("components") or {}),
+        "critic_decisions": list(first.get("critic_decisions") or []),
+        "explanation": first.get("explanation"),
+    }
+
+
+def _debug_route_from_scene_beats(
+    scene_beats: Sequence[SceneBeat],
+    chosen_trace: Sequence[Dict[str, object]],
+) -> Dict[str, object]:
+    events = [beat.event.to_dict() for beat in scene_beats]
+    total_score = round(
+        sum(float(item.get("total_score", 0.0) or 0.0) for item in chosen_trace),
+        3,
+    )
+    component_totals: Dict[str, float] = {}
+    for item in chosen_trace:
+        for key, value in dict(item.get("components") or {}).items():
+            component_totals[str(key)] = component_totals.get(str(key), 0.0) + float(value or 0.0)
+    event_count = max(1, len(scene_beats))
+    score_breakdown = {
+        key: round(value / float(event_count), 3)
+        for key, value in component_totals.items()
+    }
+    event_ids = [event["event_id"] for event in events if event.get("event_id")]
+    return {
+        "events": events,
+        "event_ids": event_ids,
+        "total_score": total_score,
+        "score_breakdown": score_breakdown,
+        "critic_trace": [dict(item) for item in chosen_trace],
+        "explanation": "scene_route=%s; total_score=%.3f"
+        % (" -> ".join(event_ids), total_score),
+    }
+
+
+def _projected_followup_event(
+    source_event: EventAtom,
+    *,
+    dramatic_job: str,
+    beat_index: int,
+) -> EventAtom:
+    payload = source_event.to_dict()
+    label = {
+        "pivot": "真正要转向的那句终于逼到眼前",
+        "aftermath": "说出口后的余波开始追到账前",
+        "echo": "没认完的后半句顺着回声追上来",
+    }.get(dramatic_job, "这一拍留下来的余波开始显形")
+    payload["event_id"] = f"{source_event.event_id}__beat_projection__{beat_index}_{dramatic_job}"
+    payload["title"] = f"{source_event.title} · {label}"
+    location = source_event.location or "原处"
+    payload["summary"] = f"{label}继续压在{location}里，刚才没说透的态度、代价和退路都被逼到明处。"
+    payload["metadata"] = {
+        **dict(payload.get("metadata") or {}),
+        "beat_projection": True,
+        "beat_projection_of": source_event.event_id,
+        "beat_projection_job": dramatic_job,
+    }
+    return EventAtom.from_dict(payload)
 
 
 def simulate_scene_beats(
@@ -408,24 +634,37 @@ def simulate_scene_beats(
     candidate_reranker: Optional[Callable[..., Dict[str, object]]] = None,
     min_candidates: int = 6,
     max_candidates: int = 10,
-) -> Tuple[List[SceneBeat], NarrativeState, List[Dict[str, object]]]:
+ ) -> Tuple[List[SceneBeat], NarrativeState, List[Dict[str, object]], Dict[str, object]]:
     current_state = NarrativeState.from_dict(state.to_dict())
     scene_beats: List[SceneBeat] = []
     chosen_events: List[EventAtom] = []
     rerank_receipts: List[Dict[str, object]] = []
+    first_candidate_batch = None
+    first_scored_candidates = []
+    chosen_trace: List[Dict[str, object]] = []
+    beat_candidate_trace: List[Dict[str, object]] = []
+    beat_target = _adaptive_beat_target(state, beat_target)
     beat_blueprint = BEAT_BLUEPRINTS.get(beat_target, BEAT_BLUEPRINTS[3])
-    progression_target = _progression_event_target(state.story_phase, len(beat_blueprint))
+    progression_target = _adaptive_progression_target(
+        state,
+        _progression_event_target(state.story_phase, len(beat_blueprint)),
+    )
 
     for beat_index, (prefix, job) in enumerate(beat_blueprint, start=1):
         if beat_index > progression_target:
             if not chosen_events:
                 break
             echo_source = chosen_events[-1] if job in {"pivot", "aftermath", "echo"} else chosen_events[0]
+            projected_event = _projected_followup_event(
+                echo_source,
+                dramatic_job=job,
+                beat_index=beat_index,
+            )
             scene_beats.append(
                 SceneBeat(
                     beat_index=beat_index,
-                    event=echo_source,
-                    beat_label="%s：%s" % (prefix, echo_source.title),
+                    event=projected_event,
+                    beat_label="%s：%s" % (prefix, projected_event.title),
                     dramatic_job=job,
                     tension_after=current_state.tension,
                 )
@@ -438,11 +677,27 @@ def simulate_scene_beats(
             candidate_provider=candidate_provider,
             critics=critics,
             weights=weights,
-            depth=min(beat_index - 1, 2),
+            depth=_adaptive_search_depth(state, min(beat_index - 1, 2)),
             min_candidates=min_candidates,
             max_candidates=max_candidates,
         )
+        if first_candidate_batch is None:
+            first_candidate_batch = candidate_batch
+            first_scored_candidates = list(scored_candidates)
+        beat_trace_entry = {
+            "beat_index": beat_index,
+            "dramatic_job": job,
+            "search_depth": _adaptive_search_depth(state, min(beat_index - 1, 2)),
+            "requested_min_candidates": min_candidates,
+            "requested_max_candidates": max_candidates,
+            "raw_candidate_count": len(list(candidate_batch.raw_candidates or [])),
+            "legal_candidate_count": len(list(candidate_batch.legal_candidates or [])),
+            "scored_candidate_count": len(list(scored_candidates or [])),
+            "critic_rejection_count": len(list((candidate_batch.debug or {}).get("critic_rejections", []) or [])),
+            "evaluate_candidates_timing_ms": dict((candidate_batch.debug or {}).get("timing_ms") or {}),
+        }
         if not scored_candidates:
+            beat_candidate_trace.append(beat_trace_entry)
             break
 
         ranked_candidates = sorted(
@@ -478,6 +733,7 @@ def simulate_scene_beats(
             receipt = rerank_result.get("receipt")
             if receipt:
                 rerank_receipts.append(dict(receipt))
+        beat_trace_entry["ranked_candidate_count"] = len(list(ranked_candidates or []))
 
         chosen_candidate = next(
             (
@@ -488,6 +744,9 @@ def simulate_scene_beats(
             ranked_candidates[0],
         )
         chosen_event = chosen_candidate.event
+        beat_trace_entry["selected_event_id"] = chosen_event.event_id
+        chosen_trace.append(_trace_entry_from_scored_candidate(chosen_candidate))
+        beat_candidate_trace.append(beat_trace_entry)
         current_state = apply_event(current_state, chosen_event)
         chosen_events.append(chosen_event)
         scene_beats.append(
@@ -500,7 +759,12 @@ def simulate_scene_beats(
             )
         )
 
-    return scene_beats, current_state, rerank_receipts
+    return scene_beats, current_state, rerank_receipts, {
+        "first_candidate_batch": first_candidate_batch,
+        "first_scored_candidates": list(first_scored_candidates),
+        "chosen_trace": list(chosen_trace),
+        "beat_candidate_trace": list(beat_candidate_trace),
+    }
 
 
 def plan_next_scene(
@@ -513,11 +777,18 @@ def plan_next_scene(
     candidate_reranker: Optional[Callable[..., Dict[str, object]]] = None,
     min_candidates: int = 6,
     max_candidates: int = 10,
-) -> Tuple[Optional[ChapterPlan], List[SceneBeat], NarrativeState, SceneRenderSpec, List[Dict[str, object]]]:
-    scene_intent = _pick_scene_intent(state, world)
+) -> Tuple[Optional[ChapterPlan], List[SceneBeat], NarrativeState, SceneRenderSpec, List[Dict[str, object]], Dict[str, object]]:
+    planning_state = NarrativeState.from_dict(state.to_dict())
+    sync_longform_progression(planning_state, world)
+    scene_intent = _pick_scene_intent(planning_state, world)
     beat_target = _beat_target_for_phase(state.story_phase)
-    scene_beats, scene_state, rerank_receipts = simulate_scene_beats(
-        state,
+    budgeted_min_candidates, budgeted_max_candidates = _adaptive_candidate_budget(
+        planning_state,
+        min_candidates=min_candidates,
+        max_candidates=max_candidates,
+    )
+    scene_beats, scene_state, rerank_receipts, search_trace = simulate_scene_beats(
+        planning_state,
         world=world,
         candidate_provider=candidate_provider,
         critics=critics,
@@ -525,25 +796,52 @@ def plan_next_scene(
         scene_intent=scene_intent,
         beat_target=beat_target,
         candidate_reranker=candidate_reranker,
-        min_candidates=min_candidates,
-        max_candidates=max_candidates,
+        min_candidates=budgeted_min_candidates,
+        max_candidates=budgeted_max_candidates,
     )
     if not scene_beats:
-        return None, [], state, _render_spec_for_scene(state, scene_intent), rerank_receipts
+        return None, [], state, _render_spec_for_scene(state, scene_intent), rerank_receipts, search_trace
 
     finalized_state = NarrativeState.from_dict(scene_state.to_dict())
     advance_story_phase_if_needed(finalized_state, scene_intent_id=scene_intent.intent_id)
+    longform_progression = sync_longform_progression(finalized_state, world)
+    chapter_task = dict(longform_progression.get("chapter_task") or default_chapter_task(finalized_state, world))
+    finalized_state.current_chapter_task = dict(chapter_task)
     render_spec = _render_spec_for_scene(finalized_state, scene_intent)
+    selected_event_ids = list(dict.fromkeys(beat.event.event_id for beat in scene_beats))
     chapter_plan = ChapterPlan(
         chapter_index=finalized_state.chapter_index,
         story_phase=finalized_state.story_phase,
         scene_intent=scene_intent,
         beat_target=beat_target,
         beat_count=len(scene_beats),
-        ending_ready=is_terminal_scene_function(scene_beats[-1].event.scene_function, scene_beats[-1].event.metadata),
-        selected_event_ids=[beat.event.event_id for beat in scene_beats],
+        ending_ready=(
+            is_terminal_scene_function(scene_beats[-1].event.scene_function, scene_beats[-1].event.metadata)
+            and longform_terminal_allowed(finalized_state, chapter_task, scene_beats[-1].event)
+        ),
+        selected_event_ids=selected_event_ids,
+        chapter_task=dict(chapter_task),
+        chapter_task_execution_summary={
+            "duty_type": chapter_task.get("duty_type"),
+            "target_words": chapter_task.get("target_words"),
+            "reveal_budget": chapter_task.get("reveal_budget"),
+            "promise_actions": list(chapter_task.get("promise_actions", [])),
+            "selected_event_count": len(selected_event_ids),
+            "series_chapter_index": longform_progression.get("series_chapter_index"),
+            "series_target_chapters": longform_progression.get("series_target_chapters"),
+            "volume_id": longform_progression.get("volume_id"),
+            "volume_chapter_index": longform_progression.get("volume_chapter_index"),
+            "volume_target_chapters": longform_progression.get("volume_target_chapters"),
+            "arc_id": longform_progression.get("arc_id"),
+            "arc_chapter_index": longform_progression.get("arc_chapter_index"),
+            "arc_target_chapters": longform_progression.get("arc_target_chapters"),
+            "task_sequence_index": longform_progression.get("task_sequence_index"),
+            "used_fallback": bool(longform_progression.get("used_fallback", False)),
+            "ending_gate_blocked": is_terminal_scene_function(scene_beats[-1].event.scene_function, scene_beats[-1].event.metadata)
+            and not longform_terminal_allowed(finalized_state, chapter_task, scene_beats[-1].event),
+        },
     )
-    return chapter_plan, scene_beats, finalized_state, render_spec, rerank_receipts
+    return chapter_plan, scene_beats, finalized_state, render_spec, rerank_receipts, search_trace
 
 
 def render_scene(
@@ -594,29 +892,7 @@ def plan_next_turn(
     active_renderer = renderer or TemplateRenderer()
     resolved_weights = resolve_search_weights(world, weights=weights)
 
-    candidate_batch, scored_candidates = evaluate_candidates(
-        state,
-        world,
-        candidate_provider=candidate_provider,
-        critics=active_critics,
-        weights=resolved_weights,
-        depth=0,
-        min_candidates=min_candidates,
-        max_candidates=max_candidates,
-    )
-    routes = beam_search(
-        state,
-        world=world,
-        candidate_provider=candidate_provider,
-        critics=active_critics,
-        depth=depth,
-        beam_width=beam_width,
-        weights=resolved_weights,
-        min_candidates=min_candidates,
-        max_candidates=max_candidates,
-    )
-
-    chapter_plan, scene_beats, updated_state, render_spec, assisted_rerank_receipts = plan_next_scene(
+    chapter_plan, scene_beats, updated_state, render_spec, assisted_rerank_receipts, search_trace = plan_next_scene(
         state,
         world=world,
         candidate_provider=candidate_provider,
@@ -626,22 +902,61 @@ def plan_next_turn(
         min_candidates=min_candidates,
         max_candidates=max_candidates,
     )
+    debug_candidate_batch = (
+        search_trace.get("first_candidate_batch")
+        if isinstance(search_trace, dict)
+        else None
+    )
+    debug_scored_candidates = list(
+        search_trace.get("first_scored_candidates") or []
+    ) if isinstance(search_trace, dict) else []
+    debug_critic_trace = list(
+        search_trace.get("chosen_trace") or []
+    ) if isinstance(search_trace, dict) else []
+    beat_candidate_trace = list(
+        search_trace.get("beat_candidate_trace") or []
+    ) if isinstance(search_trace, dict) else []
+    debug_routes = (
+        [_debug_route_from_scene_beats(scene_beats, debug_critic_trace)]
+        if scene_beats
+        else []
+    )
+    planner_trace_summary = {
+        **_budget_profile_for_state(
+            state,
+            requested_beat_target=_beat_target_for_phase(state.story_phase),
+            min_candidates=min_candidates,
+            max_candidates=max_candidates,
+        ),
+        "per_beat": beat_candidate_trace,
+        "max_raw_candidate_count": max((int(item.get("raw_candidate_count", 0) or 0) for item in beat_candidate_trace), default=0),
+        "max_scored_candidate_count": max((int(item.get("scored_candidate_count", 0) or 0) for item in beat_candidate_trace), default=0),
+        "max_provider_latency_ms": max((float(dict(item.get("evaluate_candidates_timing_ms") or {}).get("provider", 0.0) or 0.0) for item in beat_candidate_trace), default=0.0),
+        "max_critics_latency_ms": max((float(dict(item.get("evaluate_candidates_timing_ms") or {}).get("critics", 0.0) or 0.0) for item in beat_candidate_trace), default=0.0),
+        "max_scoring_latency_ms": max((float(dict(item.get("evaluate_candidates_timing_ms") or {}).get("scoring", 0.0) or 0.0) for item in beat_candidate_trace), default=0.0),
+        "max_sort_latency_ms": max((float(dict(item.get("evaluate_candidates_timing_ms") or {}).get("sort", 0.0) or 0.0) for item in beat_candidate_trace), default=0.0),
+        "max_total_evaluate_latency_ms": max((float(dict(item.get("evaluate_candidates_timing_ms") or {}).get("total", 0.0) or 0.0) for item in beat_candidate_trace), default=0.0),
+    }
+    chosen_candidate_summary = _chosen_candidate_summary(debug_critic_trace)
     if chapter_plan is None or not scene_beats:
         return {
             "status": "no_legal_routes",
             "reader_view": None,
             "updated_state_summary": _state_summary(state),
             "replay_preview": {"chapter_index": state.chapter_index, "latest_title": None},
-            "candidate_batch": candidate_batch.to_dict(),
-            "scored_candidates": [candidate.to_dict() for candidate in scored_candidates],
-            "routes": [route.to_dict() for route in routes],
-            "critic_trace": [],
+            "candidate_batch": debug_candidate_batch.to_dict() if debug_candidate_batch is not None else {"raw_candidates": [], "legal_candidates": [], "illegal_candidate_reasons": {}, "debug": {}},
+            "scored_candidates": [candidate.to_dict() for candidate in debug_scored_candidates],
+            "routes": debug_routes,
+            "critic_trace": debug_critic_trace,
             "rendered_scene": None,
             "updated_state": state.to_dict(),
             "chapter_plan": None,
             "scene_beats": [],
             "scene_render_spec": render_spec.to_dict(),
             "assisted_rerank_receipts": assisted_rerank_receipts,
+            "longform_context_pack": build_longform_context_pack(state),
+            "planner_trace_summary": planner_trace_summary,
+            "chosen_candidate_summary": chosen_candidate_summary,
         }
 
     rendered_scene = active_renderer.render_scene(
@@ -660,6 +975,13 @@ def plan_next_turn(
         scene_beats,
         rendered_scene,
     )
+    updated_state = archive_longform_chapter(
+        updated_state,
+        chapter_plan=chapter_plan,
+        chosen_event=scene_beats[0].event,
+        rendered_body=reader_view.body,
+    )
+    longform_context_pack = build_longform_context_pack(updated_state)
 
     response = {
         "status": "ok",
@@ -669,23 +991,26 @@ def plan_next_turn(
             "chapter_index": updated_state.chapter_index,
             "latest_title": reader_view.chapter_title,
         },
+        "chosen_event": scene_beats[0].event.to_dict(),
+        "updated_state": updated_state.to_dict(),
+        "chapter_plan": chapter_plan.to_dict(),
+        "planner_trace_summary": planner_trace_summary,
+        "chosen_candidate_summary": chosen_candidate_summary,
     }
 
     if debug:
         response.update(
             {
-                "chosen_event": scene_beats[0].event.to_dict(),
-                "updated_state": updated_state.to_dict(),
-                "best_route_event_ids": [event.event_id for event in routes[0].events] if routes else [],
-                "candidate_batch": candidate_batch.to_dict(),
-                "scored_candidates": [candidate.to_dict() for candidate in scored_candidates],
-                "routes": [route.to_dict() for route in routes],
-                "critic_trace": routes[0].critic_trace if routes else [],
+                "best_route_event_ids": list(debug_routes[0].get("event_ids", [])) if debug_routes else [],
+                "candidate_batch": debug_candidate_batch.to_dict() if debug_candidate_batch is not None else {"raw_candidates": [], "legal_candidates": [], "illegal_candidate_reasons": {}, "debug": {}},
+                "scored_candidates": [candidate.to_dict() for candidate in debug_scored_candidates],
+                "routes": debug_routes,
+                "critic_trace": debug_critic_trace,
                 "rendered_scene": rendered_scene.to_dict(),
-                "chapter_plan": chapter_plan.to_dict(),
                 "scene_beats": [beat.to_dict() for beat in scene_beats],
                 "scene_render_spec": render_spec.to_dict(),
                 "assisted_rerank_receipts": assisted_rerank_receipts,
+                "longform_context_pack": longform_context_pack,
             }
         )
 

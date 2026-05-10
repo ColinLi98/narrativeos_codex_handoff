@@ -1,0 +1,249 @@
+name: frontend-shell-smoke
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+      - name: Run frontend shell smoke
+        run: |
+          CI_HEADLESS=1 \
+          CHROME_BIN="${{ steps.setup-chrome.outputs.chrome-path }}" \
+          bash scripts/run_frontend_shell_smoke.sh
+      - name: Publish frontend shell smoke summary
+        if: always()
+        run: |
+          . .venv/bin/activate
+          python scripts/write_frontend_shell_smoke_step_summary.py \
+            --result-file artifacts/frontend_shell_smoke_result.json \
+            --server-log /tmp/frontend_shell_smoke_server.log \
+            --chrome-log /tmp/frontend_shell_smoke_chrome.log \
+            --failure-artifact artifacts/frontend_shell_smoke_failure_snapshot.json \
+            >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload frontend shell smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-shell-smoke-artifacts
+          if-no-files-found: warn
+          path: |
+            artifacts/frontend_shell_smoke_result.json
+            artifacts/frontend_shell_smoke_failure_snapshot.json
+            artifacts/frontend_shell_smoke_failure.png
+            /tmp/frontend_shell_smoke_server.log
+            /tmp/frontend_shell_smoke_chrome.log
+
+  agent-studio-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+      - name: Run Agent Studio smoke
+        run: |
+          CI_HEADLESS=1 \
+          CHROME_BIN="${{ steps.setup-chrome.outputs.chrome-path }}" \
+          bash scripts/run_agent_studio_smoke.sh
+      - name: Publish Agent Studio smoke summary
+        if: always()
+        run: |
+          . .venv/bin/activate
+          python scripts/write_agent_studio_smoke_step_summary.py \
+            --result-file artifacts/agent_studio_smoke_result.json \
+            --server-log /tmp/agent_studio_smoke_server.log \
+            --chrome-log /tmp/agent_studio_smoke_chrome.log \
+            --failure-artifact artifacts/agent_studio_smoke_failure_snapshot.json \
+            >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Agent Studio smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-studio-smoke-artifacts
+          if-no-files-found: warn
+          path: |
+            artifacts/agent_studio_smoke_result.json
+            artifacts/agent_studio_smoke_failure_snapshot.json
+            artifacts/agent_studio_smoke_failure.png
+            artifacts/agent_studio_smoke_desktop.png
+            artifacts/agent_studio_smoke_mobile.png
+            artifacts/agent_studio_smoke_visual_review.md
+            /tmp/agent_studio_smoke_server.log
+            /tmp/agent_studio_smoke_chrome.log
+
+  quantum-ops-url-state:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+      - name: Install Quantum frontend deps
+        working-directory: Kimi_Agent_设计系统加载/app
+        run: npm ci
+      - name: Run Quantum Ops URL-state smoke
+        run: |
+          CI_HEADLESS=1 \
+          CHROME_BIN="${{ steps.setup-chrome.outputs.chrome-path }}" \
+          bash scripts/run_quantum_ops_url_state_smoke.sh
+      - name: Publish Quantum Ops URL-state summary
+        if: always()
+        run: |
+          . .venv/bin/activate
+          python scripts/write_quantum_ops_url_state_smoke_step_summary.py \
+            --result-file artifacts/quantum_ops_url_state_smoke_result.json \
+            --backend-log /tmp/quantum_ops_url_state_backend.log \
+            --frontend-log /tmp/quantum_ops_url_state_frontend.log \
+            --chrome-log /tmp/quantum_ops_url_state_chrome.log \
+            --failure-artifact artifacts/quantum_ops_url_state_smoke_failure_snapshot.json \
+            >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Quantum Ops URL-state artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantum-ops-url-state-artifacts
+          if-no-files-found: warn
+          path: |
+            artifacts/quantum_ops_url_state_smoke_result.json
+            artifacts/quantum_ops_url_state_smoke_failure_snapshot.json
+            artifacts/quantum_ops_url_state_smoke_failure.png
+            /tmp/quantum_ops_url_state_backend.log
+            /tmp/quantum_ops_url_state_frontend.log
+            /tmp/quantum_ops_url_state_chrome.log
+
+  quantum-library:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+      - name: Install Quantum frontend deps
+        working-directory: Kimi_Agent_设计系统加载/app
+        run: npm ci
+      - name: Run Quantum library smoke
+        run: |
+          CI_HEADLESS=1 \
+          CHROME_BIN="${{ steps.setup-chrome.outputs.chrome-path }}" \
+          bash scripts/run_quantum_library_smoke.sh
+      - name: Publish Quantum library smoke summary
+        if: always()
+        run: |
+          . .venv/bin/activate
+          python scripts/write_quantum_library_smoke_step_summary.py \
+            --result-file artifacts/quantum_library_smoke_result.json \
+            --backend-log /tmp/quantum_library_backend.log \
+            --frontend-log /tmp/quantum_library_frontend.log \
+            --chrome-log /tmp/quantum_library_chrome.log \
+            --failure-artifact artifacts/quantum_library_smoke_failure_snapshot.json \
+            >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Quantum library smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantum-library-smoke-artifacts
+          if-no-files-found: warn
+          path: |
+            artifacts/quantum_library_smoke_result.json
+            artifacts/quantum_library_smoke_failure_snapshot.json
+            artifacts/quantum_library_smoke_failure.png
+            /tmp/quantum_library_backend.log
+            /tmp/quantum_library_frontend.log
+            /tmp/quantum_library_chrome.log
+
+  quantum-author-follow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+      - name: Install Quantum frontend deps
+        working-directory: Kimi_Agent_设计系统加载/app
+        run: npm ci
+      - name: Run Quantum author follow smoke
+        run: |
+          CI_HEADLESS=1 \
+          CHROME_BIN="${{ steps.setup-chrome.outputs.chrome-path }}" \
+          bash scripts/run_quantum_author_follow_smoke.sh
+      - name: Publish Quantum author follow summary
+        if: always()
+        run: |
+          . .venv/bin/activate
+          python scripts/write_quantum_author_follow_smoke_step_summary.py \
+            --result-file artifacts/quantum_author_follow_smoke_result.json \
+            --backend-log /tmp/quantum_author_follow_backend.log \
+            --frontend-log /tmp/quantum_author_follow_frontend.log \
+            --chrome-log /tmp/quantum_author_follow_chrome.log \
+            --failure-artifact artifacts/quantum_author_follow_smoke_failure_snapshot.json \
+            >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Quantum author follow artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantum-author-follow-smoke-artifacts
+          if-no-files-found: warn
+          path: |
+            artifacts/quantum_author_follow_smoke_result.json
+            artifacts/quantum_author_follow_smoke_failure_snapshot.json
+            artifacts/quantum_author_follow_smoke_failure.png
+            /tmp/quantum_author_follow_backend.log
+            /tmp/quantum_author_follow_frontend.log
+            /tmp/quantum_author_follow_chrome.log

@@ -105,6 +105,8 @@ class ObservabilityService:
         reader_view: Optional[Dict[str, Any]] = None,
         estimated_cost: float = 0.0,
         runtime_latency_ms: Optional[float] = None,
+        trace_id: Optional[str] = None,
+        quality_event_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         candidate_debug = dict((candidate_batch or {}).get("debug") or {})
         candidate_routing = self._routing_payload(candidate_debug.get("backend_routing"))
@@ -151,7 +153,13 @@ class ObservabilityService:
         backend_error = candidate_backend_error or renderer_backend_error
 
         candidate_attempt_count = int(self._deep_find(candidate_routing, "attempt_count") or 0)
-        renderer_attempt_count = int(self._deep_find(render_routing, "attempt_count") or 0)
+        renderer_attempt_count = int(
+            render_debug.get("renderer_attempt_count")
+            or self._deep_find(render_routing, "renderer_attempt_count")
+            or self._deep_find(render_routing, "attempt_count")
+            or 0
+        )
+        renderer_length_retry_count = max(0, renderer_attempt_count - 1)
         candidate_latency_ms = self._safe_float(self._deep_find(candidate_routing, "latency_ms"))
         renderer_latency_ms = self._safe_float(self._deep_find(render_routing, "latency_ms"))
         runtime_latency = self._safe_float(runtime_latency_ms)
@@ -184,6 +192,8 @@ class ObservabilityService:
             "session_id": session_id,
             "account_id": account_id,
             "reader_id": reader_id,
+            "trace_id": trace_id,
+            "quality_event_id": quality_event_id,
             "provider": candidate_debug.get("provider") or render_debug.get("renderer"),
             "selected_provider": selected_provider,
             "candidate_selected_provider": candidate_selected_provider,
@@ -209,10 +219,14 @@ class ObservabilityService:
             "attempt_count": candidate_attempt_count or renderer_attempt_count or 0,
             "candidate_attempt_count": candidate_attempt_count,
             "renderer_attempt_count": renderer_attempt_count,
+            "renderer_length_retry_count": renderer_length_retry_count,
+            "renderer_length_retry_used": renderer_length_retry_count > 0,
             "runtime_latency_ms": round(float(runtime_latency), 3) if runtime_latency is not None else None,
             "candidate_latency_ms": round(float(candidate_latency_ms), 3) if candidate_latency_ms is not None else None,
             "renderer_latency_ms": round(float(renderer_latency_ms), 3) if renderer_latency_ms is not None else None,
             "renderer_fallback_reason": render_debug.get("renderer_fallback_reason"),
+            "llm_payload_gate": dict(render_debug.get("llm_payload_gate") or {}),
+            "llm_length_gate": dict(render_debug.get("llm_length_gate") or {}),
             "estimated_cost": float(estimated_cost or 0.0),
             "candidate_estimated_request_cost_usd": candidate_budget_estimate.get("estimated_cost_usd"),
             "renderer_estimated_request_cost_usd": renderer_budget_estimate.get("estimated_cost_usd"),
@@ -372,6 +386,8 @@ class ObservabilityService:
                     "fallback_count": 0,
                     "budget_block_count": 0,
                     "backend_error_count": 0,
+                    "length_retry_count": 0,
+                    "renderer_attempt_total": 0,
                     "cache_hits": 0,
                     "cache_observed": 0,
                     "total_estimated_cost": 0.0,
@@ -392,6 +408,8 @@ class ObservabilityService:
             provider_bucket["fallback_count"] += 1 if item.get("fallback_used") else 0
             provider_bucket["budget_block_count"] += 1 if item.get("budget_blocked") else 0
             provider_bucket["backend_error_count"] += 1 if item.get("backend_error") else 0
+            provider_bucket["length_retry_count"] += 1 if item.get("renderer_length_retry_used") else 0
+            provider_bucket["renderer_attempt_total"] += int(item.get("renderer_attempt_count") or 0)
             if item.get("cache_hit") is not None:
                 provider_bucket["cache_observed"] += 1
                 provider_bucket["cache_hits"] += 1 if item.get("cache_hit") else 0
@@ -430,6 +448,8 @@ class ObservabilityService:
                         "fallback_count": 0,
                         "budget_block_count": 0,
                         "backend_error_count": 0,
+                        "length_retry_count": 0,
+                        "renderer_attempt_total": 0,
                         "canary_match_count": 0,
                         "total_estimated_cost": 0.0,
                         "runtime_latencies": [],
@@ -441,6 +461,8 @@ class ObservabilityService:
                 stage_bucket["fallback_count"] += 1 if item.get("fallback_used") else 0
                 stage_bucket["budget_block_count"] += 1 if item.get("budget_blocked") else 0
                 stage_bucket["backend_error_count"] += 1 if item.get("backend_error") else 0
+                stage_bucket["length_retry_count"] += 1 if item.get("renderer_length_retry_used") else 0
+                stage_bucket["renderer_attempt_total"] += int(item.get("renderer_attempt_count") or 0)
                 stage_bucket["canary_match_count"] += 1 if item.get(f"{track}_canary_match") else 0
                 stage_bucket["total_estimated_cost"] += cost
                 if item.get("runtime_latency_ms") is not None:
@@ -490,6 +512,8 @@ class ObservabilityService:
                     "fallback_rate": round(payload["fallback_count"] / float(receipt_count), 3) if receipt_count else 0.0,
                     "budget_block_rate": round(payload["budget_block_count"] / float(receipt_count), 3) if receipt_count else 0.0,
                     "backend_error_rate": round(payload["backend_error_count"] / float(receipt_count), 3) if receipt_count else 0.0,
+                    "length_retry_rate": round(payload["length_retry_count"] / float(receipt_count), 3) if receipt_count else 0.0,
+                    "avg_renderer_attempt_count": round(payload["renderer_attempt_total"] / float(receipt_count), 3) if receipt_count else 0.0,
                     "cache_hit_rate": (
                         round(payload["cache_hits"] / float(payload["cache_observed"]), 3)
                         if payload["cache_observed"]
@@ -549,6 +573,8 @@ class ObservabilityService:
                         "fallback_rate": round(payload["fallback_count"] / float(receipt_count), 3) if receipt_count else 0.0,
                         "budget_block_rate": round(payload["budget_block_count"] / float(receipt_count), 3) if receipt_count else 0.0,
                         "backend_error_rate": round(payload["backend_error_count"] / float(receipt_count), 3) if receipt_count else 0.0,
+                        "length_retry_rate": round(payload["length_retry_count"] / float(receipt_count), 3) if receipt_count else 0.0,
+                        "avg_renderer_attempt_count": round(payload["renderer_attempt_total"] / float(receipt_count), 3) if receipt_count else 0.0,
                         "canary_match_count": int(payload["canary_match_count"]),
                         "total_estimated_cost": round(payload["total_estimated_cost"], 6),
                         "avg_estimated_cost": round(payload["total_estimated_cost"] / float(receipt_count), 6) if receipt_count else 0.0,
@@ -579,4 +605,126 @@ class ObservabilityService:
                 "candidate": self._latency_summary(candidate_latencies),
                 "renderer": self._latency_summary(renderer_latencies),
             },
+        }
+
+    def story_bootstrap_world_summary(self, *, limit: int = 50) -> Dict[str, Any]:
+        events = self.repository.list_analytics_events(
+            event_names=["story_import_bootstrap_completed"],
+            limit=max(limit * 20, 500),
+        )
+        world_summary: Dict[str, Dict[str, Any]] = {}
+        for event in events:
+            payload = dict(event.get("payload_json") or {})
+            world_id = str(payload.get("world_id") or "").strip()
+            if not world_id:
+                continue
+            entry = world_summary.setdefault(
+                world_id,
+                {
+                    "worldId": world_id,
+                    "attemptedCount": 0,
+                    "firstAttemptQualityGuardFailedCount": 0,
+                    "retriedRecoveryCount": 0,
+                    "finalQualityGuardFailedCount": 0,
+                },
+            )
+            entry["attemptedCount"] += 1
+            if str(payload.get("first_attempt_result_status") or "") == "quality_guard_failed":
+                entry["firstAttemptQualityGuardFailedCount"] += 1
+            if bool(payload.get("recovered_after_retry")):
+                entry["retriedRecoveryCount"] += 1
+            if str(payload.get("result_status") or "") == "quality_guard_failed":
+                entry["finalQualityGuardFailedCount"] += 1
+
+        rows: List[Dict[str, Any]] = []
+        for item in world_summary.values():
+            attempted = int(item["attemptedCount"] or 0)
+            first_failed = int(item["firstAttemptQualityGuardFailedCount"] or 0)
+            retried_recovered = int(item["retriedRecoveryCount"] or 0)
+            final_failed = int(item["finalQualityGuardFailedCount"] or 0)
+            first_rate = round(first_failed / float(max(1, attempted)), 3)
+            final_rate = round(final_failed / float(max(1, attempted)), 3)
+            rows.append(
+                {
+                    **item,
+                    "firstAttemptQualityGuardFailedRate": first_rate,
+                    "retriedRecoveryRate": round(retried_recovered / float(max(1, first_failed)), 3) if first_failed else 0.0,
+                    "finalQualityGuardFailedRate": final_rate,
+                    "qualityGuardCollisionDelta": round(first_rate - final_rate, 3),
+                }
+            )
+        rows.sort(
+            key=lambda item: (
+                -float(item.get("qualityGuardCollisionDelta", 0.0) or 0.0),
+                -int(item.get("attemptedCount", 0) or 0),
+                str(item.get("worldId") or ""),
+            )
+        )
+        return {
+            "generated_at": self._utcnow(),
+            "worlds": rows[:limit],
+        }
+
+    def story_bootstrap_world_detail(self, world_id: str, *, limit: int = 20) -> Dict[str, Any]:
+        normalized_world_id = str(world_id or "").strip()
+        events = self.repository.list_analytics_events(
+            event_names=["story_import_bootstrap_completed"],
+            limit=max(limit * 50, 500),
+        )
+        matching_events = [
+            event
+            for event in events
+            if str(dict(event.get("payload_json") or {}).get("world_id") or "").strip() == normalized_world_id
+        ]
+        if not matching_events:
+            raise KeyError(f"unknown_story_bootstrap_world:{normalized_world_id}")
+
+        rows: List[Dict[str, Any]] = []
+        for event in matching_events[:limit]:
+            payload = dict(event.get("payload_json") or {})
+            rows.append(
+                {
+                    "sessionId": event.get("session_id"),
+                    "worldId": normalized_world_id,
+                    "worldVersionId": payload.get("world_version_id") or event.get("world_version_id"),
+                    "attemptCount": int(payload.get("attempt_index") or 0),
+                    "firstAttemptResultStatus": payload.get("first_attempt_result_status") or payload.get("result_status"),
+                    "finalResultStatus": payload.get("result_status"),
+                    "recoveredAfterRetry": bool(payload.get("recovered_after_retry")),
+                    "bootstrapIntent": payload.get("bootstrap_intent"),
+                    "occurredAt": event.get("occurred_at"),
+                }
+            )
+
+        attempted = len(matching_events)
+        first_failed = sum(
+            1
+            for event in matching_events
+            if str(dict(event.get("payload_json") or {}).get("first_attempt_result_status") or "") == "quality_guard_failed"
+        )
+        final_failed = sum(
+            1
+            for event in matching_events
+            if str(dict(event.get("payload_json") or {}).get("result_status") or "") == "quality_guard_failed"
+        )
+        retried_recovered = sum(
+            1 for event in matching_events if bool(dict(event.get("payload_json") or {}).get("recovered_after_retry"))
+        )
+        first_rate = round(first_failed / float(max(1, attempted)), 3)
+        final_rate = round(final_failed / float(max(1, attempted)), 3)
+        summary = {
+            "worldId": normalized_world_id,
+            "attemptedCount": attempted,
+            "firstAttemptQualityGuardFailedCount": first_failed,
+            "firstAttemptQualityGuardFailedRate": first_rate,
+            "retriedRecoveryCount": retried_recovered,
+            "retriedRecoveryRate": round(retried_recovered / float(max(1, first_failed)), 3) if first_failed else 0.0,
+            "finalQualityGuardFailedCount": final_failed,
+            "finalQualityGuardFailedRate": final_rate,
+            "qualityGuardCollisionDelta": round(first_rate - final_rate, 3),
+        }
+        return {
+            "generated_at": self._utcnow(),
+            "world": summary,
+            "rows": rows,
         }

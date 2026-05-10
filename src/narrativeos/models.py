@@ -8,6 +8,14 @@ from .scene_functions import normalize_scene_function
 
 RATINGS_ORDER = {"G": 0, "PG": 1, "PG13": 2, "R": 3}
 STORY_PHASES = ("setup", "early_rising", "midpoint", "crisis", "climax", "aftermath")
+LONGFORM_DUTY_TYPES = (
+    "advance_plot",
+    "advance_relationship",
+    "resolve_promise",
+    "expand_world",
+    "pace_breath",
+    "deliver_climax",
+)
 
 
 def _deepcopy_dataclass(instance: Any) -> Dict[str, Any]:
@@ -487,6 +495,25 @@ class NarrativeState:
     visited_event_ids: List[str]
     route_fingerprint: List[str]
     rating_ceiling: str
+    current_series_id: Optional[str] = None
+    current_volume_id: Optional[str] = None
+    current_arc_id: Optional[str] = None
+    current_chapter_task: Dict[str, Any] = field(default_factory=dict)
+    word_budget: int = 2000
+    canonical_memory: List[Dict[str, Any]] = field(default_factory=list)
+    active_arc_memory: List[Dict[str, Any]] = field(default_factory=list)
+    rolling_recap: List[Dict[str, Any]] = field(default_factory=list)
+    archive_memory: List[Dict[str, Any]] = field(default_factory=list)
+    volume_memory_snapshots: List[Dict[str, Any]] = field(default_factory=list)
+    series_memory_snapshots: List[Dict[str, Any]] = field(default_factory=list)
+    steering_ledger: List[Dict[str, Any]] = field(default_factory=list)
+    storyline_checkpoint: Dict[str, Any] = field(default_factory=dict)
+    volume_storyline_checkpoint: Dict[str, Any] = field(default_factory=dict)
+    series_ending_checkpoint: Dict[str, Any] = field(default_factory=dict)
+    character_memory_runtime: Dict[str, Any] = field(default_factory=dict)
+    replan_checkpoint: Dict[str, Any] = field(default_factory=dict)
+    replan_history: List[Dict[str, Any]] = field(default_factory=list)
+    replan_stability_metrics: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -510,11 +537,30 @@ class NarrativeState:
         payload.setdefault("fate_pressure", 0.0)
         payload.setdefault("karmic_weather", {})
         payload.setdefault("unresolved_debts", [])
+        payload.setdefault("current_series_id", None)
+        payload.setdefault("current_volume_id", None)
+        payload.setdefault("current_arc_id", None)
+        payload.setdefault("current_chapter_task", {})
+        payload.setdefault("word_budget", 2000)
+        payload.setdefault("canonical_memory", [])
+        payload.setdefault("active_arc_memory", [])
+        payload.setdefault("rolling_recap", [])
+        payload.setdefault("archive_memory", [])
+        payload.setdefault("volume_memory_snapshots", [])
+        payload.setdefault("series_memory_snapshots", [])
+        payload.setdefault("steering_ledger", [])
+        payload.setdefault("storyline_checkpoint", {})
+        payload.setdefault("volume_storyline_checkpoint", {})
+        payload.setdefault("series_ending_checkpoint", {})
+        payload.setdefault("character_memory_runtime", {})
+        payload.setdefault("replan_checkpoint", {})
+        payload.setdefault("replan_history", [])
+        payload.setdefault("replan_stability_metrics", {})
         payload.setdefault("metadata", {})
         return cls(**payload)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        payload = {
             "state_id": self.state_id,
             "world_id": self.world_id,
             "turn_index": self.turn_index,
@@ -538,6 +584,51 @@ class NarrativeState:
             "rating_ceiling": self.rating_ceiling,
             "metadata": dict(self.metadata),
         }
+        if self.current_series_id is not None:
+            payload["current_series_id"] = self.current_series_id
+        if self.current_volume_id is not None:
+            payload["current_volume_id"] = self.current_volume_id
+        if self.current_arc_id is not None:
+            payload["current_arc_id"] = self.current_arc_id
+        if self.current_chapter_task:
+            payload["current_chapter_task"] = dict(self.current_chapter_task)
+        if (
+            self.word_budget != 2000
+            or self.current_series_id is not None
+            or self.current_volume_id is not None
+            or self.current_arc_id is not None
+            or self.current_chapter_task
+        ):
+            payload["word_budget"] = self.word_budget
+        if self.canonical_memory:
+            payload["canonical_memory"] = [dict(item) for item in self.canonical_memory]
+        if self.active_arc_memory:
+            payload["active_arc_memory"] = [dict(item) for item in self.active_arc_memory]
+        if self.rolling_recap:
+            payload["rolling_recap"] = [dict(item) for item in self.rolling_recap]
+        if self.archive_memory:
+            payload["archive_memory"] = [dict(item) for item in self.archive_memory]
+        if self.volume_memory_snapshots:
+            payload["volume_memory_snapshots"] = [dict(item) for item in self.volume_memory_snapshots]
+        if self.series_memory_snapshots:
+            payload["series_memory_snapshots"] = [dict(item) for item in self.series_memory_snapshots]
+        if self.steering_ledger:
+            payload["steering_ledger"] = [dict(item) for item in self.steering_ledger]
+        if self.storyline_checkpoint:
+            payload["storyline_checkpoint"] = dict(self.storyline_checkpoint)
+        if self.volume_storyline_checkpoint:
+            payload["volume_storyline_checkpoint"] = dict(self.volume_storyline_checkpoint)
+        if self.series_ending_checkpoint:
+            payload["series_ending_checkpoint"] = dict(self.series_ending_checkpoint)
+        if self.character_memory_runtime:
+            payload["character_memory_runtime"] = dict(self.character_memory_runtime)
+        if self.replan_checkpoint:
+            payload["replan_checkpoint"] = dict(self.replan_checkpoint)
+        if self.replan_history:
+            payload["replan_history"] = [dict(item) for item in self.replan_history]
+        if self.replan_stability_metrics:
+            payload["replan_stability_metrics"] = dict(self.replan_stability_metrics)
+        return payload
 
 
 @dataclass
@@ -706,6 +797,8 @@ class SceneRenderSpec:
     sensory_motifs: List[str]
     emotional_pivot: str
     ending_cadence: str
+    min_target_word_count: int = 0
+    max_target_word_count: int = 0
     must_include_beats: List[str] = field(default_factory=list)
 
     @classmethod
@@ -714,6 +807,8 @@ class SceneRenderSpec:
             prose_mode=data["prose_mode"],
             viewpoint_character=data.get("viewpoint_character", ""),
             target_word_count=int(data.get("target_word_count", 900)),
+            min_target_word_count=int(data.get("min_target_word_count", 0) or 0),
+            max_target_word_count=int(data.get("max_target_word_count", 0) or 0),
             dialogue_density=float(data.get("dialogue_density", 0.35)),
             sensory_motifs=list(data.get("sensory_motifs", [])),
             emotional_pivot=data.get("emotional_pivot", ""),
@@ -734,6 +829,8 @@ class ChapterPlan:
     beat_count: int
     ending_ready: bool
     selected_event_ids: List[str]
+    chapter_task: Dict[str, Any] = field(default_factory=dict)
+    chapter_task_execution_summary: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ChapterPlan":
@@ -745,6 +842,8 @@ class ChapterPlan:
             beat_count=int(data.get("beat_count", 0)),
             ending_ready=bool(data.get("ending_ready", False)),
             selected_event_ids=list(data.get("selected_event_ids", [])),
+            chapter_task=dict(data.get("chapter_task", {})),
+            chapter_task_execution_summary=dict(data.get("chapter_task_execution_summary", {})),
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -756,6 +855,8 @@ class ChapterPlan:
             "beat_count": self.beat_count,
             "ending_ready": self.ending_ready,
             "selected_event_ids": list(self.selected_event_ids),
+            "chapter_task": dict(self.chapter_task),
+            "chapter_task_execution_summary": dict(self.chapter_task_execution_summary),
         }
 
 
@@ -815,6 +916,7 @@ class NarrativeViewModel:
     choices: List[str]
     relationship_hints: List[str]
     can_continue: bool
+    choice_impacts: List[Dict[str, Any]] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "NarrativeViewModel":
@@ -827,6 +929,7 @@ class NarrativeViewModel:
             choices=list(data.get("choices", [])),
             relationship_hints=list(data.get("relationship_hints", [])),
             can_continue=bool(data.get("can_continue", True)),
+            choice_impacts=[dict(item) for item in data.get("choice_impacts", []) if isinstance(item, dict)],
         )
 
     def to_dict(self) -> Dict[str, Any]:

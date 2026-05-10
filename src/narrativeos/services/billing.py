@@ -26,11 +26,39 @@ class BillingService:
     def _billing_provider(self) -> str:
         return str(os.getenv("NARRATIVEOS_BILLING_PROVIDER", "web_stub"))
 
+    def _stripe_webhook_secret(self) -> Optional[str]:
+        value = str(os.getenv("NARRATIVEOS_STRIPE_WEBHOOK_SECRET", "")).strip()
+        return value or None
+
+    def _stripe_payload(self, value: Any) -> Dict[str, Any]:
+        if hasattr(value, "to_dict"):
+            return dict(value.to_dict())
+        return dict(value)
+
     def _checkout_session_ttl_minutes(self) -> int:
         try:
             return max(5, int(os.getenv("NARRATIVEOS_CHECKOUT_SESSION_TTL_MINUTES", "60")))
         except ValueError:
             return 60
+
+    def _paid_pilot_invite_only_enabled(self) -> bool:
+        return str(os.getenv("NARRATIVEOS_PAID_PILOT_INVITE_ONLY", "")).strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+
+    def _paid_pilot_invited_accounts(self) -> set[str]:
+        raw = str(os.getenv("NARRATIVEOS_PAID_PILOT_INVITED_ACCOUNTS", "")).strip()
+        return {item.strip() for item in raw.split(",") if item.strip()}
+
+    def _require_paid_pilot_checkout_invite(self, *, account_id: str) -> None:
+        if not self._paid_pilot_invite_only_enabled():
+            return
+        invited = self._paid_pilot_invited_accounts()
+        if str(account_id or "").strip() not in invited:
+            raise ValueError("checkout_invite_required")
 
     def _retry_max_attempts(self) -> int:
         try:
@@ -47,14 +75,56 @@ class BillingService:
     def _parse_expires_at(self, value: Optional[str]) -> Optional[datetime]:
         if not value:
             return None
+        if isinstance(value, datetime):
+            parsed = value
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc)
         try:
-            normalized = value.replace("Z", "+00:00")
+            normalized = str(value).replace("Z", "+00:00")
             parsed = datetime.fromisoformat(normalized)
             if parsed.tzinfo is None:
                 parsed = parsed.replace(tzinfo=timezone.utc)
             return parsed.astimezone(timezone.utc)
         except ValueError:
             return None
+
+    def _serialize_datetime(self, value: Any) -> Optional[str]:
+        if value in {None, ""}:
+            return None
+        parsed = self._parse_expires_at(value)
+        if parsed is None:
+            return str(value)
+        return parsed.isoformat()
+
+    def _timestamp_to_iso(self, value: Any) -> Optional[str]:
+        if value in {None, ""}:
+            return None
+        try:
+            return datetime.fromtimestamp(int(value), tz=timezone.utc).isoformat()
+        except (TypeError, ValueError, OSError):
+            return None
+
+    def _stripe_checkout_status(self, payload: Dict[str, Any]) -> str:
+        status = str(payload.get("status") or "")
+        if status == "complete":
+            return "completed"
+        if status == "expired":
+            return "expired"
+        return "created"
+
+    def _stripe_subscription_status(self, value: Optional[str], *, fallback: str = "active") -> str:
+        status = str(value or "").strip()
+        return {
+            "trialing": "trialing",
+            "active": "active",
+            "past_due": "past_due",
+            "unpaid": "past_due",
+            "incomplete": "past_due",
+            "paused": "paused",
+            "canceled": "canceled",
+            "incomplete_expired": "canceled",
+        }.get(status, fallback)
 
     def resolve_account_id(
         self,
@@ -74,6 +144,7 @@ class BillingService:
         balance = payload.get("balance")
         payload["balance"] = float(balance) if balance is not None else None
         expires_at = self._parse_expires_at(payload.get("expires_at"))
+        payload["expires_at"] = self._serialize_datetime(payload.get("expires_at"))
         status = payload.get("status") or "active"
         reason = "active_entitlement"
         if status == "revoked":
@@ -127,8 +198,8 @@ class BillingService:
             "price_usd_monthly": tier.get("price_usd_monthly"),
             "status": subscription["status"],
             "provider": subscription["provider"],
-            "period_start": subscription.get("period_start"),
-            "period_end": subscription.get("period_end"),
+            "period_start": self._serialize_datetime(subscription.get("period_start")),
+            "period_end": self._serialize_datetime(subscription.get("period_end")),
             "cancel_at_period_end": bool(subscription.get("cancel_at_period_end")),
             "reader_access": bool(tier.get("reader_access")),
             "author_access": tier.get("author_access", "none"),
@@ -243,7 +314,12 @@ class BillingService:
             try:
                 return self.repository.get_subscription(subscription_id)
             except KeyError:
-                return None
+                subscriptions = self.repository.list_subscriptions(account_id=account_id)
+                provider_match = next((item for item in subscriptions if str(item.get("provider_ref") or "") == str(subscription_id)), None)
+                if provider_match is not None:
+                    return provider_match
+                subscriptions = self.repository.list_subscriptions(account_id=None)
+                return next((item for item in subscriptions if str(item.get("provider_ref") or "") == str(subscription_id)), None)
         if not account_id:
             return None
         subscriptions = self.monetization.list_subscriptions(account_id=account_id)
@@ -257,6 +333,345 @@ class BillingService:
             "latest_checkout_session": latest,
             "recent_checkout_sessions": sessions,
         }
+
+    def _stripe_customer_id_for_account(self, account_id: str) -> Optional[str]:
+        lifecycle = self.repository.list_billing_lifecycle_events(account_id=account_id, limit=50)
+        for item in lifecycle:
+            payload = dict(item.get("payload_json") or {})
+            customer_id = payload.get("customer_id")
+            if customer_id:
+                return str(customer_id)
+        return None
+
+    def _account_security_state(self, *, account_id: str) -> Dict[str, Any]:
+        profile = self.repository.get_auth_identity_profile(account_id, default=None)
+        if profile is None and account_id:
+            # Quantum compat registration stores the login identity on actor_id while
+            # keeping the frontend-facing account_id as the email/account surface.
+            identity = self.repository.get_auth_identity_by_account_id(account_id, default=None)
+            actor_id = str((identity or {}).get("actor_id") or "").strip()
+            if actor_id and actor_id != account_id:
+                profile = self.repository.get_auth_identity_profile(actor_id, default=None)
+        if profile is None:
+            return {
+                "email_address": account_id if "@" in str(account_id or "") else None,
+                "email_verified": False if "@" in str(account_id or "") else True,
+                "verification_required": bool("@" in str(account_id or "")),
+                "verification_sent_at": None,
+                "verified_at": None,
+                "password_reset_sent_at": None,
+            }
+        return {
+            "email_address": profile.get("email_address"),
+            "email_verified": bool(profile.get("email_verified")),
+            "verification_required": bool(profile.get("verification_required")),
+            "verification_sent_at": profile.get("verification_sent_at"),
+            "verified_at": profile.get("verified_at"),
+            "password_reset_sent_at": profile.get("password_reset_sent_at"),
+        }
+
+    def _require_verified_email_for_billing(self, *, account_id: str) -> None:
+        security = self._account_security_state(account_id=account_id)
+        if security.get("verification_required") and not security.get("email_verified"):
+            raise ValueError("email_verification_required_for_billing")
+
+    def _upsert_checkout_session_record(
+        self,
+        *,
+        checkout_session_id: str,
+        account_id: str,
+        tier_id: str,
+        provider: str,
+        status: str,
+        checkout_kind: str = "subscription",
+        package_id: Optional[str] = None,
+        provider_ref: Optional[str] = None,
+        checkout_url: Optional[str] = None,
+        subscription_id: Optional[str] = None,
+        expires_at: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+        fulfilled_at: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        existing = None
+        try:
+            existing = self.repository.get_billing_checkout_session(checkout_session_id)
+        except KeyError:
+            existing = None
+        return self.repository.save_billing_checkout_session(
+            {
+                "checkout_session_id": checkout_session_id,
+                "account_id": account_id,
+                "checkout_kind": checkout_kind if checkout_kind is not None else (existing or {}).get("checkout_kind") or "subscription",
+                "tier_id": tier_id,
+                "package_id": package_id if package_id is not None else (existing or {}).get("package_id"),
+                "provider": provider,
+                "provider_ref": provider_ref or (existing or {}).get("provider_ref") or checkout_session_id,
+                "subscription_id": subscription_id if subscription_id is not None else (existing or {}).get("subscription_id"),
+                "status": status,
+                "checkout_url": checkout_url if checkout_url is not None else (existing or {}).get("checkout_url"),
+                "idempotency_key": idempotency_key or (existing or {}).get("idempotency_key") or f"{provider}:{account_id}:{tier_id}:{checkout_session_id}",
+                "expires_at": expires_at if expires_at is not None else (existing or {}).get("expires_at"),
+                "fulfilled_at": fulfilled_at if fulfilled_at is not None else (existing or {}).get("fulfilled_at"),
+            }
+        )
+
+    def _tier_rank(self, tier_id: Optional[str]) -> int:
+        tiers = [str(item.get("tier_id")) for item in self.monetization.tiers()]
+        try:
+            return tiers.index(str(tier_id))
+        except ValueError:
+            return -1
+
+    def _provider_subscription_status_rank(self, status: Optional[str]) -> int:
+        return {
+            "active": 0,
+            "trialing": 1,
+            "past_due": 2,
+            "paused": 3,
+            "canceled": 4,
+            "expired": 5,
+        }.get(str(status or ""), 99)
+
+    def _provider_subscription_snapshot(self, subscription: Dict[str, Any]) -> Dict[str, Any]:
+        tier = self.monetization.get_tier(subscription["tier_id"])
+        return {
+            "provider_subscription_id": subscription["provider_subscription_id"],
+            "account_id": subscription["account_id"],
+            "provider": subscription["provider"],
+            "provider_ref": subscription.get("provider_ref"),
+            "provider_customer_id": subscription.get("provider_customer_id"),
+            "provider_checkout_session_id": subscription.get("provider_checkout_session_id"),
+            "provider_order_id": subscription.get("provider_order_id"),
+            "tier_id": subscription["tier_id"],
+            "display_name": tier.get("display_name", subscription["tier_id"]),
+            "status": subscription["status"],
+            "environment": subscription.get("environment"),
+            "verification_status": subscription.get("verification_status"),
+            "last_verified_at": self._serialize_datetime(subscription.get("last_verified_at")),
+            "period_start": self._serialize_datetime(subscription.get("period_start")),
+            "period_end": self._serialize_datetime(subscription.get("period_end")),
+            "cancel_at_period_end": bool(subscription.get("cancel_at_period_end")),
+            "payload_json": dict(subscription.get("payload_json") or {}),
+            "updated_at": self._serialize_datetime(subscription.get("updated_at")),
+        }
+
+    def _list_provider_subscriptions(self, *, account_id: str) -> List[Dict[str, Any]]:
+        return [
+            self._provider_subscription_snapshot(item)
+            for item in self.repository.list_provider_subscriptions(account_id=account_id)
+        ]
+
+    def _effective_provider_subscription(self, *, account_id: str) -> Optional[Dict[str, Any]]:
+        provider_subscriptions = self.repository.list_provider_subscriptions(account_id=account_id)
+        if not provider_subscriptions:
+            return None
+        provider_subscriptions.sort(
+            key=lambda item: (
+                self._provider_subscription_status_rank(item.get("status")),
+                -self._tier_rank(item.get("tier_id")),
+                str(item.get("period_end") or ""),
+                str(item.get("updated_at") or ""),
+            ),
+            reverse=False,
+        )
+        best = sorted(
+            provider_subscriptions,
+            key=lambda item: (
+                self._provider_subscription_status_rank(item.get("status")),
+                -self._tier_rank(item.get("tier_id")),
+                -(self._parse_expires_at(item.get("period_end")) or datetime.fromtimestamp(0, tz=timezone.utc)).timestamp(),
+                -(self._parse_expires_at(item.get("updated_at")) or datetime.fromtimestamp(0, tz=timezone.utc)).timestamp(),
+            ),
+        )[0]
+        return best
+
+    def _provider_source_summary(self, *, account_id: str) -> Dict[str, Any]:
+        items = self.repository.list_provider_subscriptions(account_id=account_id)
+        effective = self._effective_provider_subscription(account_id=account_id)
+        by_provider: Dict[str, int] = {}
+        environments: Dict[str, int] = {}
+        for item in items:
+            provider = str(item.get("provider") or "unknown")
+            environment = str(item.get("environment") or "unknown")
+            by_provider[provider] = by_provider.get(provider, 0) + 1
+            environments[environment] = environments.get(environment, 0) + 1
+        return {
+            "provider_subscription_count": len(items),
+            "by_provider": by_provider,
+            "by_environment": environments,
+            "effective_provider": effective.get("provider") if effective else None,
+            "effective_provider_ref": effective.get("provider_ref") if effective else None,
+            "effective_verification_status": effective.get("verification_status") if effective else None,
+        }
+
+    def _refund_dispute_summary(self, *, account_id: str) -> Dict[str, Any]:
+        events = self.repository.list_billing_lifecycle_events(account_id=account_id, limit=50)
+        refund_events = [item for item in events if item.get("event_type") in {"payment_refunded"}]
+        dispute_events = [item for item in events if item.get("event_type") in {"charge_disputed", "charge_dispute_closed"}]
+        active_disputes = [item for item in dispute_events if item.get("event_type") == "charge_disputed"]
+        latest = (refund_events + dispute_events)[:10]
+        return {
+            "refund_count": len(refund_events),
+            "dispute_count": len(active_disputes),
+            "latest_events": latest,
+        }
+
+    def _sync_effective_subscription_from_provider_records(self, *, account_id: str) -> Optional[Dict[str, Any]]:
+        effective = self._effective_provider_subscription(account_id=account_id)
+        if effective is None:
+            return None
+        existing = self._find_subscription_for_event(account_id=account_id, subscription_id=None)
+        if existing is None or existing.get("provider") in {"stripe", "app_store", "google_play"}:
+            payload = {
+                "account_id": account_id,
+                "tier_id": effective["tier_id"],
+                "provider": effective["provider"],
+                "provider_ref": effective.get("provider_ref"),
+                "status": effective["status"],
+                "period_start": effective.get("period_start"),
+                "period_end": effective.get("period_end"),
+                "cancel_at_period_end": effective.get("cancel_at_period_end"),
+            }
+            if existing is not None:
+                payload["subscription_id"] = existing["subscription_id"]
+            current = self.repository.save_subscription(payload)
+            if current.get("status") in {"trialing", "active"}:
+                self.monetization.refill_subscription_wallets(current["subscription_id"])
+            return current
+        return existing
+
+    def _upsert_provider_subscription_record(
+        self,
+        *,
+        account_id: str,
+        provider: str,
+        tier_id: str,
+        provider_ref: Optional[str],
+        status: str,
+        environment: str = "test",
+        verification_status: str = "verified",
+        last_verified_at: Optional[str] = None,
+        period_start: Optional[str] = None,
+        period_end: Optional[str] = None,
+        cancel_at_period_end: bool = False,
+        provider_customer_id: Optional[str] = None,
+        provider_checkout_session_id: Optional[str] = None,
+        provider_order_id: Optional[str] = None,
+        latest_event_id: Optional[str] = None,
+        payload_json: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        existing = self.repository.get_provider_subscription_by_ref(
+            provider=provider,
+            provider_ref=provider_ref,
+            provider_checkout_session_id=provider_checkout_session_id,
+            provider_order_id=provider_order_id,
+            default=None,
+        )
+        payload: Dict[str, Any] = {
+            "account_id": account_id,
+            "tier_id": tier_id,
+            "provider": provider,
+            "provider_ref": provider_ref,
+            "provider_customer_id": provider_customer_id,
+            "provider_checkout_session_id": provider_checkout_session_id,
+            "provider_order_id": provider_order_id,
+            "environment": environment,
+            "verification_status": verification_status,
+            "last_verified_at": last_verified_at or self._utcnow().isoformat(),
+            "status": status,
+            "period_start": period_start,
+            "period_end": period_end,
+            "cancel_at_period_end": cancel_at_period_end,
+            "latest_event_id": latest_event_id,
+            "payload_json": dict(payload_json or {}),
+        }
+        if existing is not None:
+            payload["provider_subscription_id"] = existing["provider_subscription_id"]
+        saved = self.repository.save_provider_subscription(payload)
+        self._sync_effective_subscription_from_provider_records(account_id=account_id)
+        return saved
+
+    def _reconcile_external_provider_subscription(
+        self,
+        *,
+        account_id: str,
+        provider_payload: Dict[str, Any],
+        latest_event_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        provider_record = self._upsert_provider_subscription_record(
+            account_id=account_id,
+            provider=str(provider_payload["provider"]),
+            tier_id=str(provider_payload["tier_id"]),
+            provider_ref=provider_payload.get("provider_ref"),
+            provider_customer_id=provider_payload.get("provider_customer_id"),
+            provider_checkout_session_id=provider_payload.get("provider_checkout_session_id"),
+            provider_order_id=provider_payload.get("provider_order_id"),
+            status=str(provider_payload.get("status") or "active"),
+            environment=str(provider_payload.get("environment") or "test"),
+            verification_status=str(provider_payload.get("verification_status") or "verified"),
+            last_verified_at=self._utcnow().isoformat(),
+            period_start=provider_payload.get("period_start"),
+            period_end=provider_payload.get("period_end"),
+            cancel_at_period_end=bool(provider_payload.get("cancel_at_period_end")),
+            latest_event_id=latest_event_id,
+            payload_json=dict(provider_payload.get("payload_json") or {}),
+        )
+        effective = self._sync_effective_subscription_from_provider_records(account_id=account_id)
+        return {
+            "provider_subscription": self._provider_subscription_snapshot(provider_record),
+            "effective_subscription": self._subscription_snapshot(effective) if effective else None,
+        }
+
+    def _reconcile_stripe_subscription_record(
+        self,
+        *,
+        account_id: str,
+        tier_id: str,
+        stripe_subscription: Dict[str, Any],
+        local_subscription_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        provider_ref = str(stripe_subscription.get("id") or "").strip()
+        local_subscription = self._find_subscription_for_event(
+            account_id=account_id,
+            subscription_id=local_subscription_id or provider_ref or None,
+        )
+        status = self._stripe_subscription_status(
+            stripe_subscription.get("status"),
+            fallback=(local_subscription or {}).get("status", "active"),
+        )
+        period_start = self._timestamp_to_iso(stripe_subscription.get("current_period_start")) or (local_subscription or {}).get("period_start")
+        period_end = self._timestamp_to_iso(stripe_subscription.get("current_period_end")) or (local_subscription or {}).get("period_end")
+        cancel_at_period_end = bool(stripe_subscription.get("cancel_at_period_end"))
+        self._upsert_provider_subscription_record(
+            account_id=account_id,
+            provider="stripe",
+            tier_id=tier_id or (local_subscription or {}).get("tier_id") or "play_pass",
+            provider_ref=provider_ref or None,
+            provider_customer_id=str(stripe_subscription.get("customer") or "").strip() or None,
+            provider_checkout_session_id=None,
+            status=status,
+            environment="live" if str(os.getenv("NARRATIVEOS_STRIPE_SECRET_KEY", "")).startswith("sk_live_") else "test",
+            verification_status="verified",
+            period_start=period_start,
+            period_end=period_end,
+            cancel_at_period_end=cancel_at_period_end,
+            payload_json=stripe_subscription,
+        )
+        effective = self._sync_effective_subscription_from_provider_records(account_id=account_id)
+        if effective is not None:
+            return effective
+        if local_subscription is not None:
+            return local_subscription
+        return self.monetization.create_subscription(
+            account_id=account_id,
+            tier_id=tier_id,
+            provider="stripe",
+            provider_ref=provider_ref or None,
+            status=status,
+            period_start=period_start,
+            period_end=period_end,
+            cancel_at_period_end=cancel_at_period_end,
+        )
 
     def _lifecycle_history_summary(self, account_id: str) -> Dict[str, Any]:
         events = self.repository.list_billing_lifecycle_events(account_id=account_id, limit=20)
@@ -494,6 +909,102 @@ class BillingService:
             },
         }
 
+    def _normalize_billing_lifecycle_event(self, event: Dict[str, Any], *, account_id: str) -> Dict[str, Any]:
+        payload = dict(event.get("payload_json") or {})
+        processing_result = dict(event.get("processing_result") or {})
+        event_type = str(event.get("event_type") or "billing_lifecycle_event")
+        object_type = "account"
+        object_id = account_id
+        subscription_id = event.get("subscription_id") or processing_result.get("subscription_id")
+        checkout_session_id = event.get("checkout_session_id") or processing_result.get("checkout_session_id")
+        if subscription_id:
+            object_type = "subscription"
+            object_id = subscription_id
+        elif checkout_session_id:
+            object_type = "checkout_session"
+            object_id = checkout_session_id
+        return {
+            "trail_id": "billing_%s" % event.get("event_id"),
+            "source_type": "billing_lifecycle_event",
+            "category": "checkout" if event_type.startswith("checkout_") else "subscription",
+            "surface": "reader" if event_type.startswith("checkout_") else "ops",
+            "action": event_type,
+            "occurred_at": event.get("occurred_at"),
+            "actor_id": payload.get("requested_by") or event.get("account_id") or account_id,
+            "target_account_id": account_id,
+            "object_type": object_type,
+            "object_id": object_id,
+            "status": event.get("status"),
+            "reason": processing_result.get("subscription_status") or payload.get("reason"),
+            "wallet_type": None,
+            "tier_id": processing_result.get("tier_id") or payload.get("tier_id"),
+            "balance": None,
+            "usage_units": None,
+            "session_id": payload.get("session_id"),
+            "reader_id": event.get("account_id") or account_id,
+            "world_id": payload.get("world_id"),
+            "world_version_id": payload.get("world_version_id"),
+            "headline": event_type.replace("_", " "),
+            "details": {
+                "provider": event.get("provider"),
+                "provider_event_id": event.get("provider_event_id"),
+                "checkout_session_id": checkout_session_id,
+                "subscription_id": subscription_id,
+                "payload": payload,
+                "processing_result": processing_result,
+            },
+        }
+
+    def _normalize_audit_log(self, entry: Dict[str, Any], *, account_id: str) -> Dict[str, Any]:
+        customer_payload = dict(entry.get("customer_visible_payload_json") or {})
+        internal_payload = dict(entry.get("internal_payload_json") or {})
+        action = str(entry.get("action_type") or "audit_log")
+        surface = str(entry.get("source_surface") or "ops")
+        status = str(
+            customer_payload.get("status")
+            or internal_payload.get("status")
+            or internal_payload.get("next_status")
+            or "recorded"
+        )
+        reason = (
+            customer_payload.get("summary")
+            or customer_payload.get("reason")
+            or internal_payload.get("note")
+            or internal_payload.get("resolution_notes")
+        )
+        category = "ops"
+        if action.startswith("governance_"):
+            category = "governance"
+        elif action.startswith("ops_alert_"):
+            category = "alert"
+        return {
+            "trail_id": "audit_%s" % entry.get("audit_log_id"),
+            "source_type": "audit_log",
+            "category": category,
+            "surface": surface,
+            "action": action,
+            "occurred_at": entry.get("created_at"),
+            "actor_id": entry.get("actor_id"),
+            "target_account_id": account_id,
+            "object_type": entry.get("object_type"),
+            "object_id": entry.get("object_id"),
+            "status": status,
+            "reason": reason,
+            "wallet_type": None,
+            "tier_id": None,
+            "balance": None,
+            "usage_units": None,
+            "session_id": internal_payload.get("session_id"),
+            "reader_id": account_id,
+            "world_id": internal_payload.get("world_id"),
+            "world_version_id": internal_payload.get("world_version_id"),
+            "headline": action.replace("_", " "),
+            "details": {
+                "customer_visible_payload": customer_payload,
+                "internal_payload": internal_payload,
+            },
+        }
+
     def full_audit_trail(self, *, account_id: str, limit: int = 50) -> Dict[str, Any]:
         authored_world_version_ids = self._authored_world_version_ids(account_id, limit=max(limit, 10))
         analytics_events = self.repository.list_analytics_events(reader_id=account_id, limit=max(limit * 4, 20))
@@ -507,9 +1018,13 @@ class BillingService:
                 deduped.setdefault(str(item.get("event_id")), item)
             analytics_events = list(deduped.values())
         meters = self.repository.list_usage_meters(account_id=account_id)[: max(limit * 2, 20)]
+        lifecycle_events = self.repository.list_billing_lifecycle_events(account_id=account_id, limit=max(limit * 4, 20))
+        audit_logs = self.repository.list_audit_logs(account_id=account_id, limit=max(limit * 4, 20))
         trail = [
             *[self._normalize_audit_event(item, account_id=account_id) for item in analytics_events],
             *[self._normalize_audit_meter(item, account_id=account_id) for item in meters],
+            *[self._normalize_billing_lifecycle_event(item, account_id=account_id) for item in lifecycle_events],
+            *[self._normalize_audit_log(item, account_id=account_id) for item in audit_logs],
         ]
         trail.sort(key=lambda item: (str(item.get("occurred_at") or ""), str(item.get("trail_id") or "")), reverse=True)
         has_more = len(trail) > limit
@@ -549,6 +1064,8 @@ class BillingService:
                 "sources": {
                     "analytics_events": len(analytics_events),
                     "usage_meters": len(meters),
+                    "billing_lifecycle_events": len(lifecycle_events),
+                    "audit_logs": len(audit_logs),
                     "authored_world_versions": len(authored_world_version_ids),
                 },
             },
@@ -644,6 +1161,9 @@ class BillingService:
             **self._checkout_session_summary(account_id),
             "lifecycle_history_summary": self._lifecycle_history_summary(account_id),
             "entitlements": raw_entitlements,
+            "effective_tier": (self._effective_provider_subscription(account_id=account_id) or {}).get("tier_id") or (subscription or {}).get("tier_id"),
+            "provider_subscriptions": self._list_provider_subscriptions(account_id=account_id),
+            "provider_source_summary": self._provider_source_summary(account_id=account_id),
             **self._config_snapshot(),
         }
 
@@ -735,8 +1255,13 @@ class BillingService:
         }
 
     def subscription_status(self, *, account_id: str) -> Dict[str, Any]:
+        self._sync_effective_subscription_from_provider_records(account_id=account_id)
         subscriptions = self.monetization.list_subscriptions(account_id=account_id)
         active = next((item for item in subscriptions if item["status"] in {"trialing", "active"}), None) or (subscriptions[0] if subscriptions else None)
+        stripe_customer_id = self._stripe_customer_id_for_account(account_id)
+        provider_subscriptions = self._list_provider_subscriptions(account_id=account_id)
+        effective_provider = self._effective_provider_subscription(account_id=account_id)
+        security_state = self._account_security_state(account_id=account_id)
         return {
             "account_id": account_id,
             "subscription": self._subscription_snapshot(active) if active else None,
@@ -746,33 +1271,66 @@ class BillingService:
             "retryable": bool(active and active.get("status") == "past_due"),
             "renewable": bool(active and active.get("status") in {"past_due", "canceled", "expired"}) if active else False,
             "recommended_action": self._recommended_subscription_action(active),
+            "checkout_provider_status": self.monetization.checkout_provider_status(self._billing_provider()),
+            "customer_portal_available": bool(stripe_customer_id),
+            "customer_id": stripe_customer_id,
+            "effective_tier": (effective_provider or {}).get("tier_id") or (active or {}).get("tier_id"),
+            "provider_subscriptions": provider_subscriptions,
+            "provider_source_summary": self._provider_source_summary(account_id=account_id),
+            "refund_dispute_summary": self._refund_dispute_summary(account_id=account_id),
+            **security_state,
             **self._config_snapshot(),
         }
 
-    def start_checkout(self, *, account_id: str, tier_id: str, provider: str = "web_stub") -> Dict[str, Any]:
+    def start_checkout(
+        self,
+        *,
+        account_id: str,
+        tier_id: str,
+        provider: Optional[str] = None,
+        customer_email: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        success_url: Optional[str] = None,
+        cancel_url: Optional[str] = None,
+    ) -> Dict[str, Any]:
         restriction = self._active_restriction_for_scope(account_id, scope="checkout")
         if restriction:
             raise ValueError("checkout_restricted")
-        checkout = self.monetization.start_checkout(account_id=account_id, tier_id=tier_id, provider=provider)
+        self._require_paid_pilot_checkout_invite(account_id=account_id)
+        self._require_verified_email_for_billing(account_id=account_id)
+        resolved_provider = str(provider or self._billing_provider())
+        try:
+            checkout = self.monetization.start_checkout(
+                account_id=account_id,
+                tier_id=tier_id,
+                provider=resolved_provider,
+                customer_email=customer_email,
+                metadata=metadata,
+                success_url=success_url,
+                cancel_url=cancel_url,
+            )
+        except RuntimeError as exc:
+            raise ValueError(str(exc)) from exc
         expires_at = (self._utcnow() + timedelta(minutes=self._checkout_session_ttl_minutes())).isoformat()
         checkout_session = self.repository.save_billing_checkout_session(
             {
                 "checkout_session_id": checkout["session_id"],
                 "account_id": account_id,
+                "checkout_kind": "subscription",
                 "tier_id": tier_id,
-                "provider": provider,
-                "provider_ref": checkout["session_id"],
+                "provider": resolved_provider,
+                "provider_ref": checkout.get("provider_ref") or checkout["session_id"],
                 "status": "created",
                 "checkout_url": checkout.get("checkout_url"),
-                "idempotency_key": f"{provider}:{account_id}:{tier_id}:{checkout['session_id']}",
+                "idempotency_key": f"{resolved_provider}:{account_id}:{tier_id}:{checkout['session_id']}",
                 "expires_at": expires_at,
             }
         )
         self._record_lifecycle_event(
             {
                 "event_type": "checkout_session_created",
-                "provider": provider,
-                "provider_event_id": f"{provider}:{checkout['session_id']}:created",
+                "provider": resolved_provider,
+                "provider_event_id": f"{resolved_provider}:{checkout['session_id']}:created",
                 "account_id": account_id,
                 "checkout_session_id": checkout_session["checkout_session_id"],
                 "status": "processed",
@@ -785,6 +1343,264 @@ class BillingService:
         return {
             **checkout_session,
             "session_id": checkout_session["checkout_session_id"],
+        }
+
+    def start_ink_checkout(
+        self,
+        *,
+        account_id: str,
+        package_id: str,
+        provider: Optional[str] = None,
+        customer_email: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        success_url: Optional[str] = None,
+        cancel_url: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        restriction = self._active_restriction_for_scope(account_id, scope="checkout")
+        if restriction:
+            raise ValueError("checkout_restricted")
+        self._require_paid_pilot_checkout_invite(account_id=account_id)
+        self._require_verified_email_for_billing(account_id=account_id)
+        package = self.monetization.get_ink_package(package_id)
+        resolved_provider = str(provider or self._billing_provider())
+        try:
+            checkout = self.monetization.start_ink_checkout(
+                account_id=account_id,
+                package_id=str(package.get("package_id") or package_id),
+                provider=resolved_provider,
+                customer_email=customer_email,
+                metadata=metadata,
+                success_url=success_url,
+                cancel_url=cancel_url,
+            )
+        except RuntimeError as exc:
+            raise ValueError(str(exc)) from exc
+        expires_at = (self._utcnow() + timedelta(minutes=self._checkout_session_ttl_minutes())).isoformat()
+        checkout_session = self.repository.save_billing_checkout_session(
+            {
+                "checkout_session_id": checkout["session_id"],
+                "account_id": account_id,
+                "checkout_kind": "ink",
+                "tier_id": "story_credits",
+                "package_id": str(package.get("package_id") or package_id),
+                "provider": resolved_provider,
+                "provider_ref": checkout.get("provider_ref") or checkout["session_id"],
+                "status": "created",
+                "checkout_url": checkout.get("checkout_url"),
+                "idempotency_key": f"{resolved_provider}:{account_id}:ink:{package.get('package_id') or package_id}:{checkout['session_id']}",
+                "expires_at": expires_at,
+            }
+        )
+        self._record_lifecycle_event(
+            {
+                "event_type": "checkout_session_created",
+                "provider": resolved_provider,
+                "provider_event_id": f"{resolved_provider}:{checkout['session_id']}:created",
+                "account_id": account_id,
+                "checkout_session_id": checkout_session["checkout_session_id"],
+                "status": "processed",
+                "payload_json": {
+                    **checkout_session,
+                    "checkout_kind": "ink",
+                    "package_id": str(package.get("package_id") or package_id),
+                    "wallet_type": "story_credits",
+                    "package_amount": package.get("amount"),
+                    "package_bonus": package.get("bonus"),
+                },
+                "processing_result": {"checkout_session_status": checkout_session["status"]},
+                "occurred_at": self._utcnow().isoformat(),
+                "processed_at": self._utcnow().isoformat(),
+            }
+        )
+        return {
+            **checkout_session,
+            "session_id": checkout_session["checkout_session_id"],
+            "package_id": str(package.get("package_id") or package_id),
+            "amount": float(package.get("amount") or 0.0),
+            "bonus": float(package.get("bonus") or 0.0),
+            "price_usd": float(package.get("price_usd") or 0.0),
+        }
+
+    def complete_checkout_session(
+        self,
+        *,
+        checkout_session_id: str,
+        account_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        try:
+            remote_checkout = self.monetization.retrieve_checkout_session(
+                checkout_session_id=checkout_session_id,
+                provider="stripe",
+            )
+        except RuntimeError as exc:
+            raise ValueError(str(exc)) from exc
+        metadata = dict(remote_checkout.get("metadata") or {})
+        resolved_account_id = str(account_id or "").strip() or None
+        remote_account_id = str(
+            metadata.get("account_id")
+            or remote_checkout.get("client_reference_id")
+            or resolved_account_id
+            or ""
+        ).strip()
+        if not remote_account_id:
+            raise ValueError("stripe_checkout_account_missing")
+        if resolved_account_id and resolved_account_id != remote_account_id:
+            raise PermissionError("checkout_session_account_mismatch")
+
+        existing_checkout = None
+        try:
+            existing_checkout = self.repository.get_billing_checkout_session(checkout_session_id)
+        except KeyError:
+            existing_checkout = None
+        if existing_checkout and str(existing_checkout.get("account_id") or "") not in {"", remote_account_id}:
+            raise PermissionError("checkout_session_account_mismatch")
+
+        tier_id = str(
+            (existing_checkout or {}).get("tier_id")
+            or metadata.get("tier_id")
+            or ""
+        ).strip()
+        checkout_kind = str(
+            (existing_checkout or {}).get("checkout_kind")
+            or metadata.get("checkout_kind")
+            or ("ink" if metadata.get("package_id") else "subscription")
+        ).strip() or "subscription"
+        package_id = str(
+            (existing_checkout or {}).get("package_id")
+            or metadata.get("package_id")
+            or ""
+        ).strip() or None
+        if checkout_kind == "subscription" and not tier_id:
+            raise ValueError("stripe_checkout_tier_missing")
+        if checkout_kind == "ink" and not package_id:
+            raise ValueError("stripe_checkout_package_missing")
+        resolved_tier_id = tier_id or "story_credits"
+
+        checkout_status = self._stripe_checkout_status(remote_checkout)
+        checkout_record = self._upsert_checkout_session_record(
+            checkout_session_id=checkout_session_id,
+            account_id=remote_account_id,
+            tier_id=resolved_tier_id,
+            provider="stripe",
+            status=checkout_status,
+            checkout_kind=checkout_kind,
+            package_id=package_id,
+            provider_ref=str(remote_checkout.get("id") or checkout_session_id),
+            checkout_url=remote_checkout.get("url"),
+            expires_at=self._timestamp_to_iso(remote_checkout.get("expires_at")),
+        )
+
+        customer_id = str(remote_checkout.get("customer") or "").strip() or None
+        subscription_ref = str(remote_checkout.get("subscription") or "").strip() or None
+        processed_event = None
+        subscription = None
+
+        if checkout_status == "completed" and subscription_ref:
+            processed_event = self._process_lifecycle_event(
+                {
+                    "event_type": "checkout_session_completed",
+                    "provider": "stripe",
+                    "provider_event_id": f"stripe_reconcile:{checkout_session_id}:completed",
+                    "account_id": remote_account_id,
+                    "subscription_id": subscription_ref,
+                    "checkout_session_id": checkout_session_id,
+                    "payload_json": {
+                        "source": "checkout_completion_reconcile",
+                        "stripe_event_type": "checkout.session.completed",
+                        "account_id": remote_account_id,
+                        "customer_id": customer_id,
+                        "subscription_id": subscription_ref,
+                        "checkout_session_id": checkout_session_id,
+                        "status": remote_checkout.get("status"),
+                        "metadata": metadata,
+                    },
+                    "occurred_at": self._timestamp_to_iso(remote_checkout.get("created")) or self._utcnow().isoformat(),
+                }
+            )
+            try:
+                remote_subscription = self.monetization.retrieve_subscription(
+                    subscription_ref=subscription_ref,
+                    provider="stripe",
+                )
+            except RuntimeError as exc:
+                raise ValueError(str(exc)) from exc
+            subscription = self._reconcile_stripe_subscription_record(
+                account_id=remote_account_id,
+                tier_id=resolved_tier_id,
+                stripe_subscription=remote_subscription,
+                local_subscription_id=processed_event.get("processing_result", {}).get("subscription_id"),
+            )
+            checkout_record = self._upsert_checkout_session_record(
+                checkout_session_id=checkout_session_id,
+                account_id=remote_account_id,
+                tier_id=resolved_tier_id,
+                provider="stripe",
+                status="completed",
+                checkout_kind=checkout_kind,
+                package_id=package_id,
+                provider_ref=str(remote_checkout.get("id") or checkout_session_id),
+                checkout_url=remote_checkout.get("url"),
+                subscription_id=subscription["subscription_id"],
+                expires_at=self._timestamp_to_iso(remote_checkout.get("expires_at")),
+            )
+        elif checkout_status == "expired":
+            processed_event = self._process_lifecycle_event(
+                {
+                    "event_type": "checkout_session_expired",
+                    "provider": "stripe",
+                    "provider_event_id": f"stripe_reconcile:{checkout_session_id}:expired",
+                    "account_id": remote_account_id,
+                    "checkout_session_id": checkout_session_id,
+                    "payload_json": {
+                        "source": "checkout_completion_reconcile",
+                        "stripe_event_type": "checkout.session.expired",
+                        "account_id": remote_account_id,
+                        "customer_id": customer_id,
+                        "checkout_session_id": checkout_session_id,
+                        "status": remote_checkout.get("status"),
+                        "metadata": metadata,
+                    },
+                    "occurred_at": self._timestamp_to_iso(remote_checkout.get("created")) or self._utcnow().isoformat(),
+                }
+            )
+        elif checkout_status == "completed" and checkout_kind == "ink":
+            processed_event = self._process_lifecycle_event(
+                {
+                    "event_type": "checkout_session_completed",
+                    "provider": "stripe",
+                    "provider_event_id": f"stripe_reconcile:{checkout_session_id}:completed",
+                    "account_id": remote_account_id,
+                    "checkout_session_id": checkout_session_id,
+                    "payload_json": {
+                        "source": "checkout_completion_reconcile",
+                        "stripe_event_type": "checkout.session.completed",
+                        "account_id": remote_account_id,
+                        "customer_id": customer_id,
+                        "checkout_session_id": checkout_session_id,
+                        "status": remote_checkout.get("status"),
+                        "metadata": metadata,
+                        "checkout_kind": "ink",
+                        "package_id": package_id,
+                    },
+                    "occurred_at": self._timestamp_to_iso(remote_checkout.get("created")) or self._utcnow().isoformat(),
+                }
+            )
+            checkout_record = self.repository.get_billing_checkout_session(checkout_session_id)
+        elif checkout_record.get("subscription_id"):
+            try:
+                subscription = self.monetization.reconcile_subscription_lifecycle(checkout_record["subscription_id"])
+            except KeyError:
+                subscription = None
+
+        return {
+            "account_id": remote_account_id,
+            "checkout": checkout_record,
+            "subscription": self._subscription_snapshot(subscription) if subscription else None,
+            "wallet": self._wallets_for_account(remote_account_id).get("story_credits") if checkout_kind == "ink" else None,
+            "customer_id": customer_id or self._stripe_customer_id_for_account(remote_account_id),
+            "customer_portal_available": bool(customer_id or self._stripe_customer_id_for_account(remote_account_id)),
+            "processed_event": processed_event,
+            "remote_checkout_status": checkout_status,
         }
 
     def _process_lifecycle_event(self, event: Dict[str, Any], *, replay: bool = False) -> Dict[str, Any]:
@@ -820,7 +1636,43 @@ class BillingService:
             }
         elif event_type == "checkout_session_completed":
             checkout_session = self.repository.get_billing_checkout_session(str(checkout_session_id))
-            if checkout_session.get("subscription_id"):
+            if checkout_session.get("checkout_kind") == "ink":
+                package_id = str(checkout_session.get("package_id") or "").strip()
+                if not package_id:
+                    raise KeyError("ink_checkout_package_required")
+                if checkout_session.get("fulfilled_at"):
+                    wallet = self._wallets_for_account(checkout_session["account_id"]).get("story_credits")
+                    processing_result = {
+                        "applied": False,
+                        "package_id": package_id,
+                        "checkout_session_status": checkout_session["status"],
+                        "wallet_type": "story_credits",
+                        "wallet_balance": float((wallet or {}).get("balance") or 0.0),
+                    }
+                else:
+                    package = self.monetization.get_ink_package(package_id)
+                    granted_units = float(package.get("amount") or 0.0) + float(package.get("bonus") or 0.0)
+                    wallet = self.grant_wallet_credits(
+                        account_id=checkout_session["account_id"],
+                        wallet_type=str(package.get("wallet_type") or "story_credits"),
+                        amount=granted_units,
+                    )
+                    checkout_session = self.repository.save_billing_checkout_session(
+                        {
+                            **checkout_session,
+                            "status": "completed",
+                            "fulfilled_at": self._utcnow().isoformat(),
+                        }
+                    )
+                    processing_result = {
+                        "applied": True,
+                        "package_id": package_id,
+                        "checkout_session_status": checkout_session["status"],
+                        "wallet_type": str(package.get("wallet_type") or "story_credits"),
+                        "granted_units": granted_units,
+                        "wallet_balance": float(wallet.get("balance") or 0.0),
+                    }
+            elif checkout_session.get("subscription_id"):
                 subscription = self.repository.get_subscription(checkout_session["subscription_id"])
             elif existing and existing.get("processing_result", {}).get("subscription_id"):
                 subscription = self.repository.get_subscription(existing["processing_result"]["subscription_id"])
@@ -829,21 +1681,21 @@ class BillingService:
                     account_id=checkout_session["account_id"],
                     tier_id=checkout_session["tier_id"],
                     provider=checkout_session["provider"],
-                    provider_ref=checkout_session["provider_ref"],
+                    provider_ref=event_record.get("subscription_id") or checkout_session["provider_ref"],
                     status="active",
                 )
-            checkout_session = self.repository.save_billing_checkout_session(
-                {
-                    **checkout_session,
+                checkout_session = self.repository.save_billing_checkout_session(
+                    {
+                        **checkout_session,
+                        "subscription_id": subscription["subscription_id"],
+                        "status": "completed",
+                    }
+                )
+                processing_result = {
+                    "applied": True,
                     "subscription_id": subscription["subscription_id"],
-                    "status": "completed",
+                    "checkout_session_status": checkout_session["status"],
                 }
-            )
-            processing_result = {
-                "applied": True,
-                "subscription_id": subscription["subscription_id"],
-                "checkout_session_status": checkout_session["status"],
-            }
         elif event_type == "checkout_session_expired":
             checkout_session = self.repository.get_billing_checkout_session(str(checkout_session_id))
             checkout_session = self.repository.save_billing_checkout_session(
@@ -923,6 +1775,12 @@ class BillingService:
                 "subscription_id": subscription["subscription_id"],
                 "subscription_status": subscription["status"],
             }
+        elif event_type in {"payment_refunded", "charge_disputed", "charge_dispute_closed"}:
+            processing_result = {
+                "applied": False,
+                "subscription_id": subscription.get("subscription_id") if subscription else None,
+                "subscription_status": subscription.get("status") if subscription else None,
+            }
         else:
             raise ValueError("unsupported_billing_event_type")
 
@@ -949,6 +1807,229 @@ class BillingService:
         }
         processed = self._process_lifecycle_event(event)
         return {"event": processed}
+
+    def ingest_stripe_webhook(self, *, raw_body: bytes, signature: str) -> Dict[str, Any]:
+        webhook_secret = self._stripe_webhook_secret()
+        if not webhook_secret:
+            raise ValueError("stripe_webhook_not_configured")
+        try:
+            import stripe  # type: ignore
+        except ModuleNotFoundError as exc:
+            raise ValueError("stripe_sdk_missing") from exc
+        stripe.api_key = os.getenv("NARRATIVEOS_STRIPE_SECRET_KEY")
+        try:
+            stripe_event = stripe.Webhook.construct_event(payload=raw_body, sig_header=signature, secret=webhook_secret)
+        except Exception as exc:  # pragma: no cover - exact exception types depend on stripe SDK
+            raise ValueError("stripe_webhook_signature_invalid") from exc
+
+        stripe_event_payload = self._stripe_payload(stripe_event)
+        event_type = str(stripe_event_payload.get("type") or "")
+        payload = dict(dict(stripe_event_payload.get("data") or {}).get("object") or {})
+        metadata = dict(payload.get("metadata") or {})
+        subscription_ref = (
+            payload.get("subscription")
+            or dict(payload.get("lines") or {}).get("data", [{}])[0].get("subscription")
+            or dict(payload.get("parent") or {}).get("subscription_details", {}).get("subscription")
+        )
+        account_id = metadata.get("account_id") or payload.get("client_reference_id")
+        customer_id = payload.get("customer")
+
+        mapped_type = None
+        if event_type == "checkout.session.completed":
+            mapped_type = "checkout_session_completed"
+        elif event_type == "checkout.session.expired":
+            mapped_type = "checkout_session_expired"
+        elif event_type == "invoice.payment_failed":
+            mapped_type = "subscription_payment_failed"
+        elif event_type == "invoice.paid":
+            mapped_type = "subscription_payment_succeeded"
+        elif event_type == "customer.subscription.deleted":
+            mapped_type = "subscription_canceled"
+        elif event_type == "customer.subscription.updated":
+            status = str(payload.get("status") or "")
+            if status in {"active", "trialing"}:
+                mapped_type = "subscription_payment_succeeded"
+            elif status in {"past_due", "unpaid", "incomplete"}:
+                mapped_type = "subscription_past_due"
+            elif status in {"canceled", "incomplete_expired"}:
+                mapped_type = "subscription_canceled"
+        elif event_type in {"charge.refunded", "refund.updated"}:
+            mapped_type = "payment_refunded"
+        elif event_type == "charge.dispute.created":
+            mapped_type = "charge_disputed"
+        elif event_type in {"charge.dispute.closed", "charge.dispute.funds_reinstated"}:
+            mapped_type = "charge_dispute_closed"
+
+        if not mapped_type:
+            return {"ignored": True, "event_type": event_type}
+
+        created = payload.get("created") or stripe_event_payload.get("created")
+        occurred_at = self._utcnow().isoformat()
+        if created:
+            try:
+                occurred_at = datetime.fromtimestamp(int(created), tz=timezone.utc).isoformat()
+            except (TypeError, ValueError):
+                pass
+        event = {
+            "event_type": mapped_type,
+            "provider": "stripe",
+            "provider_event_id": str(stripe_event_payload.get("id") or f"stripe:{event_type}:{subscription_ref or payload.get('id') or 'unknown'}"),
+            "account_id": account_id,
+            "subscription_id": subscription_ref,
+            "checkout_session_id": payload.get("id") if str(payload.get("object") or "") == "checkout.session" else None,
+            "payload_json": {
+                "stripe_event_type": event_type,
+                "account_id": account_id,
+                "customer_id": customer_id,
+                "subscription_id": subscription_ref,
+                "checkout_session_id": payload.get("id") if str(payload.get("object") or "") == "checkout.session" else None,
+                "status": payload.get("status"),
+                "metadata": metadata,
+            },
+            "occurred_at": occurred_at,
+        }
+        processed = self._process_lifecycle_event(event)
+        return {"event": processed, "stripe_event_type": event_type}
+
+    def start_customer_portal(self, *, account_id: str, return_url: Optional[str] = None) -> Dict[str, Any]:
+        customer_id = self._stripe_customer_id_for_account(account_id)
+        if not customer_id:
+            raise KeyError("stripe_customer_id_missing_for_account")
+        try:
+            portal = self.monetization.start_customer_portal(
+                account_id=account_id,
+                customer_id=customer_id,
+                provider=self._billing_provider(),
+                return_url=return_url,
+            )
+        except RuntimeError as exc:
+            raise ValueError(str(exc)) from exc
+        return {
+            **portal,
+            "account_id": account_id,
+        }
+
+    def verify_mobile_purchase(self, *, provider: str, account_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        self._require_verified_email_for_billing(account_id=account_id)
+        try:
+            verified = self.monetization.verify_mobile_purchase(provider=provider, payload=payload)
+        except RuntimeError as exc:
+            raise ValueError(str(exc)) from exc
+        reconciled = self._reconcile_external_provider_subscription(
+            account_id=account_id,
+            provider_payload=verified,
+        )
+        event = self._record_lifecycle_event(
+            {
+                "event_type": "mobile_purchase_verified",
+                "provider": provider,
+                "provider_event_id": f"{provider}:verify:{verified.get('provider_ref') or verified.get('provider_order_id') or int(self._utcnow().timestamp())}",
+                "account_id": account_id,
+                "subscription_id": (reconciled.get("effective_subscription") or {}).get("subscription_id"),
+                "status": "processed",
+                "payload_json": dict(verified.get("payload_json") or {}),
+                "processing_result": reconciled,
+                "occurred_at": self._utcnow().isoformat(),
+                "processed_at": self._utcnow().isoformat(),
+            }
+        )
+        return {
+            **reconciled,
+            "event": event,
+        }
+
+    def ingest_store_notification(self, *, provider: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            parsed = self.monetization.ingest_store_notification(provider=provider, payload=payload)
+        except RuntimeError as exc:
+            raise ValueError(str(exc)) from exc
+        account_id = str(
+            payload.get("account_id")
+            or dict(parsed.get("payload_json") or {}).get("account_id")
+            or dict(parsed.get("payload_json") or {}).get("transaction_info", {}).get("appAccountToken")
+            or ""
+        ).strip()
+        if not account_id:
+            raise ValueError("provider_notification_account_missing")
+        reconciled = self._reconcile_external_provider_subscription(
+            account_id=account_id,
+            provider_payload=parsed,
+        )
+        event = self._record_lifecycle_event(
+            {
+                "event_type": "store_notification_processed",
+                "provider": provider,
+                "provider_event_id": f"{provider}:notification:{parsed.get('provider_event_type')}:{parsed.get('provider_ref') or parsed.get('provider_order_id') or int(self._utcnow().timestamp())}",
+                "account_id": account_id,
+                "subscription_id": (reconciled.get("effective_subscription") or {}).get("subscription_id"),
+                "status": "processed",
+                "payload_json": dict(parsed.get("payload_json") or {}),
+                "processing_result": reconciled,
+                "occurred_at": self._utcnow().isoformat(),
+                "processed_at": self._utcnow().isoformat(),
+            }
+        )
+        return {
+            **reconciled,
+            "event": event,
+        }
+
+    def restore_mobile_purchases(self, *, account_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        self._require_verified_email_for_billing(account_id=account_id)
+        restored: List[Dict[str, Any]] = []
+        for original_transaction_id in list(payload.get("apple_original_transaction_ids") or []):
+            restored.append(
+                {
+                    "provider": "app_store",
+                    **self.verify_mobile_purchase(
+                        provider="app_store",
+                        account_id=account_id,
+                        payload={
+                            "original_transaction_id": original_transaction_id,
+                            "tier_id": payload.get("apple_tier_id"),
+                            "environment": payload.get("apple_environment"),
+                        },
+                    ),
+                }
+            )
+        for purchase_token in list(payload.get("google_purchase_tokens") or []):
+            restored.append(
+                {
+                    "provider": "google_play",
+                    **self.verify_mobile_purchase(
+                        provider="google_play",
+                        account_id=account_id,
+                        payload={
+                            "purchase_token": purchase_token,
+                            "subscription_id": payload.get("google_subscription_id"),
+                            "package_name": payload.get("package_name"),
+                            "tier_id": payload.get("google_tier_id"),
+                            "environment": payload.get("google_environment"),
+                        },
+                    ),
+                }
+            )
+        return {
+            "account_id": account_id,
+            "restored": restored,
+            "provider_subscriptions": self._list_provider_subscriptions(account_id=account_id),
+            "effective_tier": (self._effective_provider_subscription(account_id=account_id) or {}).get("tier_id"),
+        }
+
+    def reconcile_account_billing(self, *, account_id: str, provider: Optional[str] = None) -> Dict[str, Any]:
+        if provider in {None, "", "stripe"}:
+            subscription = self._find_subscription_for_event(account_id=account_id, subscription_id=None)
+            if subscription and subscription.get("provider") == "stripe" and subscription.get("provider_ref"):
+                self.reconcile_subscription(subscription["subscription_id"])
+        effective = self._sync_effective_subscription_from_provider_records(account_id=account_id)
+        return {
+            "account_id": account_id,
+            "provider": provider or "all",
+            "effective_subscription": self._subscription_snapshot(effective) if effective else None,
+            "provider_subscriptions": self._list_provider_subscriptions(account_id=account_id),
+            "provider_source_summary": self._provider_source_summary(account_id=account_id),
+            "refund_dispute_summary": self._refund_dispute_summary(account_id=account_id),
+        }
 
     def retry_subscription_payment(self, *, account_id: Optional[str] = None, subscription_id: Optional[str] = None) -> Dict[str, Any]:
         subscription = self._find_subscription_for_event(account_id=account_id, subscription_id=subscription_id)
@@ -1023,6 +2104,22 @@ class BillingService:
         return {"event": processed}
 
     def reconcile_subscription(self, subscription_id: str) -> Dict[str, Any]:
+        subscription = self.repository.get_subscription(subscription_id)
+        remote_payload = None
+        if subscription.get("provider") == "stripe" and subscription.get("provider_ref"):
+            try:
+                remote_payload = self.monetization.retrieve_subscription(
+                    subscription_ref=str(subscription["provider_ref"]),
+                    provider="stripe",
+                )
+            except RuntimeError as exc:
+                raise ValueError(str(exc)) from exc
+            subscription = self._reconcile_stripe_subscription_record(
+                account_id=subscription["account_id"],
+                tier_id=subscription["tier_id"],
+                stripe_subscription=remote_payload,
+                local_subscription_id=subscription["subscription_id"],
+            )
         reconciled = self.monetization.reconcile_subscription_lifecycle(subscription_id)
         if reconciled.get("status") in {"past_due", "canceled", "expired"}:
             wallet_snapshot = self._deactivate_subscription_wallets(
@@ -1042,7 +2139,12 @@ class BillingService:
                 "account_id": reconciled["account_id"],
                 "subscription_id": subscription_id,
                 "status": "processed",
-                "payload_json": {"source": "manual_reconcile"},
+                "payload_json": {
+                    "source": "manual_reconcile",
+                    "customer_id": (remote_payload or {}).get("customer"),
+                    "provider_ref": reconciled.get("provider_ref"),
+                    "remote_status": (remote_payload or {}).get("status"),
+                },
                 "processing_result": {
                     "subscription_status": reconciled["status"],
                     "wallet_snapshot": wallet_snapshot,
@@ -1846,6 +2948,7 @@ class BillingService:
         audit_bundle = self.full_audit_trail(account_id=account_id, limit=max(limit * 2, 20))
         support_lookup = self.support_issue_lookup(account_id=account_id, limit=limit)
         checkout_sessions = self.repository.list_billing_checkout_sessions(account_id=account_id, limit=limit)
+        provider_subscriptions = self._list_provider_subscriptions(account_id=account_id)
         lifecycle_events = self.repository.list_billing_lifecycle_events(account_id=account_id, limit=limit)
         retry_attempts = self.repository.list_billing_retry_attempts(account_id=account_id, limit=limit)
         recent_meters = self.repository.list_usage_meters(account_id=account_id)[:limit]
@@ -1937,9 +3040,13 @@ class BillingService:
         return {
             "account_id": account_id,
             "subscription": subscription_snapshot.get("subscription"),
+            "effective_tier": subscription_snapshot.get("effective_tier"),
             "wallets": subscription_snapshot.get("wallets", {}),
             "checkout_session": subscription_snapshot.get("latest_checkout_session"),
             "recent_checkout_sessions": checkout_sessions,
+            "provider_subscriptions": provider_subscriptions,
+            "provider_source_summary": subscription_snapshot.get("provider_source_summary", {}),
+            "refund_dispute_summary": subscription_snapshot.get("refund_dispute_summary", {}),
             "lifecycle_history_summary": subscription_snapshot.get("lifecycle_history_summary", {}),
             "billing_lifecycle_events": lifecycle_events,
             "billing_retry_attempts": retry_attempts,
@@ -1956,6 +3063,7 @@ class BillingService:
             "recent_sessions": recent_sessions,
             "recent_drafts": recent_drafts,
             "activity_summary": activity_summary,
+            "security_state": self._account_security_state(account_id=account_id),
             **self._config_snapshot(),
         }
 

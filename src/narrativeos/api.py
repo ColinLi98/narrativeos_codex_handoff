@@ -12,13 +12,22 @@ from pydantic import BaseModel, Field
 from .api.author import router as author_router
 from .api.ops import router as ops_router
 from .api.reader import router as reader_router
+from .core.linter import lint_chapter_draft
+from .eval.service import evaluate_persisted_chapter
 from .intent import SimpleIntentParser
 from .models import EventAtom, NarrativeState, StepRecord, WorldBible, WorldRecord
 from .pipeline import plan_next_turn_from_events
 from .providers import LLMCandidateProvider, StaticCandidateProvider
 from .services.analytics import AnalyticsService
 from .services.authoring import AuthoringService
+from .services.author_work import AuthorWorkService
 from .services.billing import BillingService
+from .services.library_stats_cube import LibraryStatsCubeService
+from .services.library_stats_cube_projection import (
+    LIBRARY_STATS_INVALIDATION_EVENTS,
+    LibraryStatsCubeProjectionService,
+)
+from .services.library_stats_semantic_layer import LibraryStatsSemanticLayerService
 from .services.review import ReviewService
 from .services.sessions import SessionService
 from .rendering import TemplateRenderer
@@ -30,6 +39,19 @@ from .worldpacks.registry import FileSystemWorldRegistry
 BASE_DIR = Path(__file__).resolve().parents[2]
 WEB_DIR = Path(__file__).resolve().parent / "web"
 EXAMPLES_DIR = BASE_DIR / "examples"
+
+NO_CACHE_HEADERS = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
+
+
+class NoCacheStaticFiles(StaticFiles):
+    def file_response(self, *args, **kwargs):  # type: ignore[override]
+        response = super().file_response(*args, **kwargs)
+        response.headers.update(NO_CACHE_HEADERS)
+        return response
 
 
 def load_example_json(name: str) -> Any:
@@ -116,6 +138,23 @@ def create_app(
     app.state.analytics_service = AnalyticsService(app.state.repository)
     app.state.review_service = ReviewService(app.state.repository)
     app.state.authoring_service = AuthoringService(app.state.repository, registry=app.state.world_registry)
+    app.state.author_work_service = AuthorWorkService(
+        app.state.repository,
+        registry=app.state.world_registry,
+        analytics_service=app.state.analytics_service,
+    )
+    app.state.library_stats_semantic_layer_service = LibraryStatsSemanticLayerService(app.state.repository)
+    app.state.library_stats_cube_service = LibraryStatsCubeService(
+        app.state.repository,
+        semantic_layer_service=app.state.library_stats_semantic_layer_service,
+    )
+    app.state.library_stats_cube_projection_service = LibraryStatsCubeProjectionService(
+        cube_service=app.state.library_stats_cube_service,
+    )
+    app.state.analytics_service.register_listener(
+        LIBRARY_STATS_INVALIDATION_EVENTS,
+        app.state.library_stats_cube_projection_service.on_analytics_event,
+    )
     app.state.session_service = SessionService(
         app.state.repository,
         intent_parser=app.state.intent_parser,
@@ -123,7 +162,7 @@ def create_app(
         billing_service=app.state.billing_service,
         analytics_service=app.state.analytics_service,
     )
-    app.mount("/assets", StaticFiles(directory=WEB_DIR), name="assets")
+    app.mount("/assets", NoCacheStaticFiles(directory=WEB_DIR), name="assets")
     app.include_router(reader_router)
     app.include_router(author_router)
     app.include_router(ops_router)
@@ -134,7 +173,15 @@ def create_app(
 
     @app.get("/app")
     def app_shell() -> FileResponse:
-        return FileResponse(WEB_DIR / "index.html")
+        return FileResponse(WEB_DIR / "index.html", headers=NO_CACHE_HEADERS)
+
+    @app.get("/app/user")
+    def app_user_shell() -> FileResponse:
+        return FileResponse(WEB_DIR / "index.html", headers=NO_CACHE_HEADERS)
+
+    @app.get("/app/reviewer")
+    def app_reviewer_shell() -> FileResponse:
+        return FileResponse(WEB_DIR / "index.html", headers=NO_CACHE_HEADERS)
 
     @app.get("/health")
     def health() -> Dict[str, str]:
@@ -207,6 +254,14 @@ def create_app(
             player_profile=payload.player_profile,
             metadata=payload.metadata,
         )
+        app.state.analytics_service.track(
+            "session_created",
+            reader_id=payload.player_profile.get("reader_id"),
+            session_id=session_record.session_id,
+            world_id=payload.world_id,
+            world_version_id=session_record.metadata.get("world_version_id"),
+            payload_json={"account_id": payload.player_profile.get("reader_id")},
+        )
         return {
             "session_id": session_record.session_id,
             "current_state": session_record.current_state.to_dict(),
@@ -231,7 +286,23 @@ def create_app(
     @app.delete("/v1/sessions/{session_id}")
     def delete_session(session_id: str) -> Dict[str, Any]:
         try:
-            return app.state.repository.delete_session(session_id)
+            session_record = app.state.repository.get_session(session_id)
+            deleted = app.state.repository.delete_session(session_id)
+            account_id = (
+                str(session_record.metadata.get("account_id") or "").strip()
+                or str(session_record.metadata.get("reader_id") or session_record.player_profile.get("reader_id") or "").strip()
+                or None
+            )
+            if account_id:
+                app.state.analytics_service.track(
+                    "session_deleted",
+                    reader_id=account_id,
+                    session_id=session_id,
+                    world_id=session_record.world_id,
+                    world_version_id=session_record.metadata.get("world_version_id"),
+                    payload_json={"account_id": account_id},
+                )
+            return deleted
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc))
 
@@ -307,6 +378,71 @@ def create_app(
             if result.get("updated_state")
             else session_record.current_state
         )
+        chapter_task = dict((result.get("chapter_plan") or {}).get("chapter_task") or {})
+        body = str((result.get("reader_view") or {}).get("body") or "")
+        if result["status"] == "ok":
+            lint_report = lint_chapter_draft(body)
+            quality_bundle = evaluate_persisted_chapter(
+                chapter_id="chapter_%s_%s" % (session_id, state_after.chapter_index),
+                world_version_id=session_record.world_id,
+                session_id=session_id,
+                body=body,
+                paragraphs=body.split("\n\n"),
+                dialogue_count=int(lint_report.get("dialogue_count", 0)),
+                action_count=int(lint_report.get("action_count", 0)),
+                detail_count=int(lint_report.get("detail_count", 0)),
+                character_fidelity_score=max(
+                    [item["components"].get("character_fidelity", 0.0) for item in result.get("scored_candidates", [])],
+                    default=0.75,
+                ),
+                state_after=state_after,
+                ending_ready=bool((result.get("chapter_plan") or {}).get("ending_ready")),
+                chapter_title=(result.get("reader_view") or {}).get("chapter_title"),
+                recap=(result.get("reader_view") or {}).get("recap"),
+                relationship_hints=list((result.get("reader_view") or {}).get("relationship_hints") or []),
+                choices=list((result.get("reader_view") or {}).get("choices") or []),
+                paywall_required=False,
+                coverage_context={
+                    "selected_event_ids": list((result.get("chapter_plan") or {}).get("selected_event_ids", [])),
+                    "scene_beats": list(result.get("scene_beats") or []),
+                    "chapter_task": chapter_task,
+                },
+                target_words=app.state.session_service._effective_target_words(
+                    chapter_task.get("target_words"),
+                    chapter_index=int(state_after.chapter_index or 0),
+                    story_phase=str(state_after.story_phase or ""),
+                ),
+                min_target_words=app.state.session_service._effective_min_target_words(
+                    app.state.repository.get_runtime_bundle(session_record.metadata.get("world_version_id")),
+                    chapter_index=int(state_after.chapter_index or 0),
+                    story_phase=str(state_after.story_phase or ""),
+                ),
+            )
+            if not quality_bundle["quality_gate"]["ok"]:
+                base_response = {
+                    "status": "quality_guard_failed",
+                    "code": quality_bundle["quality_gate"]["code"],
+                    "quality_gate": quality_bundle["quality_gate"],
+                    "reader_view": None,
+                    "updated_state_summary": None,
+                    "replay_preview": None,
+                }
+                if debug or mode == "debug":
+                    base_response.update(
+                        {
+                            "chosen_event": result.get("chosen_event"),
+                            "updated_state": result.get("updated_state"),
+                            "scored_candidates": result.get("scored_candidates"),
+                            "critic_trace": result.get("critic_trace"),
+                            "rendered_scene": result.get("rendered_scene"),
+                            "candidate_batch": result.get("candidate_batch"),
+                            "routes": result.get("routes"),
+                            "chapter_plan": result.get("chapter_plan"),
+                            "scene_beats": result.get("scene_beats"),
+                            "scene_render_spec": result.get("scene_render_spec"),
+                        }
+                    )
+                return base_response
         step_record = StepRecord.from_dict(
             {
                 "session_id": session_id,

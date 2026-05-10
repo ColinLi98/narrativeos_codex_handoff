@@ -8,6 +8,200 @@ from ..models import CharacterState, EventAtom, NarrativeState, WorldBible, Worl
 
 
 @dataclass
+class SeriesPlan:
+    series_id: str
+    title: str
+    total_volume_target: int
+    total_chapter_target: int
+    target_word_count: int
+    theme_statement: str = ""
+    series_promises: List[Dict[str, Any]] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SeriesPlan":
+        return cls(
+            series_id=str(data["series_id"]),
+            title=str(data["title"]),
+            total_volume_target=int(data.get("total_volume_target", 1)),
+            total_chapter_target=int(data.get("total_chapter_target", 1)),
+            target_word_count=int(data.get("target_word_count", 1000)),
+            theme_statement=str(data.get("theme_statement", "")),
+            series_promises=[dict(item) for item in data.get("series_promises", [])],
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "series_id": self.series_id,
+            "title": self.title,
+            "total_volume_target": self.total_volume_target,
+            "total_chapter_target": self.total_chapter_target,
+            "target_word_count": self.target_word_count,
+            "theme_statement": self.theme_statement,
+            "series_promises": [dict(item) for item in self.series_promises],
+        }
+
+
+@dataclass
+class ChapterTaskTemplate:
+    chapter_task_id: str
+    objective: str
+    duty_type: str
+    target_words: int
+    reveal_budget: int
+    promise_actions: List[str] = field(default_factory=list)
+    promise_targets: List[str] = field(default_factory=list)
+    allow_terminal: bool = False
+    bridge_only: bool = False
+    notes: str = ""
+    quality_contract: Dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ChapterTaskTemplate":
+        return cls(
+            chapter_task_id=str(data["chapter_task_id"]),
+            objective=str(data["objective"]),
+            duty_type=str(data["duty_type"]),
+            target_words=int(data.get("target_words", 2000)),
+            reveal_budget=int(data.get("reveal_budget", 1)),
+            promise_actions=list(data.get("promise_actions", [])),
+            promise_targets=list(data.get("promise_targets", [])),
+            allow_terminal=bool(data.get("allow_terminal", False)),
+            bridge_only=bool(data.get("bridge_only", False)),
+            notes=str(data.get("notes", "")),
+            quality_contract=dict(data.get("quality_contract", {})),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "chapter_task_id": self.chapter_task_id,
+            "objective": self.objective,
+            "duty_type": self.duty_type,
+            "target_words": self.target_words,
+            "reveal_budget": self.reveal_budget,
+            "promise_actions": list(self.promise_actions),
+            "promise_targets": list(self.promise_targets),
+            "allow_terminal": self.allow_terminal,
+            "bridge_only": self.bridge_only,
+            "notes": self.notes,
+            "quality_contract": dict(self.quality_contract),
+        }
+
+
+@dataclass
+class ArcPlan:
+    arc_id: str
+    volume_id: str
+    order: int
+    title: str
+    goal: str
+    conflict: str
+    reveal_budget: int
+    payoff_targets: List[str]
+    completion_conditions: List[str]
+    target_chapters: int
+    arc_promises: List[Dict[str, Any]] = field(default_factory=list)
+    chapter_tasks: List[ChapterTaskTemplate] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ArcPlan":
+        return cls(
+            arc_id=str(data["arc_id"]),
+            volume_id=str(data["volume_id"]),
+            order=int(data.get("order", 1)),
+            title=str(data.get("title", "")),
+            goal=str(data.get("goal", "")),
+            conflict=str(data.get("conflict", "")),
+            reveal_budget=int(data.get("reveal_budget", 1)),
+            payoff_targets=list(data.get("payoff_targets", [])),
+            completion_conditions=list(data.get("completion_conditions", [])),
+            target_chapters=int(data.get("target_chapters", 1)),
+            arc_promises=[dict(item) for item in data.get("arc_promises", [])],
+            chapter_tasks=[ChapterTaskTemplate.from_dict(item) for item in data.get("chapter_tasks", [])],
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "arc_id": self.arc_id,
+            "volume_id": self.volume_id,
+            "order": self.order,
+            "title": self.title,
+            "goal": self.goal,
+            "conflict": self.conflict,
+            "reveal_budget": self.reveal_budget,
+            "payoff_targets": list(self.payoff_targets),
+            "completion_conditions": list(self.completion_conditions),
+            "target_chapters": self.target_chapters,
+            "arc_promises": [dict(item) for item in self.arc_promises],
+            "chapter_tasks": [item.to_dict() for item in self.chapter_tasks],
+        }
+
+
+@dataclass
+class VolumePlan:
+    volume_id: str
+    order: int
+    title: str
+    goal: str
+    target_chapters: int
+    climax_definition: str
+    end_state: str
+    volume_promises: List[Dict[str, Any]] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "VolumePlan":
+        return cls(
+            volume_id=str(data["volume_id"]),
+            order=int(data.get("order", 1)),
+            title=str(data.get("title", "")),
+            goal=str(data.get("goal", "")),
+            target_chapters=int(data.get("target_chapters", 1)),
+            climax_definition=str(data.get("climax_definition", "")),
+            end_state=str(data.get("end_state", "")),
+            volume_promises=[dict(item) for item in data.get("volume_promises", [])],
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "volume_id": self.volume_id,
+            "order": self.order,
+            "title": self.title,
+            "goal": self.goal,
+            "target_chapters": self.target_chapters,
+            "climax_definition": self.climax_definition,
+            "end_state": self.end_state,
+            "volume_promises": [dict(item) for item in self.volume_promises],
+        }
+
+
+@dataclass
+class ChapterBudgetPolicy:
+    default_target_words: int
+    min_target_words: int
+    max_target_words: int
+    default_reveal_budget: int
+    duty_cycle: List[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ChapterBudgetPolicy":
+        return cls(
+            default_target_words=int(data.get("default_target_words", 2000)),
+            min_target_words=int(data.get("min_target_words", 1800)),
+            max_target_words=int(data.get("max_target_words", 2200)),
+            default_reveal_budget=int(data.get("default_reveal_budget", 1)),
+            duty_cycle=list(data.get("duty_cycle", [])),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "default_target_words": self.default_target_words,
+            "min_target_words": self.min_target_words,
+            "max_target_words": self.max_target_words,
+            "default_reveal_budget": self.default_reveal_budget,
+            "duty_cycle": list(self.duty_cycle),
+        }
+
+
+@dataclass
 class WorldManifest:
     author_id: str
     language: str
@@ -88,7 +282,9 @@ class SceneBlueprint:
     wound_triggers: List[str] = field(default_factory=list)
     vow_tests: List[str] = field(default_factory=list)
     seed_templates: List[str] = field(default_factory=list)
+    continuation_blueprints: List[Dict[str, Any]] = field(default_factory=list)
     ending_gate: Dict[str, Any] = field(default_factory=dict)
+    quality_contract: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SceneBlueprint":
@@ -101,11 +297,13 @@ class SceneBlueprint:
             wound_triggers=list(data.get("wound_triggers", [])),
             vow_tests=list(data.get("vow_tests", [])),
             seed_templates=list(data.get("seed_templates", [])),
+            continuation_blueprints=[dict(item) for item in data.get("continuation_blueprints", [])],
             ending_gate=dict(data.get("ending_gate", {})),
+            quality_contract=dict(data.get("quality_contract", {})),
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        payload = {
             "scene_id": self.scene_id,
             "scene_function": self.scene_function,
             "phase_support": list(self.phase_support),
@@ -114,8 +312,12 @@ class SceneBlueprint:
             "wound_triggers": list(self.wound_triggers),
             "vow_tests": list(self.vow_tests),
             "seed_templates": list(self.seed_templates),
+            "continuation_blueprints": [dict(item) for item in self.continuation_blueprints],
             "ending_gate": dict(self.ending_gate),
         }
+        if self.quality_contract:
+            payload["quality_contract"] = dict(self.quality_contract)
+        return payload
 
 
 @dataclass
@@ -124,11 +326,19 @@ class WorldPack:
     title: str
     version: str
     manifest: WorldManifest
+    series_plan: Optional[SeriesPlan]
+    volume_plans: List[VolumePlan]
+    arc_plans: List[ArcPlan]
+    chapter_budget_policy: Optional[ChapterBudgetPolicy]
     world_bible: Dict[str, Any]
     characters: List[CharacterProfile]
     scene_blueprints: List[SceneBlueprint]
     style_pack: Dict[str, Any]
     risk_policy: Dict[str, Any]
+    memory_compression_policy: Dict[str, Any] = field(default_factory=dict)
+    series_storyline_contract: Dict[str, Any] = field(default_factory=dict)
+    character_memory_profiles: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    steering_guardrails: Dict[str, Any] = field(default_factory=dict)
     narrative_style_pack: WorldNarrativeStylePack = field(default_factory=WorldNarrativeStylePack)
     dialogue_realism_policy: Dict[str, Any] = field(default_factory=dict)
     voice_profiles: Dict[str, Dict[str, Any]] = field(default_factory=dict)
@@ -151,6 +361,14 @@ class WorldPack:
             title=str(payload["title"]),
             version=str(payload["version"]),
             manifest=WorldManifest.from_dict(payload["manifest"]),
+            series_plan=SeriesPlan.from_dict(payload["series_plan"]) if payload.get("series_plan") else None,
+            volume_plans=[VolumePlan.from_dict(item) for item in payload.get("volume_plans", [])],
+            arc_plans=[ArcPlan.from_dict(item) for item in payload.get("arc_plans", [])],
+            chapter_budget_policy=ChapterBudgetPolicy.from_dict(payload["chapter_budget_policy"]) if payload.get("chapter_budget_policy") else None,
+            memory_compression_policy=dict(payload.get("memory_compression_policy", {})),
+            series_storyline_contract=dict(payload.get("series_storyline_contract", {})),
+            character_memory_profiles={key: dict(value) for key, value in payload.get("character_memory_profiles", {}).items()},
+            steering_guardrails=dict(payload.get("steering_guardrails", {})),
             world_bible=dict(payload.get("world_bible", {})),
             characters=[CharacterProfile.from_dict(item) for item in payload.get("characters", [])],
             scene_blueprints=[SceneBlueprint.from_dict(item) for item in payload.get("scene_blueprints", [])],
@@ -177,6 +395,7 @@ class WorldPack:
             "title": self.title,
             "version": self.version,
             "manifest": self.manifest.to_dict(),
+            "metadata": dict(self.metadata),
             "world_bible": dict(self.world_bible),
             "characters": [character.to_dict() for character in self.characters],
             "scene_blueprints": [scene.to_dict() for scene in self.scene_blueprints],
@@ -184,6 +403,22 @@ class WorldPack:
             "narrative_style_pack": self.narrative_style_pack.to_dict(),
             "risk_policy": dict(self.risk_policy),
         }
+        if self.series_plan is not None:
+            payload["series_plan"] = self.series_plan.to_dict()
+        if self.volume_plans:
+            payload["volume_plans"] = [item.to_dict() for item in self.volume_plans]
+        if self.arc_plans:
+            payload["arc_plans"] = [item.to_dict() for item in self.arc_plans]
+        if self.chapter_budget_policy is not None:
+            payload["chapter_budget_policy"] = self.chapter_budget_policy.to_dict()
+        if self.memory_compression_policy:
+            payload["memory_compression_policy"] = dict(self.memory_compression_policy)
+        if self.series_storyline_contract:
+            payload["series_storyline_contract"] = dict(self.series_storyline_contract)
+        if self.character_memory_profiles:
+            payload["character_memory_profiles"] = {key: dict(value) for key, value in self.character_memory_profiles.items()}
+        if self.steering_guardrails:
+            payload["steering_guardrails"] = dict(self.steering_guardrails)
         if self.dialogue_realism_policy:
             payload["dialogue_realism_policy"] = dict(self.dialogue_realism_policy)
         if self.voice_profiles:
@@ -206,8 +441,6 @@ class WorldPack:
             payload["runtime_event_atoms"] = [dict(item) for item in self.runtime_event_atoms]
         if self.runtime_player_inputs is not None:
             payload["runtime_player_inputs"] = [dict(item) for item in self.runtime_player_inputs]
-        if self.metadata:
-            payload["metadata"] = dict(self.metadata)
         return payload
 
 

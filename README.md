@@ -4,6 +4,8 @@
 
 - [docs/gpt_handoff_status_and_commercialization.md](/Users/lili/Desktop/narrativeos_codex_handoff/docs/gpt_handoff_status_and_commercialization.md)
 
+如果要理解“什么才算最终商业化 v1 完成态 + 接下来按什么顺序做”，同样优先看上面的 canonical handoff 文档；`narrativeos_codex_next_phase/01_90_DAY_EXECUTION_PLAN.md` 与 `07_ACCEPTANCE_METRICS.md` 已对齐这套标准。
+
 这套仓库现在已经从“单作品可运行 Alpha”升级为一个 **商业化 Beta 内核雏形**。它仍然保留现有 Alpha 的 `/app`、Reader Mode、示例世界与基础 API，但新增了：
 
 - 多 `World Pack` 加载与版本管理
@@ -11,6 +13,118 @@
 - Author 端已支持“选题材 + 写 brief + 生成 Draft”的普通用户创作入口
 - Author 端现已补强 `draft diff + simulation drill-down`
 - Author 端现已补 `style / pacing / hook` 结构化控制面板
+- Author 端现已补 `Longform Workbench`：
+  - 可编辑 `Series / Volume / Arc`
+  - 历史 draft 可一键 bootstrap longform plan
+  - 保存仍走同一条 draft update / revision diff / simulation freshness 路径
+- Author 端现已补 `Promise Ledger + Continuity Diff workbench`：
+  - `Promise Ledger` 会显示 open / overdue / recently closed promises
+  - `Continuity Diff` 会显示 drifting character / causal break / promise risk / before-after changed chapters
+  - 两块都能直接 prefill 到现有 comment anchor 流
+- Author 端现已补 `chapter-task editing + arc board`：
+  - 可直接选中某条 `chapter task` 并改 `duty / objective / target_words / reveal_budget / promise_actions / allow_terminal`
+  - `Arc Board` 会按卷展示所有 arc，并支持切换当前 arc/task
+  - 当 `arc.target_chapters` 调整时，task 序列会自动规整长度
+- Author 端现已补 `series-volume-arc promise mapping + chapter-task simulation linking`：
+  - `Promise Mapping` 会按当前 `series / volume / arc` 聚合显示映射到的 promises 与章节范围
+  - `Task Simulation Linking` 会把当前 `chapter task` 直接连到 simulation chapters / issues / promises，方便一跳评论或修订
+- Author 端现已补 `promise-state editing + chapter-level jump navigation`：
+  - 可给单条 promise 保存 `watch / defer / plan_payoff / resolved_intentional / escalate` 状态与备注
+  - 可从 `Promise Ledger / Promise Mapping / Task Linking / Continuity Diff` 一跳定位到对应 simulation chapter，并在作者页高亮当前章节
+- Author 端现已补 `continuity override + task-to-compare deep link workflow`：
+  - 可对单章保存 `watch / intentional / accepted_tradeoff / needs_rewrite / escalate` 的 continuity override 与 issue scope
+  - 可从 `chapter task` 直接跳到该章的 `before / after compare`，并在 compare 面板展开对应章节对照
+- Author 端现已补 `arc-board drag reorder + task-level compare diff`：
+  - `Arc Board` 支持同卷 arc 的拖拽重排，保存仍沿用现有 longform draft update 路径
+  - `Task Compare Diff` 会把单条 `chapter task` 对应到章节对照，汇总 score delta 与 issue added/removed
+- Author 端现已补 `chapter-task drag reorder + task-to-simulation bulk apply`：
+  - 当前 arc 下的 `chapter_tasks` 现支持拖拽重排
+  - 可把一条 task 的 continuity judgment 批量应用到它链接到的 simulation chapters
+- Author 端现已补 `task-level promise split-merge + planned-vs-observed drift panel`：
+  - `promise_targets` 支持 `Split Targets / Merge Observed Promises`
+  - `Task Linking` 会直接显示 `planned vs observed promise drift`，对比计划目标和 simulation 实际命中
+- Author 端现已补 `task-level promise drift remediation suggestions + compare-to-rewrite workflow`：
+  - `Task Linking` 会给出 drift remediation suggestions
+  - 并支持 `Apply Compare to Rewrite`，把章节对照里的 rewrite 提示直接预填回当前 task 编辑器
+- Author 端现已补 `rewrite patch preview + simulation diff checkpoint`：
+  - `Rewrite Patch Preview` 会直接对比当前表单值和 rewrite suggestion
+  - `Simulation Diff Checkpoint` 会显示最近一次 rewrite revision 是否已经产出对应 simulation diff
+- Author 端现已补 `作品阅读预览`：
+  - 在创作台里直接用阅读卡片方式查看当前选中章节正文
+  - 左侧切章、右侧编辑、下方阅读预览，减少作者在“写”和“读自己作品”之间来回切模式
+- `/app/user` 的 Reader 书架现也补了 `我的作品` 入口：
+  - 登录作者账号后，会在阅读首页直接列出自己已生成章节的 `author_work`
+  - 可一键“像读者一样阅读”，在 Reader 视图里按章节顺序浏览自己的作品
+- persisted chapter 现已开始接入统一 `chapter_quality_guard`：
+  - Author work 生成 / 手工保存 / Reader session 继续推进都会在落库前执行同一套章节硬约束
+  - 失败时返回 `chapter_quality_guard_failed`
+  - 不再允许过短或明确 `rewrite/block` 的章节直接成为 canonical persisted content
+- `interactive 100章` 基础 contract 现已开始接入：
+  - Reader session 支持 `longform_setup`
+  - Reader continue 支持 `steering_directive`
+  - runtime state 支持 `steering_ledger / storyline_checkpoint / character_memory_runtime / replan_checkpoint`
+  - benchmark 新增 `longform_100_interactive`
+  - review / merge gate 现已识别 `interactive_longform_signoff`
+- Author 长线入口现已明确分层：
+  - `from-brief` 属于 `quick_brief`，默认只直接承诺到 `100章`
+  - `250 / 500 / 1000` 现在统一归到 `structured longform` gated capability
+  - `1000章` 仍然保留，但产品口径改成“结构化长篇能力 + readiness contract”，不再等价于任意 brief 一键直达
+- Ops `release evidence bundle / publish checklist` 现也已接 Author 长线口径：
+  - 会直接显示 `author_longform_capability / author_claim_alignment`
+  - 如果 author `claim_safe_band` 超过 ops 当前真实可发布 band，会被直接视为 publish blocker
+- `250章 static` 证据线现已开始接入：
+  - runtime 支持 `memory_compression_policy / volume_memory_snapshots / replan_history / replan_stability_metrics`
+  - benchmark 新增 `longform_250`
+  - `volume-boundary` 现在会在卷末终章补齐 final volume snapshot，不再只依赖下一卷切换
+  - `250 review sampling` 现支持从 benchmark chapter reports materialize `evaluation_report_auto` 样本并计算 coverage closeout
+  - publish checklist 会显示 `longform_250_readiness`，但当前仍是非阻断 evidence
+  - fresh `all-pack longform_250 --execute-review-sampling-250` 现已达到 `longform_250_signoff = ready`
+  - fresh `all-pack longform_250_interactive --execute-review-sampling-250` 现已达到 `longform_250_interactive_signoff = ready`
+  - `250 human-reviewed closeout` 现已单独建模：
+    - `review_sample_coverage_250` 会区分 `auto-seeded closeout` 和 `human closeout`
+    - benchmark/reporting 现会输出 `longform_250_human_review_closeout`
+    - Ops 现可通过 `GET /v1/ops/longform-250-human-review-closeout` 查看还差哪些章节的人审
+- `500章 static` 基础 contract 现已开始接入：
+  - runtime state 新增 `series_memory_snapshots / series_ending_checkpoint`
+  - `memory_compression_policy` 现支持 series-level snapshot cadence 与 ending activation window
+  - benchmark 新增 `longform_500`
+  - publish checklist 现会显示 `longform_500_readiness`，仍为非阻断 evidence
+  - `500 human-reviewed closeout` 现也已单独建模：
+    - `review_sample_coverage_500` 会区分 `auto-seeded closeout`、`human closeout` 和 `ending window human closeout`
+    - benchmark/reporting 现会输出 `longform_500_human_review_closeout` 与 `longform_500_ending_signoff`
+    - Ops 现可通过 `GET /v1/ops/longform-500-human-review-closeout` 查看 500 章窗口和终局窗口仍待人审的 target
+  - `500 interactive` 现也已接入：
+    - benchmark 新增 `longform_500_interactive`
+    - reporting 会输出 `longform_500_interactive_summary / longform_500_interactive_signoff`
+    - publish checklist 会显示 `interactive_500_readiness`
+  - `500 release evidence bundle` 现已接入：
+    - 会把 `static / interactive / human closeout / ending signoff` 收成单个 release bundle
+    - publish checklist 现会显示 `longform_500_release_bundle`
+    - Ops 可通过 `GET /v1/ops/worlds/{world_id}/release-evidence-bundle` 直接拉取 bundle
+- `1000章 feasibility diagnostics` 现已接入：
+  - benchmark 新增 `longform_1000_diagnostics`
+  - reporting 现会输出 `longform_1000_summary / longform_1000_feasibility / longform_1000_readiness`
+  - 指标覆盖 `series snapshot integrity / archive retention / continuation retention / late-stage runtime pressure / ending runway`
+  - `1000 readiness contract` 现已接上：
+    - benchmark 新增 `longform_1000_interactive`
+    - reporting 会输出 `longform_1000_interactive_summary / longform_1000_interactive_signoff / longform_1000_human_review_closeout`
+    - publish checklist 现会显示 `longform_1000_readiness / interactive_1000_readiness / longform_1000_human_review_closeout / longform_1000_release_bundle`
+    - Ops 现支持 `GET /v1/ops/longform-1000-human-review-closeout`
+    - generic release evidence endpoint 会在 `1000` 合同时优先返回 `1000` bundle
+  - `longform_1000_feasibility` 仍是非阻断 evidence；`longform_1000_readiness` 是其上的 readiness contract
+  - 当前已确认：
+    - `1000` 的 global `series snapshot cadence` 修复后，fresh all-pack diagnostics 已可达到 `diagnostic_pass_rate = 1.0`
+    - `longform_1000_feasibility` 现已达到 `promising`
+    - `jade_court_romance` 的 late-stage planner trace 已下钻到 beat 级，并给出 `evaluate_candidates` 的 `provider / critics / scoring / sort / total` cost split
+    - provider-side candidate generation 已补 `cache/reuse + continuation template memoization`，fresh sequential all-pack probes 现已能全部收口
+  - `Q06 / character_fidelity` remediation framework 现已接入：
+    - benchmark/reporting 会聚合 `Q06` 世界、角色热点、task duty 热点与推荐资产焦点
+    - authoring draft detail 会返回 `character_fidelity_remediation_framework`
+    - publish checklist 现会显示 `q06_character_fidelity_framework`
+  - `Q06` 的执行层修复也已接上：
+    - planner scoring 会把 `character_card_alignment / duty_alignment / emotion_action_alignment` 折进候选打分
+    - emotion/action fallback defaults 现在会读取 actor pressure style 与 `chapter_task.duty_type`
+    - 这让 `1000` 诊断从“知道哪里失真”推进到“开始对 route 选择和默认表现做实质约束”
 - Ops 端已支持 review history、publish checklist、rollback history、quality trend 与风险摘要
 - Ops 端现已补 `Alert Center`，能把 runtime / support / governance / async job 信号聚成主动告警 feed，并支持 acknowledge / resolve / investigation prefill
 - Ops 端现已补 `Ops Control Plane`，把 `Alert Center + Account Workspace + Release Workspace + Governance + Investigation` 串到同一套 navigation / escalation model
@@ -30,6 +144,48 @@
   - `quality_trend_summary`
 - Reader 端已支持内测 entitlement / credits 授予、`active / expired / exhausted` 状态与访问原因展示
 - Monetization & Entitlements M0 已开始落地：3 档会员、双钱包、subscription lifecycle、web-first checkout stub
+- Reader 端现已补用户注册 / 登录 UI，并直接挂到 `/v1/auth register/login/me/logout`
+- Billing provider 现支持 `stripe`：
+  - `NARRATIVEOS_BILLING_PROVIDER=stripe`
+  - `NARRATIVEOS_STRIPE_SECRET_KEY`
+  - `NARRATIVEOS_STRIPE_PUBLISHABLE_KEY`
+  - `NARRATIVEOS_STRIPE_WEBHOOK_SECRET`
+  - `NARRATIVEOS_STRIPE_PRICE_MAP_JSON`
+  - `NARRATIVEOS_STRIPE_INK_PRICE_MAP_JSON`
+  - `NARRATIVEOS_APP_BASE_URL`
+- Reader Checkout 现会在 provider 为 `stripe` 时直接打开 Stripe hosted checkout
+- Stripe hosted checkout 的 success 回跳现使用 `checkout_session_id`，避免和 Reader 故事 `session_id` 路由冲突
+- Reader 现支持在 success 回跳后主动调用 checkout completion reconcile：
+  - 即使 webhook 还没到，本地也能拉 Stripe checkout/subscription/customer 状态完成一次对账
+- Reader 现已补 `Manage Subscription`，在 Stripe customer id 已建立时可直接打开 customer portal
+- 已完成一轮真实 Stripe sandbox browser drill：
+  - 在无 `stripe listen` 自动转发的情况下，hosted checkout 完成后，本地 Reader 已能靠 success return reconcile 收口到 `subscription=active`
+  - 随后补发 delayed `checkout.session.completed` webhook，本地保持 `active`、customer portal 持续可用，且只保留一条 subscription 记录
+- success return 现也会保留 Reader checkout context：
+  - 会带回支付前的 `account_id / session_id / reader workspace / active view`
+  - 不再在回跳后被默认 `reader_demo` 覆盖
+  - 若支付前正在某段故事里，回跳后会优先回到原 session 再继续刷新权益
+- 会员系统现已开始统一到 central effective membership：
+  - Stripe / App Store / Google Play 的 provider-native subscriptions 会单独保留
+  - Reader / Author 判权读取统一的 effective tier，而不是只看单一 provider row
+  - `subscription_status` / account workspace 会返回 `effective_tier / provider_subscriptions / provider_source_summary`
+- Auth 现已开始补商业化必要闭环：
+  - `email_verified / verification_required` 已进入 auth/session payload
+  - 已补邮箱验证 / 重发验证邮件 / 找回密码 / 重置密码接口
+  - 未验证邮箱现在不会再成功登录拿 token
+  - 浏览器登录态现支持 `bearer + httponly cookie` 双轨
+  - sender config 现统一到 `EMAIL_MODE / EMAIL_PROVIDER / RESEND_*`
+- 移动端支付现已补 backend-first 接口：
+  - Apple verify / Google verify / provider-neutral restore
+  - Apple server notifications / Google RTDN ingestion
+- 当前真实收费 release boundary 仍以 `Stripe + Resend` 为准：
+  - Web charging / portal / webhook / delayed-webhook recovery 已作为主线
+  - Apple / Google 仍保留 backend-first ingress，但不是当前 release blocker
+  - `EMAIL_MODE=test` 下只允许 `@resend.dev` 或 allowlist 测试邮箱
+  - `EMAIL_MODE=production` 仅在 `RESEND_VERIFIED_DOMAIN_STATUS=verified` 时允许真实邮箱投递
+- Reader API 现也补了 ownership hardening：
+  - bearer token 存在时，`Authorization Bearer` 优先于 `account_id / reader_id`
+  - token 账号与请求中的 `account_id / reader_id` 不一致时会返回 `reader_account_ownership_mismatch`
 - Phase 3 monetization 现已继续补 webhook / renewal / cancel / retry / past_due 生命周期闭环、checkout session 持久化，以及 Reader / Author / Ops 生命周期可见性
 - Phase 4 数据飞轮接口已继续推进：支持 `dataset_view`，可导出 evaluator-ready / reranker-ready / analytics-ready examples，并附带 split 与质量告警
 - `Postgres-first + SQLite fallback` 的平台化持久层
@@ -86,7 +242,7 @@
   - Reader 在线生成只记录，不阻断
   - draft simulation 现已附带 `cross_pack_summary / metric_deltas / top_failing_packs`
   - publish gate 现会检查 `cross-pack summary / prose leak / metric regression`
-- Repository 默认会读取 `DATABASE_URL`；未设置时回退到 `sqlite:///narrativeos_beta.db`
+- Repository 现会优先自动读取仓库根目录 `.env.local`、再读 `.env`；若 shell 已显式设置 `DATABASE_URL`，则不会被文件覆盖。若三者都缺失，才回退到 `sqlite:///narrativeos_beta.db`
 
 ### 已实现能力
 
@@ -219,6 +375,7 @@
 - Author collaboration 现已继续补 inline thread reply / watcher / inbox filters / bulk notification status / async notification mirror
 - Author collaboration 现已继续补 header-based identity shim / draft watcher / inbox cursor + search / notification preferences / thread-update throttling
 - Author collaboration 现已继续补 `/v1/auth register/login/me/logout`、bearer token auth、独立 Notification Settings panel 与 per-user email/slack routing stub
+- Reader shell 现也同步补上账号登录态展示，避免再只靠 `reader_id` 手工输入来跑订阅流
 - Author API 已补 `brief-template` 与 `drafts/from-brief`
 - Ops API 已具备 Review Queue / Publish / Rollback / World Status / Meter 查询
 - Ops API 已补 `/v1/ops/worlds/{world_id}/history`
@@ -244,6 +401,7 @@
     - `action_pack`
     - `investigation_summary`
     - `operator_timeline`
+  - 当 `phase_a_quality_gate` 阻断发布时，workspace 会把 gate 的失败 checks 拆成可 drill-down 的 blocker cards，而不只显示 checklist 汇总原因
   - `/app` 中新增 `发布 / Checklist / 回滚统一处置页`
   - operator 现在可以围绕一个 `world_id` 先看：
     - 能不能发
@@ -492,11 +650,26 @@
   - `POST /v1/ops/wallets/debit`
 - Reader API 已扩展：
   - `GET /v1/reader/subscription`
-  - `POST /v1/reader/checkout/start`
-  - `POST /v1/reader/checkout/webhook`
-  - `POST /v1/reader/subscription/{account_id}/retry-payment`
+- `POST /v1/reader/checkout/start`
+- `POST /v1/reader/checkout/{checkout_session_id}/complete`
+- `POST /v1/reader/checkout/webhook`
+- `POST /v1/reader/checkout/stripe-webhook`
+- `POST /v1/reader/mobile-purchases/apple/verify`
+- `POST /v1/reader/mobile-purchases/google/verify`
+- `POST /v1/reader/mobile-purchases/restore`
+- `POST /v1/reader/billing/apple-server-notifications`
+- `POST /v1/reader/billing/google-rtdn`
+- `POST /v1/reader/subscription/{account_id}/portal`
+- `POST /v1/reader/subscription/{account_id}/retry-payment`
   - `POST /v1/reader/subscription/{account_id}/renew`
   - `POST /v1/reader/subscription/{account_id}/cancel`
+- Auth API 现已扩展：
+  - `POST /v1/auth/verification/request`
+  - `POST /v1/auth/verification/confirm`
+  - `POST /v1/auth/password-reset/request`
+  - `POST /v1/auth/password-reset/confirm`
+- Ops API 现已扩展：
+  - `POST /v1/ops/accounts/{account_id}/billing/reconcile`
 - `/app` 的 Ops 区现已补：
   - `Evaluator Promotion Gate`
   - `Reranker Promotion Gate`
@@ -648,6 +821,39 @@
   - orphan route choice detection
   - duplicate active subscription detection
   - safe dry-run / apply repair actions
+- Longform Program L1 基础现已开始接入：
+  - `worldpack` 顶层支持 `series_plan / volume_plans / arc_plans / chapter_budget_policy`
+  - `NarrativeState` 支持 `current_series_id / current_volume_id / current_arc_id / current_chapter_task / word_budget`
+  - 新增五层长程记忆骨架：
+    - `canonical_memory`
+    - `active_arc_memory`
+    - `promise_ledger` 继续复用 `open_promises`
+    - `rolling_recap`
+    - `archive_memory`
+  - `brief -> draft` 默认会自动生成 `5卷` 长篇规划骨架
+  - `volume / arc / chapter task` 现已按 `target_chapters` 进入确定性推进状态机，而不是固定停在首卷首弧
+  - simulation report 现已补 `longform_drilldown`，会输出 `volume_progress / arc_progress / duty_histogram / weakest_arcs / gate_failed_checks`
+  - benchmark 新增 `benchmark_mode=longform_100`，并带真实 `longform_gate`
+  - `longform_gate` 现会直接纳入 `stop_reason / mid_arc_window / Q09 incidence` evidence，并附带 calibration summary
+  - 没有 `series_plan` 的历史 world pack 在 longform simulation/benchmark 中也会自动合成 `runtime_fallback` 规划骨架
+  - `route survival` 现已不再被 `min_end_turn` 的短路线默认值卡死，continuation candidates 会在 longform 模式下提前启用
+  - `anti-loop` 现已把 `arc_task_repeat_rate` 从高重复簇压到接近 `0.0`，mid-arc variation 不再只靠 fallback duty
+  - `scene-level variation` 现已开始进入 `writer / scene_realizer / sensory / dialogue` 共同变体路径，但 weakest pack 的 `Q03` 仍只得到小幅改善，下一阶段仍需继续压 `voice/detail` 重复
+  - `voice/detail asset diversification` 现已通过 runtime asset enrichment 接进 weakest packs：
+    - 弱 pack 的 `voice_profiles / response_profiles / sensory slots / scene openings/hooks` 会在 runtime 被自动补齐到更高样本深度
+    - `urban_mystery_lotus_lane` 与 `synthetic_min_pack` 的 `Q03` 已在 fresh `longform_100` benchmark 中压掉
+    - 但 weakest 问题也开始转移到 `Q05 / scene_detail_density`
+  - `Q05 / scene detail density` 现也补了 writer-side remediation：
+    - `scene_detail` 会自动补高密度物件/声响尾句
+    - `quality_pass` 的 detail reinforcement 变得更强
+    - `jade_court_exam / jade_court_romance` 在 fresh `longform_100` benchmark 中已从 `Q05 x10` 回到 `clean`
+  - `dialogue ratio / scene-density balance` 现已继续补：
+    - `quality_pass` 会在低 `dialogue_plus_action_ratio` 章节中自动插入更强的动作-对白推进段
+    - action marker 也扩到当前 writer 常用动词，避免真实动作被低估
+    - weakest packs 的 `dialogue_ratio` 在 fresh `longform_100` benchmark 中已从约 `0.36` 抬到 `0.60+`
+  - benchmark 现也会输出 `weakest_pack_polish_program`：
+    - 每个 weakest pack 都带 `stop_condition + polish_bundle`
+    - 能直接判断当前 weakest-pack polish 是该继续，还是已经可以 `stop_ready`
 - runtime ops / runbook 现已补：
   - sqlite backup / restore
   - deployment runbook
@@ -706,7 +912,32 @@ python -m src.narrativeos.demo
 
 ```bash
 source .venv/bin/activate
+python scripts/check_database_env.py --format text
 uvicorn src.narrativeos.api:app --reload
+```
+
+推荐本地启动脚本：
+
+```bash
+bash scripts/run_backend_local.sh
+```
+
+Agent Studio 本地创作入口：
+
+```bash
+bash scripts/run_agent_studio_local.sh
+```
+
+该脚本会启动本地后端，并在健康检查通过后自动打开：
+
+```text
+http://127.0.0.1:8000/app?product=author&workspace=studio&debug=1
+```
+
+如果只想启动服务、不自动打开浏览器：
+
+```bash
+AGENT_STUDIO_OPEN_BROWSER=0 bash scripts/run_agent_studio_local.sh
 ```
 
 前端入口：
@@ -745,12 +976,33 @@ uvicorn src.narrativeos.api:app --reload
 ```bash
 source .venv/bin/activate
 export NARRATIVEOS_LLM_ROUTING_ENABLED=true
-export NARRATIVEOS_LLM_PROVIDER_ORDER=openai,anthropic,local
+export NARRATIVEOS_LLM_PROVIDER_ORDER=deepseek,openai,anthropic,local
 export NARRATIVEOS_LLM_MAX_ATTEMPTS=2
+export DEEPSEEK_API_KEY=...
+export NARRATIVEOS_DEEPSEEK_MODEL=deepseek-v4-flash
 export OPENAI_API_KEY=...
 export ANTHROPIC_API_KEY=...
 uvicorn src.narrativeos.api:app --reload
 ```
+
+DeepSeek is wired through the same provider boundary and rollout controls as other LLM backends. Keep it in shadow/canary for renderer traffic until cross-pack Q03/Q04/Q05/Q09 and fallback-rate deltas are reviewed; rollback is env-only by removing `deepseek` from provider order or rolling back the renderer track.
+
+For the Lane A renderer shadow eval, keep candidate generation static and route only the renderer through DeepSeek:
+
+```bash
+export DEEPSEEK_API_KEY="rotated_key_here"
+.venv/bin/python scripts/run_deepseek_renderer_shadow_eval.py \
+  --model deepseek-v4-flash \
+  --model deepseek-v4-pro \
+  --worldpack jade_court_romance \
+  --worldpack synthetic_min_pack \
+  --worldpack urban_mystery_lotus_lane \
+  --baseline-file tests/benchmark_baseline.json \
+  --max-chapters 6 \
+  --output-dir artifacts/lane_a_task_0_3_deepseek_shadow_eval
+```
+
+The script fails fast if the key is missing, if no runtime receipts are recorded, or if DeepSeek is never selected as renderer. It reports fallback rate, length retry rate, renderer latency, and Q03/Q04/Q05/Q09 deltas for Flash and Pro.
 
 Postgres-first 开发时，请先应用 `db/postgres_schema.sql`，再把仓库层改为对应 DSN。
 
@@ -770,6 +1022,17 @@ source .venv/bin/activate
 python -m src.narrativeos.persistence.migrations \
   --database-url 'postgresql://user:password@localhost:5432/narrativeos' \
   --dry-run
+```
+
+Longform `100章` benchmark 调用方式：
+
+```bash
+source .venv/bin/activate
+python -m src.narrativeos.benchmark.runner \
+  --worldpack synthetic_min_pack \
+  --benchmark-mode longform_100 \
+  --max-chapters 100 \
+  --database-url sqlite:///narrativeos_beta.db
 ```
 
 查看 Alembic current/head：
@@ -952,6 +1215,49 @@ long-route 模式会额外输出：
 - continuation candidates 会移除 terminal metadata，并按 phase 轮换 scene function / promise / seed / location
 - 这样 long-route benchmark 更接近“内容是否还能继续读”，而不是过早停在 `no_legal_routes`
 
+Reader-only smoke（只验证阅读入口与续读 UX）：
+
+```bash
+CI_HEADLESS=1 CHROME_BIN=/path/to/google-chrome \
+  bash scripts/run_reader_shell_smoke.sh
+```
+
+产物会写到：
+
+- `artifacts/reader_shell_smoke_result.json`
+- `artifacts/reader_shell_smoke_failure_snapshot.json`
+- `artifacts/reader_shell_smoke_failure.png`
+
+200 章静态 control：
+
+```bash
+source .venv/bin/activate
+python -m src.narrativeos.benchmark.runner \
+  --worldpack all \
+  --database-url sqlite:///artifacts/benchmark_200.db \
+  --max-chapters 200 \
+  --markdown-out artifacts/benchmark_200.md
+```
+
+200 章强交互 long-route：
+
+```bash
+source .venv/bin/activate
+python -m src.narrativeos.benchmark.runner \
+  --worldpack all \
+  --database-url sqlite:///artifacts/benchmark_200_interactive.db \
+  --benchmark-mode long_route \
+  --max-chapters 200 \
+  --interactive-profile strong \
+  --markdown-out artifacts/benchmark_200_interactive.md
+```
+
+`--interactive-profile strong` 会在 chapter `20 / 60 / 100 / 140 / 180` 固定注入 steering checkpoints，并在报告里额外输出：
+
+- `interactive_long_route_summary`
+- per-pack `post_steer_issue_window_summary`
+- `Q03 / Q04 / Q05 / Q09` 的 `0-3` 章与 `0-10` 章窗口风险
+
 Q03 / Q04 / Q05 / Q09 remediation framework：
 
 - `Q03`
@@ -978,11 +1284,17 @@ PR_BODY_FILE=/absolute/path/to/pr-body.md scripts/run_cross_pack_merge_gate.sh
 
 merge gate 当前会阻断：
 
+- `configs/release_quality_gate.json` 定义的共享 Phase A 质量门槛未达标：
+  - `cross_pack_pass_rate` 低于门槛
+  - weakest packs 的 `pass_rate` 低于门槛
+  - weakest packs 的 `Q03 / Q04 / Q05 / Q09` share 超过门槛
 - `cross_pack_pass_rate` 回退
 - benchmark `regressions` 非空
 - PR 缺少 `strongest pack delta / weakest pack delta / cross-pack pass-rate delta / rollback point`
 - PR 缺少 `Goal met / Out-of-scope changes introduced / commercialization / kernel-vs-current-pack polish` 等纪律字段
 - `Does this improve kernel/product/ops instead of just current-pack polish? = no`
+
+publish checklist 现在也读取同一份 `configs/release_quality_gate.json`，`Phase A 共享质量门槛` 会作为阻断项进入 release workspace / world status。
 
 Phase 0 guardrails：
 
@@ -1074,6 +1386,29 @@ Author draft detail / simulate 现在还会直接暴露：
   - `quality_pass_summary`
   - `chapter_trace`
   - `next_actions`
+- `creative_cockpit`
+  - `relationship_network`
+  - `relationship_hotspots`
+  - `steering_timeline`
+  - `chapter_heatmap`
+    - `issue_priority_groups`
+      - 每组会带 `primary_validation_panel / primary_validation_panel_label`
+      - 每个资产优先级也会带 `validation_panel / validation_panel_label / validation_reason`
+  - `story_structure_snapshot`
+- `latest_repair_loop_outcome`
+  - 用最近一次带 `repair_loop_context` 的 revision 和最新 simulate 做 before/after 对比
+- `repair_loop_history`
+  - 返回最近几次修稿回路尝试及其 outcome，供 Author shell 展示闭环历史
+  - 热点项会携带 `character_id / scene_id / chapter_task_id / arc_id / volume_id` 之类的编辑锚点，供 Author shell 直接 deep-link 到角色卡、scene blueprint 和 chapter task editor
+- `POST /v1/author/drafts/{world_version_id}/simulate` 现在可选接收 body：
+  - `account_id`
+  - `interactive_scenarios[]`
+    - `scenario_id? / scenario_kind / label / trigger_chapter?`
+    - `steering_directive.current_user_intent / summary`
+    - `steering_directive.impacted_character_ids[]`
+    - `steering_directive.memory_patch_note?`
+    - `steering_directive.affected_arc_id?`
+  - 不带 body 仍保持兼容；如果 scenario 未给 `trigger_chapter`，服务端会默认落到上次 simulate 完成章节之后的下一章，并在需要时自动扩一章预算以保证 steering 生效。
 - `validation_drilldown`
   - `blockers / warning_groups / next_actions`
 - `revision_compare`
@@ -1107,6 +1442,17 @@ Author 主路径现在建议按这个顺序演示：
 7. workflow 进入 `准备送审`
 8. `送审`
 
+本轮 Author UI 现在还有这些结构变化：
+
+- `Brief` 改成三组起稿表单：`世界与关系 / 命题与冲突 / 氛围与地点`
+- `Draft` 改成局部子工作区：`Assets / Longform / Repair / Style`
+- `Simulate` 首屏先给 `latest decision / freshness / issue queue / weakest chapter`
+- `Review & Submit` 首屏先给 `送审 readiness / compare evidence / revision stack`
+- `Settings` 先给 `登录态 / 通知态 / 协作态` 摘要，再往下展开原始配置
+- `/app` 现改成 `auth-first` 入口：未登录时只显示注册 / 登录页；新注册账号默认是普通用户，登录后进入 `阅读 + 创作` 路径；`reviewer / ops / admin` 权限由管理员后台分配，拥有权限的账号登录后会自动展开 `可审阅内容 / reviewer inbox / 快速审批`
+- `/v1/author` 的协作 / 审阅接口现也补了后端权限矩阵：`reviewer inbox`、审批决定、通知偏好和 watcher/notification 协作动作都要求真实 bearer 会话；`reviewer / ops / admin` 才能读取 reviewer inbox 和执行审批决定
+- Author 常见缺字段和失败反馈现在走 shell banner/toast，不再依赖阻断式弹窗
+
 面板变化说明：
 
 - 创建后：应自动聚焦到 `Draft Detail`
@@ -1138,6 +1484,7 @@ Author 主路径现在建议按这个顺序演示：
 - `python -m src.narrativeos.demo`：可稳定运行
 - `demo.py` 连跑 3 次输出稳定：默认返回 Reader Mode 章节摘要与正文预览
 - `python -m src.narrativeos.benchmark.runner --baseline-file tests/benchmark_baseline.json --markdown-out artifacts/cross_pack_benchmark_summary.md`：可稳定输出 JSON + markdown summary，包含 `strongest_packs / weakest_packs / top_failing_packs / delta_summary.ranking_changes`；`tests/cross_pack_benchmark_summary.md` 保存当前受版本控制的 markdown baseline
+- benchmark summary 现在会原生输出 `phase_a_quality_gate`，markdown 也会直接显示 `Phase A Quality Gate`，供 PR 和 Ops 直接查看共享质量门槛的 pass/fail 与阈值证据
 - `python -m src.narrativeos.benchmark.runner --baseline-file tests/long_route_benchmark_baseline.json --max-chapters 36 --min-end-turn-override 30 --markdown-out artifacts/long_route_benchmark_summary.md`：可稳定输出 long-route JSON + markdown summary，包含 `long_route_summary / completion_ratio / stop_reason / mid_arc_pass_rate / late_arc_pass_rate`
 - `scripts/run_cross_pack_merge_gate.sh`：可本地执行 cross-pack merge gate；GitHub Actions 的 `cross-pack-quality` workflow 也会调用同一套 gate 逻辑
 - `cross-pack-quality` workflow 现已在 benchmark step 显式使用 `sqlite:///narrativeos_beta.db`，避免 CI 中 `DATABASE_URL` 缺失时 benchmark runner 直接失败
@@ -1162,7 +1509,7 @@ Author 主路径现在建议按这个顺序演示：
   `/app` 可切换 `Reader / Author / Ops`
   Reader 可切换 `Duty / Romance` worlds、创建/恢复/删除 session、预览 route、执行 step、查看 replay
   Reader 具备 `Story Feed + Sticky Composer + suggested_prefill`
-  Author 可把当前世界存成 draft、触发 simulate、submit for review，并查看 `revision compare / before-after chapter compare / issue heatmap / weakest chapters / chapter breakdown / style-pacing-hook controls / collaboration / approval`
+  Author 可把当前世界存成 draft、触发 simulate、submit for review，并查看 `overview hero / brief composer / draft local subsections / revision compare / before-after chapter compare / issue heatmap / weakest chapters / chapter breakdown / style-pacing-hook controls / collaboration / approval`
   Ops 可查看 review queue、publish、rollback、查看 metering
   Ops 可查看 `cross-pack quality`、`top failing packs`、`metric delta`
 

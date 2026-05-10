@@ -765,6 +765,7 @@ def test_frontend_shell_smoke_workflow_wires_headless_runner_and_artifacts():
     payload = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
 
     assert payload["name"] == "frontend-shell-smoke"
+    assert set(payload["jobs"]) == {"smoke", "agent-studio-smoke"}
     smoke_job = payload["jobs"]["smoke"]
     steps = smoke_job["steps"]
 
@@ -783,6 +784,8 @@ def test_frontend_shell_smoke_workflow_wires_headless_runner_and_artifacts():
     assert "write_frontend_shell_smoke_step_summary.py" in summary_run
     assert "frontend_shell_smoke_result.json" in summary_run
     assert "frontend_shell_smoke_failure_snapshot.json" in summary_run
+    assert "cp /tmp/frontend_shell_smoke_server.log artifacts/frontend_shell_smoke_server.log" in summary_run
+    assert "cp /tmp/frontend_shell_smoke_chrome.log artifacts/frontend_shell_smoke_chrome.log" in summary_run
     assert "$GITHUB_STEP_SUMMARY" in summary_run
 
     artifact_step = next(step for step in steps if step.get("name") == "Upload frontend shell smoke artifacts")
@@ -792,8 +795,10 @@ def test_frontend_shell_smoke_workflow_wires_headless_runner_and_artifacts():
     assert "artifacts/frontend_shell_smoke_result.json" in artifact_path
     assert "artifacts/frontend_shell_smoke_failure_snapshot.json" in artifact_path
     assert "artifacts/frontend_shell_smoke_failure.png" in artifact_path
-    assert "/tmp/frontend_shell_smoke_server.log" in artifact_path
-    assert "/tmp/frontend_shell_smoke_chrome.log" in artifact_path
+    assert "artifacts/frontend_shell_smoke_server.log" in artifact_path
+    assert "artifacts/frontend_shell_smoke_chrome.log" in artifact_path
+    assert "/tmp/frontend_shell_smoke_server.log" not in artifact_path
+    assert "/tmp/frontend_shell_smoke_chrome.log" not in artifact_path
 
 
 def test_agent_studio_smoke_workflow_wires_headless_runner_and_artifacts():
@@ -818,6 +823,8 @@ def test_agent_studio_smoke_workflow_wires_headless_runner_and_artifacts():
     assert "write_agent_studio_smoke_step_summary.py" in summary_run
     assert "agent_studio_smoke_result.json" in summary_run
     assert "agent_studio_smoke_failure_snapshot.json" in summary_run
+    assert "cp /tmp/agent_studio_smoke_server.log artifacts/agent_studio_smoke_server.log" in summary_run
+    assert "cp /tmp/agent_studio_smoke_chrome.log artifacts/agent_studio_smoke_chrome.log" in summary_run
     assert "$GITHUB_STEP_SUMMARY" in summary_run
 
     artifact_step = next(step for step in steps if step.get("name") == "Upload Agent Studio smoke artifacts")
@@ -830,8 +837,10 @@ def test_agent_studio_smoke_workflow_wires_headless_runner_and_artifacts():
     assert "artifacts/agent_studio_smoke_desktop.png" in artifact_path
     assert "artifacts/agent_studio_smoke_mobile.png" in artifact_path
     assert "artifacts/agent_studio_smoke_visual_review.md" in artifact_path
-    assert "/tmp/agent_studio_smoke_server.log" in artifact_path
-    assert "/tmp/agent_studio_smoke_chrome.log" in artifact_path
+    assert "artifacts/agent_studio_smoke_server.log" in artifact_path
+    assert "artifacts/agent_studio_smoke_chrome.log" in artifact_path
+    assert "/tmp/agent_studio_smoke_server.log" not in artifact_path
+    assert "/tmp/agent_studio_smoke_chrome.log" not in artifact_path
 
 
 def test_author_live_api_smoke_scripts_exist_and_are_parseable():

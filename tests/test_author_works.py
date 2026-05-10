@@ -1615,6 +1615,7 @@ def test_author_simulate_accepts_optional_steering_payload_and_exposes_creative_
     legacy = client.post(
         f"/v1/author/drafts/{world_version_id}/simulate",
         headers=author_headers,
+        json={"include_cross_pack": False, "max_chapters": 1},
     )
     assert legacy.status_code == 200
     assert "creative_cockpit" in legacy.json()
@@ -1627,6 +1628,7 @@ def test_author_simulate_accepts_optional_steering_payload_and_exposes_creative_
             "interactive_scenarios": [
                 {
                     "scenario_kind": "memory_steer",
+                    "trigger_chapter": 1,
                     "label": "旧誓突然回潮",
                     "steering_directive": {
                         "current_user_intent": "让主角在下一章因为旧誓而收住真话。",
@@ -1636,6 +1638,8 @@ def test_author_simulate_accepts_optional_steering_payload_and_exposes_creative_
                     },
                 }
             ],
+            "include_cross_pack": False,
+            "max_chapters": 1,
         },
     )
     assert steered.status_code == 200
@@ -1689,6 +1693,7 @@ def test_author_simulate_accepts_optional_steering_payload_and_exposes_creative_
     rerun = client.post(
         f"/v1/author/drafts/{world_version_id}/simulate",
         headers=author_headers,
+        json={"include_cross_pack": False, "max_chapters": 1},
     )
     assert rerun.status_code == 200
     assert "latest_repair_loop_outcome" in rerun.json()

@@ -27,6 +27,29 @@ def _grant_author_access(repository: SQLAlchemyRepository, *, account_id: str = 
     )
 
 
+def _auth_headers(
+    client: TestClient,
+    *,
+    actor_id: str,
+    actor_role: str = "author",
+    account_id: str | None = None,
+    password: str = "secret123",
+) -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={
+            "actor_id": actor_id,
+            "actor_role": actor_role,
+            "password": password,
+            "account_id": account_id or actor_id,
+        },
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": password})
+    assert login.status_code == 200
+    return {"Authorization": f"Bearer {login.json()['token']['access_token']}"}
+
+
 def _make_draft(authoring: AuthoringService, *, account_id: str = "acct_author") -> str:
     draft = authoring.create_draft_from_brief(
         {
@@ -438,8 +461,13 @@ def test_author_collaboration_api_exposes_summary_and_actions(tmp_path):
     _grant_author_access(repository)
     app = create_app(repository=repository)
     client = TestClient(app)
+    author_headers = _auth_headers(client, actor_id="acct_author")
+    ops_reviewer_headers = _auth_headers(client, actor_id="ops_author_reviewer", actor_role="reviewer")
+    lead_editor_headers = _auth_headers(client, actor_id="lead_editor", actor_role="reviewer")
+    outsider_headers = _auth_headers(client, actor_id="outsider", actor_role="reviewer")
     draft_id = client.post(
         "/v1/author/drafts/from-brief",
+        headers=author_headers,
         json={
             "brief": {
                 "genre_preset": "synthetic",
@@ -457,6 +485,7 @@ def test_author_collaboration_api_exposes_summary_and_actions(tmp_path):
 
     thread = client.post(
         f"/v1/author/drafts/{draft_id}/comments",
+        headers=author_headers,
         json={
             "anchor_type": "draft",
             "anchor_key": draft_id,
@@ -468,30 +497,40 @@ def test_author_collaboration_api_exposes_summary_and_actions(tmp_path):
     )
     assert thread.status_code == 200
 
-    summary = client.get(f"/v1/author/drafts/{draft_id}/collaboration")
+    summary = client.get(f"/v1/author/drafts/{draft_id}/collaboration", headers=author_headers)
     assert summary.status_code == 200
     assert "threads_by_anchor" in summary.json()
     assert "queue_summary" in summary.json()
     assert "assignee_queues" in summary.json()
     assert "notification_summary" in summary.json()
 
-    inbox = client.get("/v1/author/reviewer-inbox", params={"reviewer_id": "ops_author_reviewer"})
+    inbox = client.get(
+        "/v1/author/reviewer-inbox",
+        headers=ops_reviewer_headers,
+        params={"reviewer_id": "ops_author_reviewer"},
+    )
     assert inbox.status_code == 200
     assert "queue_summary" in inbox.json()
 
     approval = client.post(
         f"/v1/author/drafts/{draft_id}/approval/request",
+        headers=author_headers,
         json={"reviewer_id": "lead_editor", "reason": "请求审批", "actor_id": "acct_author"},
     )
     assert approval.status_code == 200
     assert approval.json()["notification"]["recipient_id"] == "lead_editor"
 
-    reviewer_inbox = client.get("/v1/author/reviewer-inbox", params={"reviewer_id": "lead_editor"})
+    reviewer_inbox = client.get(
+        "/v1/author/reviewer-inbox",
+        headers=lead_editor_headers,
+        params={"reviewer_id": "lead_editor"},
+    )
     assert reviewer_inbox.status_code == 200
     assert reviewer_inbox.json()["queue_summary"]["pending_approval_count"] == 1
     notification_id = reviewer_inbox.json()["notifications"][0]["notification_id"]
     notification_status = client.post(
         f"/v1/author/notifications/{notification_id}/status",
+        headers=lead_editor_headers,
         json={"status": "read", "recipient_id": "lead_editor"},
     )
     assert notification_status.status_code == 200
@@ -499,6 +538,7 @@ def test_author_collaboration_api_exposes_summary_and_actions(tmp_path):
 
     watcher = client.post(
         f"/v1/author/comments/{thread.json()['thread']['thread_id']}/watchers",
+        headers=author_headers,
         json={"actor_id": "acct_author", "watcher_id": "lead_editor"},
     )
     assert watcher.status_code == 200
@@ -506,6 +546,7 @@ def test_author_collaboration_api_exposes_summary_and_actions(tmp_path):
 
     bulk = client.post(
         "/v1/author/notifications/bulk-status",
+        headers=lead_editor_headers,
         json={
             "notification_ids": [item["notification_id"] for item in reviewer_inbox.json()["notifications"]],
             "recipient_id": "lead_editor",
@@ -517,17 +558,19 @@ def test_author_collaboration_api_exposes_summary_and_actions(tmp_path):
 
     forbidden = client.post(
         f"/v1/author/comments/{thread.json()['thread']['thread_id']}/status",
+        headers=outsider_headers,
         json={"status": "resolved", "actor_id": "outsider", "actor_role": "reviewer"},
     )
     assert forbidden.status_code == 403
 
     decision = client.post(
         f"/v1/author/drafts/{draft_id}/approval/decision",
+        headers=lead_editor_headers,
         json={"reviewer_id": "lead_editor", "status": "approved", "reason": "批准"},
     )
     assert decision.status_code == 200
 
-    workflow = client.get(f"/v1/author/workflow?account_id=acct_author&world_version_id={draft_id}")
+    workflow = client.get(f"/v1/author/workflow?account_id=acct_author&world_version_id={draft_id}", headers=author_headers)
     assert workflow.status_code == 200
     assert "collaboration_summary" in workflow.json()
     assert "approval_summary" in workflow.json()
@@ -535,13 +578,16 @@ def test_author_collaboration_api_exposes_summary_and_actions(tmp_path):
     assert "can_submit" in workflow.json()
 
 
-def test_author_collaboration_api_supports_identity_headers_pagination_and_preferences(tmp_path):
+def test_author_collaboration_api_supports_bearer_identity_pagination_and_preferences(tmp_path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "author_collab_headers.db"))
     _grant_author_access(repository)
     app = create_app(repository=repository)
     client = TestClient(app)
+    author_headers = _auth_headers(client, actor_id="acct_author")
+    lead_editor_headers = _auth_headers(client, actor_id="lead_editor", actor_role="reviewer")
     draft_id = client.post(
         "/v1/author/drafts/from-brief",
+        headers=author_headers,
         json={
             "brief": {
                 "genre_preset": "synthetic",
@@ -557,14 +603,9 @@ def test_author_collaboration_api_supports_identity_headers_pagination_and_prefe
         },
     ).json()["world_version_id"]
 
-    create_headers = {
-        "X-NarrativeOS-Actor-Id": "acct_author",
-        "X-NarrativeOS-Actor-Role": "author",
-        "X-NarrativeOS-Account-Id": "acct_author",
-    }
     created = client.post(
         f"/v1/author/drafts/{draft_id}/comments",
-        headers=create_headers,
+        headers=author_headers,
         json={
             "anchor_type": "draft",
             "anchor_key": draft_id,
@@ -579,14 +620,14 @@ def test_author_collaboration_api_supports_identity_headers_pagination_and_prefe
 
     decision = client.post(
         f"/v1/author/drafts/{draft_id}/approval/request",
-        headers=create_headers,
+        headers=author_headers,
         json={"reviewer_id": "lead_editor", "reason": "请求审批", "actor_id": "wrong_actor"},
     )
     assert decision.status_code == 200
 
     pref = client.post(
         "/v1/author/notification-preferences",
-        headers={"X-NarrativeOS-Actor-Id": "lead_editor", "X-NarrativeOS-Actor-Role": "reviewer"},
+        headers=lead_editor_headers,
         json={
             "actor_id": "someone_else",
             "notification_type": "thread_updated",
@@ -599,7 +640,7 @@ def test_author_collaboration_api_supports_identity_headers_pagination_and_prefe
 
     inbox_page_1 = client.get(
         "/v1/author/reviewer-inbox",
-        headers={"X-NarrativeOS-Actor-Id": "lead_editor", "X-NarrativeOS-Actor-Role": "reviewer"},
+        headers=lead_editor_headers,
         params={"reviewer_id": "wrong_editor", "limit": 1},
     )
     assert inbox_page_1.status_code == 200
@@ -609,7 +650,7 @@ def test_author_collaboration_api_supports_identity_headers_pagination_and_prefe
     next_cursor = inbox_page_1.json()["next_cursor"]
     inbox_page_2 = client.get(
         "/v1/author/reviewer-inbox",
-        headers={"X-NarrativeOS-Actor-Id": "lead_editor", "X-NarrativeOS-Actor-Role": "reviewer"},
+        headers=lead_editor_headers,
         params={"limit": 1, "cursor": next_cursor},
     )
     assert inbox_page_2.status_code == 200
@@ -617,7 +658,7 @@ def test_author_collaboration_api_supports_identity_headers_pagination_and_prefe
 
     searched = client.get(
         "/v1/author/reviewer-inbox",
-        headers={"X-NarrativeOS-Actor-Id": "lead_editor", "X-NarrativeOS-Actor-Role": "reviewer"},
+        headers=lead_editor_headers,
         params={"q": "请求审批", "limit": 5},
     )
     assert searched.status_code == 200

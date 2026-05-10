@@ -12,6 +12,7 @@ def test_frontend_shell_smoke_scripts_exist_and_are_parseable():
     run_script = ROOT / "scripts" / "run_frontend_shell_smoke.sh"
     reader_run_script = ROOT / "scripts" / "run_reader_shell_smoke.sh"
     verify_script = ROOT / "scripts" / "verify_frontend_shell_smoke.js"
+    paid_chapter_helper = ROOT / "scripts" / "force_reader_paid_chapter.py"
     agent_studio_run_script = ROOT / "scripts" / "run_agent_studio_smoke.sh"
     agent_studio_verify_script = ROOT / "scripts" / "verify_agent_studio_smoke.js"
     agent_studio_summary_script = ROOT / "scripts" / "write_agent_studio_smoke_step_summary.py"
@@ -36,6 +37,7 @@ def test_frontend_shell_smoke_scripts_exist_and_are_parseable():
     assert run_script.exists()
     assert reader_run_script.exists()
     assert verify_script.exists()
+    assert paid_chapter_helper.exists()
     assert agent_studio_run_script.exists()
     assert agent_studio_verify_script.exists()
     assert agent_studio_summary_script.exists()
@@ -60,6 +62,7 @@ def test_frontend_shell_smoke_scripts_exist_and_are_parseable():
     run_text = run_script.read_text(encoding="utf-8")
     reader_run_text = reader_run_script.read_text(encoding="utf-8")
     verify_text = verify_script.read_text(encoding="utf-8")
+    paid_chapter_helper_text = paid_chapter_helper.read_text(encoding="utf-8")
     agent_studio_run_text = agent_studio_run_script.read_text(encoding="utf-8")
     agent_studio_verify_text = agent_studio_verify_script.read_text(encoding="utf-8")
     agent_studio_summary_text = agent_studio_summary_script.read_text(encoding="utf-8")
@@ -109,6 +112,8 @@ def test_frontend_shell_smoke_scripts_exist_and_are_parseable():
     assert "--result-file" in run_text
     assert "--failure-artifact-file" in run_text
     assert "--failure-screenshot-file" in run_text
+    assert "scripts/force_reader_paid_chapter.py" in verify_text
+    assert "Force a reader session into a paid chapter" in paid_chapter_helper_text
     assert "public_shell_copy_result.json" in public_run_text
     assert "public_shell_copy_failure_snapshot.json" in public_run_text
     assert "public_shell_copy_failure.png" in public_run_text

@@ -19,6 +19,14 @@ def test_cross_pack_quality_workflow_sets_explicit_database_url_for_benchmark():
     assert "--database-url sqlite:///narrativeos_beta.db" in benchmark_run
 
 
+def test_cross_pack_quality_workflow_avoids_duplicate_pr_branch_push_runs():
+    workflow_path = ROOT / ".github" / "workflows" / "cross-pack-quality.yml"
+    workflow_text = workflow_path.read_text(encoding="utf-8")
+
+    assert "pull_request:" in workflow_text
+    assert "push:\n    branches:\n      - main" in workflow_text
+
+
 def test_cross_pack_quality_workflow_keeps_safe_summary_fallbacks():
     workflow_path = ROOT / ".github" / "workflows" / "cross-pack-quality.yml"
     payload = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))

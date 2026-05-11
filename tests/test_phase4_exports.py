@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import time
 
 from fastapi.testclient import TestClient
 
@@ -10,6 +11,39 @@ from src.narrativeos.schemas import validate_payload
 from src.narrativeos.services.authoring import AuthoringService
 from src.narrativeos.services.training_signal import TrainingSignalService
 from src.narrativeos.worldpacks.registry import FileSystemWorldRegistry
+
+
+def _ops_headers(client: TestClient, *, actor_id: str = "ops_phase4") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={"actor_id": actor_id, "actor_role": "ops", "password": "secret123", "account_id": actor_id},
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _resume_reader_job_if_queued(client: TestClient, response_payload: dict) -> dict:
+    if response_payload.get("status") != "queued":
+        return response_payload
+    job = response_payload.get("job") or {}
+    job_id = job.get("jobId") or job.get("job_id")
+    assert job_id
+    client.post(f"/v1/reader/jobs/{job_id}/resume")
+    latest = response_payload
+    for _ in range(30):
+        status = client.get(f"/v1/reader/jobs/{job_id}")
+        assert status.status_code == 200
+        latest = status.json()
+        if latest.get("status") == "succeeded":
+            return latest.get("result") or latest
+        if latest.get("status") == "failed":
+            return latest
+        time.sleep(0.2)
+    return latest
 
 
 def test_phase4_schema_roundtrip_examples_validate():
@@ -284,9 +318,21 @@ def test_training_signal_service_exports_review_samples_revision_logs_and_churn(
         "/v1/reader/sessions",
         json={"world_id": "urban_mystery_lotus_lane", "reader_id": "reader_phase4_active"},
     ).json()
-    client.post(
+    continue_response = client.post(
         "/v1/reader/continue",
         json={"session_id": active["session_id"], "reader_id": "reader_phase4_active", "freeform_intent": "我先顺着这条旧巷再往前走一步。"},
+    )
+    assert continue_response.status_code == 200
+    _resume_reader_job_if_queued(client, continue_response.json())
+    app.state.analytics_service.track(
+        "continue_story",
+        reader_id="reader_phase4_active",
+        session_id=active["session_id"],
+        world_id="urban_mystery_lotus_lane",
+        world_version_id=draft["world_version_id"],
+        chapter_index=1,
+        access_tier="trial",
+        payload_json={"source": "phase4_export_test"},
     )
     client.post(
         "/v1/reader/sessions",
@@ -382,6 +428,7 @@ def test_ops_export_training_signal_endpoint_supports_filters(tmp_path: Path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "phase4_export_api.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    headers = _ops_headers(client)
     authoring = AuthoringService(repository)
 
     draft = authoring.create_draft_from_brief(
@@ -400,6 +447,7 @@ def test_ops_export_training_signal_endpoint_supports_filters(tmp_path: Path):
     payload = client.get(
         "/v1/ops/export/training-signal",
         params={"world_version_id": draft["world_version_id"], "limit": 1, "include_fix_pairs": "true", "include_inferred": "false", "dataset_view": "evaluator"},
+        headers=headers,
     )
     assert payload.status_code == 200
     data = payload.json()
@@ -426,6 +474,7 @@ def test_ops_review_samples_api_supports_write_and_filters(tmp_path: Path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "phase4_review_sample_api.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    headers = _ops_headers(client, actor_id="ops_phase4_reviews")
 
     create = client.post(
         "/v1/ops/review-samples",
@@ -440,6 +489,7 @@ def test_ops_review_samples_api_supports_write_and_filters(tmp_path: Path):
             "would_continue": True,
             "would_pay": False,
         },
+        headers=headers,
     )
     assert create.status_code == 200
     assert create.json()["review_sample"]["source"] == "human_review"
@@ -449,6 +499,7 @@ def test_ops_review_samples_api_supports_write_and_filters(tmp_path: Path):
     listed = client.get(
         "/v1/ops/review-samples",
         params={"world_id": "jade_court_exam", "reviewer_id": "human_ops"},
+        headers=headers,
     )
     assert listed.status_code == 200
     assert listed.json()["review_samples"]
@@ -469,6 +520,7 @@ def test_ops_review_samples_api_supports_write_and_filters(tmp_path: Path):
             "would_continue": False,
             "would_pay": False,
         },
+        headers=headers,
     )
     assert invalid.status_code == 404
 
@@ -477,6 +529,7 @@ def test_review_sample_backlog_prioritizes_unreviewed_auto_reports(tmp_path: Pat
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "phase4_backlog.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    headers = _ops_headers(client, actor_id="ops_phase4_backlog")
     authoring = AuthoringService(repository)
     registry = FileSystemWorldRegistry()
 
@@ -517,7 +570,7 @@ def test_review_sample_backlog_prioritizes_unreviewed_auto_reports(tmp_path: Pat
     }
     repository.save_world_version(version, publish=False)
 
-    backlog = client.get("/v1/ops/review-sample-backlog", params={"world_id": "jade_court_romance"})
+    backlog = client.get("/v1/ops/review-sample-backlog", params={"world_id": "jade_court_romance"}, headers=headers)
     assert backlog.status_code == 200
     assert backlog.json()["backlog"]
     assert backlog.json()["backlog"][0]["priority"] in {"high", "medium", "low"}
@@ -526,7 +579,7 @@ def test_review_sample_backlog_prioritizes_unreviewed_auto_reports(tmp_path: Pat
     assert "world_compare_signal" in backlog.json()["backlog"][0]
     assert "issue_compare_signal" in backlog.json()["backlog"][0]
 
-    pair_backlog = client.get("/v1/ops/issue-fix-pair-backlog", params={"world_id": "jade_court_romance"})
+    pair_backlog = client.get("/v1/ops/issue-fix-pair-backlog", params={"world_id": "jade_court_romance"}, headers=headers)
     assert pair_backlog.status_code == 200
     assert "backlog" in pair_backlog.json()
     if pair_backlog.json()["backlog"]:
@@ -545,6 +598,7 @@ def test_review_sample_backlog_prioritizes_unreviewed_auto_reports(tmp_path: Pat
             "would_continue": True,
             "would_pay": False,
         },
+        headers=headers,
     )
     assert response.status_code == 200
     assert "impact_receipt" in response.json()
@@ -552,11 +606,11 @@ def test_review_sample_backlog_prioritizes_unreviewed_auto_reports(tmp_path: Pat
     assert response.json()["impact_receipt"]["chapter_id"] == "chapter_backlog_1"
     assert response.json()["impact_receipt"]["review_sample_id"] == response.json()["review_sample"]["sample_id"]
     assert response.json()["impact_receipt"]["cleared_backlog_target"] is True
-    backlog_after = client.get("/v1/ops/review-sample-backlog", params={"world_id": "jade_court_romance"})
+    backlog_after = client.get("/v1/ops/review-sample-backlog", params={"world_id": "jade_court_romance"}, headers=headers)
     assert backlog_after.status_code == 200
     assert all(item["chapter_id"] != "chapter_backlog_1" for item in backlog_after.json()["backlog"])
 
-    pairs = client.get("/v1/ops/issue-fix-pairs", params={"world_id": "jade_court_romance"})
+    pairs = client.get("/v1/ops/issue-fix-pairs", params={"world_id": "jade_court_romance"}, headers=headers)
     assert pairs.status_code == 200
     if pairs.json()["issue_fix_pairs"]:
         assert "pair_quality" in pairs.json()["issue_fix_pairs"][0]

@@ -8,6 +8,19 @@ from src.narrativeos.services.training_signal import TrainingSignalService
 from tests.test_learned_reranker_baseline import _seed_reranker_world
 
 
+def _ops_headers(client: TestClient, *, actor_id: str = "ops_pref_rank") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={"actor_id": actor_id, "actor_role": "ops", "password": "secret123", "account_id": actor_id},
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
+
+
 def _seed_context(tmp_path: Path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "preference_ranking_pipeline.db"))
     world_version_id = _seed_reranker_world(repository, world_id="urban_mystery_lotus_lane")
@@ -98,6 +111,7 @@ def test_ops_preference_and_ranking_sample_endpoints_work(tmp_path: Path):
     repository, world_version_id, world_id, revision_ids = _seed_context(tmp_path)
     app = create_app(repository=repository)
     client = TestClient(app)
+    headers = _ops_headers(client)
 
     preference = client.post(
         "/v1/ops/preference-samples",
@@ -112,6 +126,7 @@ def test_ops_preference_and_ranking_sample_endpoints_work(tmp_path: Path):
             "linked_issue_codes": ["Q04"],
             "preference_strength": "medium",
         },
+        headers=headers,
     )
     ranking = client.post(
         "/v1/ops/ranking-samples",
@@ -123,12 +138,13 @@ def test_ops_preference_and_ranking_sample_endpoints_work(tmp_path: Path):
             "freeform_notes": "排序确认。",
             "linked_issue_codes": ["Q04"],
         },
+        headers=headers,
     )
 
     assert preference.status_code == 200
     assert ranking.status_code == 200
-    preference_list = client.get("/v1/ops/preference-samples", params={"world_version_id": world_version_id})
-    ranking_list = client.get("/v1/ops/ranking-samples", params={"world_version_id": world_version_id})
+    preference_list = client.get("/v1/ops/preference-samples", params={"world_version_id": world_version_id}, headers=headers)
+    ranking_list = client.get("/v1/ops/ranking-samples", params={"world_version_id": world_version_id}, headers=headers)
     assert preference_list.status_code == 200
     assert ranking_list.status_code == 200
     assert preference_list.json()["preference_samples"]

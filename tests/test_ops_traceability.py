@@ -8,6 +8,19 @@ from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.worldpacks.registry import FileSystemWorldRegistry
 
 
+def _ops_headers(client: TestClient, *, actor_id: str = "ops_traceability") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={"actor_id": actor_id, "actor_role": "ops", "password": "secret123", "account_id": actor_id},
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
+
+
 def _create_app(tmp_path: Path, name: str):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / name))
     app = create_app(repository=repository)
@@ -228,23 +241,24 @@ def test_ops_traceability_endpoints_support_account_case_world_and_export(tmp_pa
     app, _repository = _create_app(tmp_path, "ops_traceability_api.db")
     client = TestClient(app)
     seeded = _seed_traceability_bundle(app, account_id="acct_trace_api")
+    headers = _ops_headers(client)
 
-    account = client.get(f"/v1/ops/investigations/accounts/{seeded['account_id']}", params={"limit": 40})
+    account = client.get(f"/v1/ops/investigations/accounts/{seeded['account_id']}", params={"limit": 40}, headers=headers)
     assert account.status_code == 200
     assert account.json()["filters"]["account_id"] == seeded["account_id"]
     assert account.json()["trace_timeline"]
 
-    case = client.get(f"/v1/ops/investigations/cases/{seeded['case_id']}", params={"limit": 40})
+    case = client.get(f"/v1/ops/investigations/cases/{seeded['case_id']}", params={"limit": 40}, headers=headers)
     assert case.status_code == 200
     assert case.json()["filters"]["case_id"] == seeded["case_id"]
     assert any(item.get("case_id") == seeded["case_id"] for item in case.json()["trace_timeline"])
 
-    world = client.get(f"/v1/ops/investigations/world-versions/{seeded['world_version_id']}", params={"limit": 40})
+    world = client.get(f"/v1/ops/investigations/world-versions/{seeded['world_version_id']}", params={"limit": 40}, headers=headers)
     assert world.status_code == 200
     assert world.json()["filters"]["world_version_id"] == seeded["world_version_id"]
     assert any(item.get("world_version_id") == seeded["world_version_id"] for item in world.json()["trace_timeline"])
 
-    exported = client.get("/v1/ops/export/investigation-trace", params={"account_id": seeded["account_id"], "limit": 40})
+    exported = client.get("/v1/ops/export/investigation-trace", params={"account_id": seeded["account_id"], "limit": 40}, headers=headers)
     assert exported.status_code == 200
     payload = exported.json()
     assert payload["generated_at"]

@@ -6,6 +6,19 @@ from src.narrativeos.api import create_app
 from src.narrativeos.repository import SQLAlchemyRepository
 
 
+def _ops_headers(client: TestClient, *, actor_id: str = "ops_workspace") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={"actor_id": actor_id, "actor_role": "ops", "password": "secret123", "account_id": actor_id},
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
+
+
 def _seed_workspace_account(app, *, account_id: str = "acct_workspace") -> None:
     billing = app.state.billing_service
     analytics = app.state.analytics_service
@@ -68,10 +81,10 @@ def test_ops_account_workspace_endpoint_and_shell(tmp_path: Path):
     shell = client.get("/app")
     assert shell.status_code == 200
     assert "账户详情 / 权益 / 订阅 / 钱包统一排查页" in shell.text
-    assert "operator workspace summary" in shell.text
-    assert "quick actions" in shell.text
+    assert "这里会显示当前账户的运营摘要" in shell.text
+    assert "这里会显示当前账户的快捷动作与推荐处置顺序" in shell.text
 
-    payload = client.get("/v1/ops/accounts/acct_workspace_api/workspace")
+    payload = client.get("/v1/ops/accounts/acct_workspace_api/workspace", headers=_ops_headers(client))
     assert payload.status_code == 200
     json_payload = payload.json()
     assert "workspace_summary" in json_payload

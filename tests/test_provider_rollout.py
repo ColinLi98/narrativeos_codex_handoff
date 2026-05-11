@@ -9,6 +9,19 @@ from src.narrativeos.services.provider_rollout import ProviderRolloutService
 from src.narrativeos.services.provider_routing import ProviderRoutingService
 
 
+def _ops_headers(client: TestClient, *, actor_id: str = "ops_provider_rollout") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={"actor_id": actor_id, "actor_role": "ops", "password": "secret123", "account_id": actor_id},
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_provider_rollout_defaults_follow_backend_presence(tmp_path: Path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "provider_rollout_default.db"))
     service = ProviderRolloutService(repository)
@@ -91,14 +104,16 @@ def test_provider_rollout_endpoints_canary_activate_and_rollback(tmp_path: Path)
         renderer_backend=InlineJSONLLMBackend({"concise_summary": "s", "interactive_scene": "i", "premium_prose": "p"}),
     )
     client = TestClient(app)
+    headers = _ops_headers(client)
 
-    initial = client.get("/v1/ops/provider-rollout")
+    initial = client.get("/v1/ops/provider-rollout", headers=headers)
     assert initial.status_code == 200
     assert "tracks" in initial.json()
 
     canary = client.post(
         "/v1/ops/provider-rollout/candidate/canary",
         json={"reviewer_id": "ops_web", "reason": "start canary", "bucket_percentage": 10, "world_allowlist": ["jade_court_exam"]},
+        headers=headers,
     )
     assert canary.status_code == 200
     assert canary.json()["tracks"]["candidate"]["rollout_status"] == "canary"
@@ -106,6 +121,7 @@ def test_provider_rollout_endpoints_canary_activate_and_rollback(tmp_path: Path)
     activate = client.post(
         "/v1/ops/provider-rollout/renderer/activate",
         json={"reviewer_id": "ops_web", "reason": "go active"},
+        headers=headers,
     )
     assert activate.status_code == 200
     assert activate.json()["tracks"]["renderer"]["rollout_status"] == "active"
@@ -113,6 +129,7 @@ def test_provider_rollout_endpoints_canary_activate_and_rollback(tmp_path: Path)
     rollback = client.post(
         "/v1/ops/provider-rollout/candidate/rollback",
         json={"reviewer_id": "ops_web", "reason": "rollback candidate"},
+        headers=headers,
     )
     assert rollback.status_code == 200
     assert rollback.json()["tracks"]["candidate"]["rollout_status"] == "rolled_back"

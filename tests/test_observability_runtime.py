@@ -6,6 +6,19 @@ from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.services.observability import ObservabilityService
 
 
+def _ops_headers(client: TestClient, *, actor_id: str = "ops_observability") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={"actor_id": actor_id, "actor_role": "ops", "password": "secret123", "account_id": actor_id},
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_observability_service_records_receipts_and_incident_snapshot(tmp_path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "observability_service.db"))
     service = ObservabilityService(repository)
@@ -105,6 +118,7 @@ def test_runtime_observability_endpoints_return_receipts_and_snapshot(tmp_path):
     )
     app = create_app(repository=repository, llm_backend=llm_backend)
     client = TestClient(app)
+    headers = _ops_headers(client)
 
     session = client.post("/v1/reader/sessions", json={"world_id": "jade_court_exam", "account_id": "acct_obs_api"})
     assert session.status_code == 200
@@ -117,25 +131,25 @@ def test_runtime_observability_endpoints_return_receipts_and_snapshot(tmp_path):
     assert step.status_code == 200
     assert step.json()["status"] == "ok"
 
-    receipts = client.get("/v1/ops/runtime-receipts", params={"account_id": "acct_obs_api"})
+    receipts = client.get("/v1/ops/runtime-receipts", params={"account_id": "acct_obs_api"}, headers=headers)
     assert receipts.status_code == 200
     assert receipts.json()["runtime_receipts"]
     assert receipts.json()["runtime_receipts"][0]["budget_blocked"] is True
     assert "runtime_latency_ms" in receipts.json()["runtime_receipts"][0]
 
-    snapshot = client.get("/v1/ops/runtime-incident-snapshot", params={"account_id": "acct_obs_api"})
+    snapshot = client.get("/v1/ops/runtime-incident-snapshot", params={"account_id": "acct_obs_api"}, headers=headers)
     assert snapshot.status_code == 200
     assert snapshot.json()["incident_count"] >= 1
     assert snapshot.json()["latest_budget_blocks"]
     assert "latency_summary" in snapshot.json()
-    metrics = client.get("/v1/ops/provider-runtime-metrics", params={"account_id": "acct_obs_api"})
+    metrics = client.get("/v1/ops/provider-runtime-metrics", params={"account_id": "acct_obs_api"}, headers=headers)
     assert metrics.status_code == 200
     assert metrics.json()["provider_summary"]
     assert metrics.json()["cost_trend"]
     assert "latency_summary" in metrics.json()
     assert "latency_trend" in metrics.json()
     assert "rollout_stage_summary" in metrics.json()
-    metrics = client.get("/v1/ops/provider-runtime-metrics", params={"account_id": "acct_obs_api"})
+    metrics = client.get("/v1/ops/provider-runtime-metrics", params={"account_id": "acct_obs_api"}, headers=headers)
     assert metrics.status_code == 200
     assert metrics.json()["provider_summary"]
     assert metrics.json()["cost_trend"]

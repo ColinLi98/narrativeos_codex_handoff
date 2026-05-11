@@ -17,6 +17,7 @@ from src.narrativeos.eval.learned_rollout import activate_learned_rollout
 from src.narrativeos.persistence.db import SessionRow
 from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.services.analytics import AnalyticsService
+from tests.ops_auth import ops_headers
 from tests.test_eval_metrics_correlation import _seed_reader_chapter
 from tests.test_learned_reranker_baseline import _seed_reranker_world
 
@@ -252,6 +253,7 @@ def test_learned_impact_endpoints_return_summary_and_drilldowns(tmp_path: Path, 
     repository, world_version_id, evaluator_artifact_dir, reranker_artifact_dir = _seed_learned_impact_context(tmp_path)
     app = create_app(repository=repository)
     client = TestClient(app)
+    headers = ops_headers(client, actor_id="ops_learned_impact")
 
     import src.narrativeos.eval.learned_dashboard as learned_dashboard_module
 
@@ -266,9 +268,9 @@ def test_learned_impact_endpoints_return_summary_and_drilldowns(tmp_path: Path, 
         lambda _base_dir: reranker_artifact_dir,
     )
 
-    summary = client.get("/v1/ops/learned-impact", params={"world_version_id": world_version_id, "limit": 5})
-    world_detail = client.get("/v1/ops/learned-impact/worlds/urban_mystery_lotus_lane", params={"world_version_id": world_version_id})
-    issue_detail = client.get("/v1/ops/learned-impact/issues/Q04", params={"world_version_id": world_version_id})
+    summary = client.get("/v1/ops/learned-impact", params={"world_version_id": world_version_id, "limit": 5}, headers=headers)
+    world_detail = client.get("/v1/ops/learned-impact/worlds/urban_mystery_lotus_lane", params={"world_version_id": world_version_id}, headers=headers)
+    issue_detail = client.get("/v1/ops/learned-impact/issues/Q04", params={"world_version_id": world_version_id}, headers=headers)
 
     assert summary.status_code == 200
     assert world_detail.status_code == 200

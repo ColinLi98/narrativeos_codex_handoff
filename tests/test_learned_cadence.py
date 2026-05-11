@@ -16,6 +16,7 @@ from src.narrativeos.eval.learned_reranker_baseline import train_learned_reranke
 from src.narrativeos.eval.learned_rollout import activate_learned_rollout
 from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.services.training_signal import TrainingSignalService
+from tests.ops_auth import ops_headers
 from tests.test_learned_reranker_baseline import _seed_reranker_world
 
 
@@ -147,8 +148,9 @@ def test_learned_cadence_endpoints_return_summary_and_track_detail(tmp_path: Pat
     )
 
     client = TestClient(create_app(repository=repository))
-    summary = client.get("/v1/ops/learned-cadence", params={"world_version_id": world_version_id, "limit": 5})
-    detail = client.get("/v1/ops/learned-cadence/evaluator", params={"world_version_id": world_version_id, "limit": 5})
+    headers = ops_headers(client, actor_id="ops_learned_cadence")
+    summary = client.get("/v1/ops/learned-cadence", params={"world_version_id": world_version_id, "limit": 5}, headers=headers)
+    detail = client.get("/v1/ops/learned-cadence/evaluator", params={"world_version_id": world_version_id, "limit": 5}, headers=headers)
 
     assert summary.status_code == 200
     assert detail.status_code == 200

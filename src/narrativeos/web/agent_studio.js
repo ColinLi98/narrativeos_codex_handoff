@@ -323,16 +323,28 @@ var AgentStudioRuntime = (() => {
         body: JSON.stringify({ world_version_id: draft.world_version_id, account_id: accountId }),
       });
       authorState.activeWorkId = work.work_id;
-      try {
-        authorState.activeWorkDetail = await api(`/v1/author/works/${encodeURIComponent(work.work_id)}/chapters/generate`, {
-          method: "POST",
-          body: JSON.stringify({ mode: "first", account_id: accountId }),
-        });
-      } catch (error) {
-        authorState.activeWorkDetail = await api(`/v1/author/works/${encodeURIComponent(work.work_id)}`);
-        reportUiMessage(`第一章暂时没有入库：${error.message}`, "warning");
+      let generated = false;
+      for (let attempt = 0; attempt < 2 && !generated; attempt += 1) {
+        try {
+          authorState.activeWorkDetail = await api(`/v1/author/works/${encodeURIComponent(work.work_id)}/chapters/generate`, {
+            method: "POST",
+            body: JSON.stringify({ mode: "first", account_id: accountId }),
+          });
+          generated = Number(authorState.activeWorkDetail?.chapter_count || 0) >= 1;
+        } catch (_error) {
+          authorState.activeWorkDetail = await api(`/v1/author/works/${encodeURIComponent(work.work_id)}`);
+          if (attempt === 0) {
+            setGenerationStatus("第一章生成中", "pending", "正在补足场景细节并重新生成第一章。");
+          }
+        }
       }
       currentChapterIndex = Number(authorState.activeWorkDetail?.active_chapter_index || authorState.activeWorkDetail?.chapter_count || 0) || null;
+      if (!generated) {
+        setGenerationStatus("第一章暂未通过质量校验。", "error", "作品已保留，可以点击续写下一章重试。");
+        reportUiMessage("第一章暂未通过质量校验，请稍后重试。", "warning");
+        render();
+        return;
+      }
       setGenerationStatus("第 1 章已完成。", "success", "本章已加入当前路线，可以继续阅读或选择下一步。");
       render();
     } catch (error) {
@@ -408,7 +420,7 @@ var AgentStudioRuntime = (() => {
       render();
     } catch (error) {
       setGenerationStatus("续写失败，当前路线已保留。", "error", "可以调整导演意图后重试。");
-      reportUiMessage(`续写失败：${error.message}`, "error");
+      reportUiMessage("续写暂未通过质量校验，当前路线已保留。", "error");
     } finally {
       releaseBusy?.();
     }

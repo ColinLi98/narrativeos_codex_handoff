@@ -146,6 +146,59 @@ async function waitFor(evaluate, label, expression, timeoutMs = 30000) {
   throw new Error(`Timed out waiting for ${label}`);
 }
 
+async function waitForStudioChapterCount(
+  evaluate,
+  {
+    label,
+    minCount,
+    timeoutMs = 180000,
+    retrySelector = "",
+    retryIntent = "",
+    maxRetries = 0,
+  }
+) {
+  const start = Date.now();
+  let retries = 0;
+  let latestSnapshot = null;
+  while (Date.now() - start < timeoutMs) {
+    latestSnapshot = await evaluate(`(() => {
+      const status = authorState.agentStudio?.generationStatus || {};
+      const retry = ${JSON.stringify(retrySelector)} ? document.querySelector(${JSON.stringify(retrySelector)}) : null;
+      const studioText = document.querySelector('#agent-studio-shell')?.innerText || '';
+      return {
+        active_work_id: authorState.activeWorkId || '',
+        chapter_count: Number(authorState.activeWorkDetail?.chapter_count || 0),
+        reader_body_length: (document.querySelector('#agent-studio-reader-body')?.innerText || '').trim().length,
+        generation_kind: status.kind || '',
+        generation_message: status.message || '',
+        generation_text: document.querySelector('#agent-studio-generation-status')?.innerText || '',
+        retry_disabled: retry ? Boolean(retry.disabled) : true,
+        retryable_copy: /暂未|失败|未通过|质量校验/.test(studioText),
+      };
+    })()`);
+    if (Number(latestSnapshot.chapter_count || 0) >= minCount && Number(latestSnapshot.reader_body_length || 0) > 80) {
+      return { ...latestSnapshot, retries };
+    }
+    if (
+      retrySelector &&
+      retries < maxRetries &&
+      latestSnapshot.active_work_id &&
+      !latestSnapshot.retry_disabled &&
+      (latestSnapshot.generation_kind === "error" || latestSnapshot.retryable_copy)
+    ) {
+      if (retryIntent) {
+        await setValue(evaluate, "#agent-studio-director-intent", retryIntent);
+      }
+      await clickSelector(evaluate, retrySelector);
+      retries += 1;
+      await sleep(500);
+      continue;
+    }
+    await sleep(500);
+  }
+  throw new Error(`Timed out waiting for ${label}: ${JSON.stringify(latestSnapshot || {})}`);
+}
+
 async function clickSelector(evaluate, selector) {
   const escaped = JSON.stringify(selector);
   return evaluate(`(() => {
@@ -676,15 +729,14 @@ async function main() {
       5000
     );
     const startupWaitCopy = await readGenerationWaitCopy(evaluate);
-    await waitFor(
-      evaluate,
-      "first Studio chapter",
-      `Boolean(authorState.activeWorkId)
-        && Number(authorState.activeWorkDetail?.chapter_count || 0) >= 1
-        && !document.querySelector('#agent-studio-workbench')?.classList.contains('is-hidden')
-        && (document.querySelector('#agent-studio-reader-body')?.innerText || '').length > 80`,
-      180000
-    );
+    await waitForStudioChapterCount(evaluate, {
+      label: "first Studio chapter",
+      minCount: 1,
+      retrySelector: "#agent-studio-generate",
+      retryIntent: "补足场景细节，增加具体动作和环境触感后重写第一章。",
+      maxRetries: 2,
+      timeoutMs: 240000,
+    });
     const startupSnapshot = await evaluate(`({
       work_id: authorState.activeWorkId || '',
       chapter_count: Number(authorState.activeWorkDetail?.chapter_count || 0),
@@ -736,14 +788,14 @@ async function main() {
       5000
     );
     const continuationWaitCopy = await readGenerationWaitCopy(evaluate);
-    await waitFor(
-      evaluate,
-      "Studio director continuation",
-      `Number(authorState.activeWorkDetail?.chapter_count || 0) >= 2
-        && (document.querySelector('#agent-studio-generation-status')?.innerText || '').includes('章已完成')
-        && (document.querySelector('#agent-studio-reader-body')?.innerText || '').length > 80`,
-      180000
-    );
+    await waitForStudioChapterCount(evaluate, {
+      label: "Studio director continuation",
+      minCount: 2,
+      retrySelector: "#agent-studio-generate",
+      retryIntent: "增加感情张力，补足场景细节，但不要揭晓真相。",
+      maxRetries: 2,
+      timeoutMs: 240000,
+    });
     const continueSnapshot = await evaluate(`({
       work_id: authorState.activeWorkId || '',
       chapter_count: Number(authorState.activeWorkDetail?.chapter_count || 0),

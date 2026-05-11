@@ -40,12 +40,23 @@ def _pass_simulation(version):
         "rewrite_rate": 0.0,
         "block_rate": 0.0,
     }
-    simulation["cross_pack_summary"] = simulation.get("cross_pack_summary") or {
+    cross_pack_summary = dict(simulation.get("cross_pack_summary") or {})
+    delta_summary = dict(cross_pack_summary.get("delta_summary") or {})
+    delta_summary.update({"cross_pack_pass_rate_delta": 0.0, "regressions": [], "world_deltas": {}})
+    cross_pack_summary.update({
         "cross_pack_pass_rate": 1.0,
         "top_failing_packs": [],
-        "delta_summary": {"cross_pack_pass_rate_delta": 0.0, "regressions": [], "world_deltas": {}},
-        "worlds": [],
-    }
+        "delta_summary": delta_summary,
+        "worlds": [
+            {**dict(item), "prose_leak_rate": 0.0}
+            for item in cross_pack_summary.get("worlds", [])
+        ],
+        "phase_a_quality_gate": {"ok": True, "failed_checks": []},
+        "content_quality_contract_gate": {"ok": True, "failed_checks": []},
+    })
+    simulation["cross_pack_summary"] = cross_pack_summary
+    simulation["phase_a_quality_gate"] = {"ok": True, "failed_checks": []}
+    simulation["content_quality_contract_gate"] = {"ok": True, "failed_checks": []}
     version.simulation_report_json = simulation
     return version
 

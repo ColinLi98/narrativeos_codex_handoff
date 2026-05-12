@@ -776,8 +776,12 @@ class StaticCandidateProvider(CandidateProvider):
                 legal_candidates.append(candidate)
 
         continuation_candidates: List[EventAtom] = []
+        longform_mode = bool(state.metadata.get("longform_plan_enabled"))
+        continuation_mode = "longform" if longform_mode else (
+            "long_route" if state.min_end_turn >= self._LONG_ROUTE_CONTINUATION_MIN_END_TURN else "off"
+        )
         if (
-            state.min_end_turn >= self._LONG_ROUTE_CONTINUATION_MIN_END_TURN
+            continuation_mode != "off"
             and len(legal_candidates) < min_candidates
         ):
             continuation_limit = max(
@@ -811,6 +815,7 @@ class StaticCandidateProvider(CandidateProvider):
                 "min_candidates_requested": min_candidates,
                 "cache_hit": cache_hit,
                 "cache_key": cache_key,
+                "continuation_mode": continuation_mode,
                 "continuation_candidate_count": len(continuation_candidates),
             },
         )

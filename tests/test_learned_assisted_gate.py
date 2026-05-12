@@ -40,7 +40,8 @@ def _pass_simulation(version):
         "rewrite_rate": 0.0,
         "block_rate": 0.0,
     }
-    simulation["cross_pack_summary"] = simulation.get("cross_pack_summary") or {
+    simulation["cross_pack_summary"] = {
+        **dict(simulation.get("cross_pack_summary") or {}),
         "cross_pack_pass_rate": 1.0,
         "top_failing_packs": [],
         "delta_summary": {"cross_pack_pass_rate_delta": 0.0, "regressions": [], "world_deltas": {}},

@@ -101,4 +101,24 @@ if [[ ! -f "$BENCHMARK_BASELINE_MD" ]]; then
   exit 1
 fi
 
-diff -u "$BENCHMARK_BASELINE_MD" "$BENCHMARK_MD"
+normalize_benchmark_summary() {
+  python - "$1" <<'PY'
+import re
+import sys
+
+path = sys.argv[1]
+with open(path, "r", encoding="utf-8") as handle:
+    for line in handle:
+        if line.startswith("- total wall ms:"):
+            line = re.sub(r"(- total wall ms: )\d+(?:\.\d+)?", r"\1<ms>", line)
+        elif line.startswith("- slowest worlds:") or line.startswith("- stage totals:"):
+            line = re.sub(r"\d+(?:\.\d+)?ms", "<ms>", line)
+        sys.stdout.write(line)
+PY
+}
+
+NORMALIZED_BASELINE_MD="$(mktemp)"
+NORMALIZED_BENCHMARK_MD="$(mktemp)"
+normalize_benchmark_summary "$BENCHMARK_BASELINE_MD" > "$NORMALIZED_BASELINE_MD"
+normalize_benchmark_summary "$BENCHMARK_MD" > "$NORMALIZED_BENCHMARK_MD"
+diff -u "$NORMALIZED_BASELINE_MD" "$NORMALIZED_BENCHMARK_MD"

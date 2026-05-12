@@ -7,7 +7,7 @@ import os
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from time import perf_counter
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Set
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
@@ -471,6 +471,7 @@ class StaticCandidateProvider(CandidateProvider):
 
     def __init__(self, event_pool: Sequence[EventAtom]) -> None:
         self.event_pool = [EventAtom.from_dict(event.to_dict()) for event in event_pool]
+        self._seen_cache_keys: Set[str] = set()
 
     _CONTINUATION_FUNCTIONS_BY_PHASE: Dict[str, List[str]] = {
         "setup": ["false_peace", "temptation", "confession_window"],
@@ -717,6 +718,30 @@ class StaticCandidateProvider(CandidateProvider):
                     return variants
         return variants
 
+    def _cache_key(
+        self,
+        state: NarrativeState,
+        world: WorldBible,
+        *,
+        depth: int,
+        min_candidates: int,
+        max_candidates: int,
+    ) -> str:
+        payload = {
+            "world_id": world.world_id,
+            "state_id": state.state_id,
+            "turn_index": state.turn_index,
+            "chapter_index": state.chapter_index,
+            "story_phase": state.story_phase,
+            "visited_event_ids": list(state.visited_event_ids),
+            "min_end_turn": state.min_end_turn,
+            "depth": depth,
+            "min_candidates": min_candidates,
+            "max_candidates": max_candidates,
+            "event_pool_ids": [event.event_id for event in self.event_pool],
+        }
+        return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()[:16]
+
     def generate(
         self,
         state: NarrativeState,
@@ -726,6 +751,15 @@ class StaticCandidateProvider(CandidateProvider):
         min_candidates: int = 6,
         max_candidates: int = 10,
     ) -> CandidateBatch:
+        cache_key = self._cache_key(
+            state,
+            world,
+            depth=depth,
+            min_candidates=min_candidates,
+            max_candidates=max_candidates,
+        )
+        cache_hit = cache_key in self._seen_cache_keys
+        self._seen_cache_keys.add(cache_key)
         raw_candidates = [
             EventAtom.from_dict(event.to_dict())
             for event in self.event_pool
@@ -775,6 +809,8 @@ class StaticCandidateProvider(CandidateProvider):
                 "raw_count": len(raw_candidates),
                 "legal_count": len(legal_candidates),
                 "min_candidates_requested": min_candidates,
+                "cache_hit": cache_hit,
+                "cache_key": cache_key,
                 "continuation_candidate_count": len(continuation_candidates),
             },
         )

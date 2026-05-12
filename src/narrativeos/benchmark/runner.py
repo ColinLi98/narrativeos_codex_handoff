@@ -1711,6 +1711,7 @@ def run_benchmark(
                     max_chapters=max_chapters,
                     min_end_turn_override=min_end_turn_override,
                     interactive_scenarios=interactive_scenarios,
+                    longform_setup_override={"authoring_simulation_quality_mode": "benchmark"},
                     progress_callback=simulation_progress,
                 )
             else:
@@ -1719,6 +1720,7 @@ def run_benchmark(
                     include_cross_pack=False,
                     max_chapters=max_chapters,
                     min_end_turn_override=min_end_turn_override,
+                    longform_setup_override={"authoring_simulation_quality_mode": "benchmark"},
                     progress_callback=simulation_progress,
                 )
         else:

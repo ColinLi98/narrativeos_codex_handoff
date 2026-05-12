@@ -127,7 +127,7 @@ def hook_quality(body: str) -> float:
     tail = body.split("\n\n")[-1]
     if any(token in tail for token in ["总结", "完成", "这一章", "从这里起", "放远一点看"]):
         return 0.22
-    if any(token in tail for token in ["下一次", "还会", "还没", "追上来", "没有散", "未说尽"]):
+    if any(token in tail for token in ["下一次", "下一章", "还会", "还没", "追上来", "没有散", "未说尽", "未完", "余波"]):
         return 0.9
     return 0.45
 

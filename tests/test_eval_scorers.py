@@ -21,6 +21,7 @@ def test_readability_and_scene_density_have_positive_cases():
 def test_choice_distinctness_and_hook_quality():
     assert choice_distinctness(["先问真相", "先保住她", "先顺着局势"]) > 0.6
     assert hook_quality("话停在这里，可下一次开口时，谁都不可能还是刚才那个人。") > 0.7
+    assert hook_quality("这一场停在门口，可余波已经压到下一章。") > 0.7
 
 
 def test_monetize_ready_respects_paywall_continuity():

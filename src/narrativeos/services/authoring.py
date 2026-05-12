@@ -5853,6 +5853,7 @@ class AuthoringService:
         )
         runtime = self.repository.get_runtime_bundle(world_version_id)
         state = NarrativeState.from_dict(runtime.initial_state.to_dict())
+        state.metadata["authoring_simulation_chapter_budget"] = int(max_chapters)
         if min_end_turn_override is not None:
             state.min_end_turn = max(int(min_end_turn_override), int(state.min_end_turn))
         if max_chapters >= 1000:
@@ -5869,6 +5870,9 @@ class AuthoringService:
         chapter_budget_policy = dict(longform_structure.get("chapter_budget_policy") or {})
         plan_source = str(longform_structure.get("plan_source") or "worldpack")
         setup_override = dict(longform_setup_override or {})
+        state.metadata["authoring_simulation_quality_mode"] = str(
+            setup_override.get("authoring_simulation_quality_mode") or ""
+        )
         resolved_memory_compression_policy = dict(
             worldpack_payload.get("memory_compression_policy")
             or _default_memory_compression_policy(len(volume_plans))

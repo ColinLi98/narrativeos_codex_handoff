@@ -90,7 +90,12 @@ def _semantic_feature_vector(text: str) -> Counter[str]:
 def _cosine_similarity(left: Counter[str], right: Counter[str]) -> float:
     if not left or not right:
         return 0.0
-    numerator = sum(float(value) * float(right.get(key, 0.0)) for key, value in left.items())
+    left_items = left.items()
+    right_lookup = right
+    if len(right) < len(left):
+        left_items = right.items()
+        right_lookup = left
+    numerator = sum(float(value) * float(right_lookup.get(key, 0.0)) for key, value in left_items)
     if numerator <= 0.0:
         return 0.0
     left_norm = sqrt(sum(float(value) ** 2 for value in left.values()))

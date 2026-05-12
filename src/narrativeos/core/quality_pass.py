@@ -2649,12 +2649,23 @@ def repair_chapter_draft(
     lint_report = lint_chapter_draft(repaired.body)
     target_word_count, min_target_word_count, max_target_word_count = _length_target_bounds(draft=draft, render_spec=render_spec)
     chapter_index = int(getattr(state_before, "chapter_index", 0) or 0)
+    state_metadata = dict(getattr(state_before, "metadata", {}) or {})
+    simulation_budget = int(state_metadata.get("authoring_simulation_chapter_budget") or 0)
+    simulation_quality_mode = str(state_metadata.get("authoring_simulation_quality_mode") or "")
+    standard_authoring_simulation = 0 < simulation_budget <= 6 and simulation_quality_mode != "benchmark"
+    if standard_authoring_simulation:
+        target_word_count = min(target_word_count, 900)
+        min_target_word_count = min(min_target_word_count, 700)
+        max_target_word_count = min(max(max_target_word_count, min_target_word_count + 120), 1100)
     state_longform_mode = bool(
-        getattr(state_before, "current_series_id", None)
-        or getattr(state_before, "current_volume_id", None)
-        or getattr(state_before, "current_arc_id", None)
-        or dict(getattr(state_before, "metadata", {}) or {}).get("longform_plan_enabled")
-        or chapter_index >= 20
+        not standard_authoring_simulation
+        and (
+            getattr(state_before, "current_series_id", None)
+            or getattr(state_before, "current_volume_id", None)
+            or getattr(state_before, "current_arc_id", None)
+            or state_metadata.get("longform_plan_enabled")
+            or chapter_index >= 20
+        )
     )
     if state_longform_mode:
         target_word_count = max(target_word_count, 2000)

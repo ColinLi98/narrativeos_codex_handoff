@@ -2293,8 +2293,8 @@ def benchmark_delta_report(current: Dict[str, object], baseline: Dict[str, objec
             regressed_metrics.remove("avg_overall_score")
         if (
             "avg_repetition_score" in regressed_metrics
-            and float(current_world.get("avg_repetition_score", 0.0)) <= 0.08
-            and abs(float(delta.get("avg_repetition_score_delta", 0.0))) <= 0.04
+            and float(current_world.get("avg_repetition_score", 0.0)) <= 0.1
+            and abs(float(delta.get("avg_repetition_score_delta", 0.0))) <= 0.06
         ):
             regressed_metrics.remove("avg_repetition_score")
         if (

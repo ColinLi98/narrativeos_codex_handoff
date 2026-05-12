@@ -203,3 +203,39 @@ def test_agent_studio_layout_pr_review_convention_is_documented():
     combined = "\n".join([pr_template, review_template, studio_doc, frontend_doc]).lower()
     for phrase in forbidden:
         assert phrase not in combined
+
+
+def test_agent_studio_docs_define_codex_nosbook_upload_workflow():
+    studio_doc = (ROOT / "docs" / "agent_studio_interactive_workbench.md").read_text(encoding="utf-8")
+    frontend_doc = (ROOT / "docs" / "frontend_shell_rebuild.md").read_text(encoding="utf-8")
+    api_contracts = (ROOT / "docs" / "07_api_contracts.md").read_text(encoding="utf-8")
+    upload_script = (ROOT / "scripts" / "upload_nosbook.py").read_text(encoding="utf-8")
+
+    for text in [studio_doc, frontend_doc, api_contracts]:
+        assert "POST /v1/author/nosbooks/import" in text
+        assert "nosbook_import_result/v1" in text
+        assert "private_draft" in text
+        assert "source_only" in text
+
+    for text in [studio_doc, frontend_doc]:
+        assert "NARRATIVEOS_PLATFORM_URL" in text
+        assert "NARRATIVEOS_PLATFORM_TOKEN" in text
+        assert "NARRATIVEOS_LOCAL_STUDIO_URL" in text
+        assert "NARRATIVEOS_LOCAL_STUDIO_TOKEN" in text
+        assert "scripts/upload_nosbook.py --file" in text
+        assert "scripts/upload_nosbook.py --local-work-id" in text
+        assert "does not print or persist the token" in text
+
+    assert "nosbook_import_auth_required" in api_contracts
+    assert "author_work_chapters" in api_contracts
+
+    assert "NOSBOOK_CONTENT_TYPE" in upload_script
+    assert "application/vnd.narrativeos.nosbook+json" in upload_script
+    assert "/v1/author/nosbooks/import" in upload_script
+    assert "--local-work-id" in upload_script
+    assert "NARRATIVEOS_LOCAL_STUDIO_URL" in upload_script
+    assert "NARRATIVEOS_LOCAL_STUDIO_TOKEN" in upload_script
+    assert "http://127.0.0.1:8000" in upload_script
+    assert "local_export_invalid_nosbook" in upload_script
+    assert "Authorization" in upload_script
+    assert "NARRATIVEOS_PLATFORM_TOKEN" in upload_script

@@ -51,6 +51,49 @@ The `.nosbook` export contains:
 
 `route=active` exports only the active/main route chapters by default.
 
+## Codex Upload Workflow
+
+Agent Studio now supports an agent-operated platform upload loop without adding a Studio UI upload button. The default upload result is an Author private draft; it does not submit for review or publish.
+
+Platform API:
+
+```http
+POST /v1/author/nosbooks/import
+Authorization: Bearer <token>
+Content-Type: application/vnd.narrativeos.nosbook+json
+```
+
+The request body is the existing `.nosbook` JSON envelope. The importer requires `schema_version: nosbook/v1` plus `work`, `chapters`, `branch_map`, `choice_history`, and `quality_summary`. Success returns `schema_version: nosbook_import_result/v1`, `work_id`, `status: private_draft`, chapter count, warnings, and `world_version_link_status`.
+
+Codex-style local upload:
+
+```bash
+export NARRATIVEOS_PLATFORM_URL="https://your-platform.example"
+export NARRATIVEOS_PLATFORM_TOKEN="<author bearer token>"
+python scripts/upload_nosbook.py --file path/to/work.nosbook
+```
+
+One-command local Studio bridge:
+
+```bash
+export NARRATIVEOS_LOCAL_STUDIO_URL="http://127.0.0.1:8000"
+export NARRATIVEOS_LOCAL_STUDIO_TOKEN="<local author bearer token>"
+export NARRATIVEOS_PLATFORM_URL="https://your-platform.example"
+export NARRATIVEOS_PLATFORM_TOKEN="<platform author bearer token>"
+python scripts/upload_nosbook.py --local-work-id work_xxx
+```
+
+The CLI prints machine-readable JSON and exits non-zero on failure. It does not print or persist the token. If the source `world_version_id` exists on the platform, the import result is `world_version_link_status: linked`; otherwise it is `source_only`, which is still readable as a private draft but may not support platform continuation until the source world is installed.
+
+Recommended agent flow:
+
+1. Start the local Studio with `bash scripts/run_agent_studio_local.sh`.
+2. Create or continue the work locally.
+3. Set `NARRATIVEOS_LOCAL_STUDIO_TOKEN`, `NARRATIVEOS_PLATFORM_URL`, and `NARRATIVEOS_PLATFORM_TOKEN`.
+4. Run `python scripts/upload_nosbook.py --local-work-id work_xxx`.
+5. Optionally keep using `--file path/to/work.nosbook` when the agent already has an exported file.
+6. Use the returned `work_id` to verify the imported private draft with `GET /v1/author/works/{work_id}`.
+
 ## Local Launch
 
 Use the Studio-specific local launcher for author creation sessions:

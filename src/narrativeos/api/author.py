@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from ..eval.service import ChapterQualityGuardError
+from ..services.nosbook_import import NosbookImportError
 
 
 class SaveDraftRequest(BaseModel):
@@ -1176,6 +1177,26 @@ def list_author_works(
         account_id=resolved_account_id,
         world_version_id=world_version_id,
     )
+
+
+@router.post("/nosbooks/import")
+def import_author_nosbook(payload: Dict[str, Any], request: Request) -> Dict[str, Any]:
+    identity = _authenticated_author_identity(
+        request,
+        missing_code="nosbook_import_auth_required",
+        missing_reason="platform_bearer_token_required",
+    )
+    account_id = _author_identity_account_id(identity)
+    if not account_id:
+        raise HTTPException(status_code=401, detail={"code": "nosbook_import_auth_required", "reason": "account_id_required"})
+    try:
+        return request.app.state.nosbook_import_service.import_nosbook(
+            payload,
+            account_id=account_id,
+            actor_id=_author_identity_actor_id(identity),
+        )
+    except NosbookImportError as exc:
+        raise HTTPException(status_code=400, detail=exc.detail()) from exc
 
 
 @router.post("/works")

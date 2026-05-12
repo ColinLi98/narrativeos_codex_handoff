@@ -202,6 +202,26 @@ Use the Agent Studio smoke when validating the Author-side co-directed fiction w
 
 The smoke verifies startup, first chapter generation, director continuation, route branching, `.nosbook` export, visible product-language wait copy, desktop workbench rendering at `1440x1000`, desktop sticky director behavior after scrolling to choices/routes, mobile workbench rendering at `390x844`, mobile bounded choice-card scrolling, mobile horizontal overflow, and a visual review checklist for screenshot triage.
 
+Codex-style agents can upload an exported `.nosbook` to a platform private draft through the API/CLI bridge:
+
+```bash
+export NARRATIVEOS_PLATFORM_URL="https://your-platform.example"
+export NARRATIVEOS_PLATFORM_TOKEN="<author bearer token>"
+python scripts/upload_nosbook.py --file path/to/work.nosbook
+```
+
+For a one-command local Studio bridge, use `--local-work-id` with a separate local author token:
+
+```bash
+export NARRATIVEOS_LOCAL_STUDIO_URL="http://127.0.0.1:8000"
+export NARRATIVEOS_LOCAL_STUDIO_TOKEN="<local author bearer token>"
+export NARRATIVEOS_PLATFORM_URL="https://your-platform.example"
+export NARRATIVEOS_PLATFORM_TOKEN="<platform author bearer token>"
+python scripts/upload_nosbook.py --local-work-id work_xxx
+```
+
+The CLI calls local `GET /v1/author/works/{work_id}/export?format=nosbook&route=active`, then platform `POST /v1/author/nosbooks/import`, expects `schema_version: nosbook/v1`, prints machine-readable JSON with `schema_version: nosbook_import_result/v1` and `status: private_draft`, and does not print or persist the token. Imports report `world_version_link_status: linked` or `source_only`. The upload is intentionally API/CLI-only in v1; Studio still does not show a platform upload button.
+
 The visual review checklist combines automatic evidence rows with `manual_review` prompts for layout balance, overlap, reader prominence, mobile readability, control reachability, and clipped text. Only objective smoke checks can fail the run.
 
 For PRs that change Agent Studio layout CSS, reviewers must paste the two `manual_review` rows from `artifacts/agent_studio_smoke_visual_review.md` into a PR comment and mark each as `accepted` or `needs follow-up` after screenshot inspection:

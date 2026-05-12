@@ -71,6 +71,7 @@ from ..services.library_stats_semantic_layer import LibraryStatsSemanticLayerSer
 from ..services.launch_week_guard import LaunchWeekGuardService
 from ..services.launch_week_monitoring import LaunchWeekMonitoringService
 from ..services.monetization import MonetizationService
+from ..services.nosbook_import import NosbookImportService
 from ..services.observability import ObservabilityService
 from ..services.ops_traceability import OpsTraceabilityService
 from ..services.ops_alerting import OpsAlertingService
@@ -587,6 +588,7 @@ def create_app(
         provider_routing_service=app.state.provider_routing_service,
         analytics_service=app.state.analytics_service,
     )
+    app.state.nosbook_import_service = NosbookImportService(app.state.repository)
     app.state.library_stats_semantic_layer_service = LibraryStatsSemanticLayerService(
         app.state.repository,
     )

@@ -368,6 +368,20 @@ class TrainingSignalService:
         )
         return sample
 
+    def save_review_sample_from_report(self, report_payload: Dict[str, Any], *, world_id: str) -> Dict[str, Any]:
+        sample = self._review_sample_from_report(report_payload, world_id=world_id)
+        self.repository.save_review_record(
+            {
+                "review_id": "review_sample_%s" % sample["sample_id"],
+                "asset_type": "review_sample",
+                "asset_id": sample["chapter_id"],
+                "status": sample["source"],
+                "reviewer_id": sample["reviewer_id"],
+                "notes": json.dumps(sample, ensure_ascii=False),
+            }
+        )
+        return sample
+
     def list_review_samples(
         self,
         *,

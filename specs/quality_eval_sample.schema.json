@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QualityEvalSample",
+  "type": "object",
+  "required": [
+    "sample_id",
+    "scenario",
+    "risk_tier",
+    "input",
+    "context",
+    "materials",
+    "expected_behavior",
+    "expected_veto",
+    "expected_reason_codes",
+    "rubric_targets",
+    "grounding_expectation"
+  ],
+  "properties": {
+    "sample_id": {"type": "string"},
+    "scenario": {"type": "string"},
+    "risk_tier": {"type": "string"},
+    "input": {"type": "object"},
+    "context": {"type": "object"},
+    "materials": {"type": "object"},
+    "expected_behavior": {"type": "string"},
+    "expected_veto": {"type": "boolean"},
+    "expected_reason_codes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "rubric_targets": {"type": "object"},
+    "grounding_expectation": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"type": "string"},
+        "max_unsupported_claims": {"type": ["integer", "null"]}
+      }
+    }
+  }
+}

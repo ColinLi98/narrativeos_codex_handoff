@@ -1,6 +1,21 @@
+import json
+from unittest.mock import patch
 from typing import Optional
 
-from src.narrativeos.benchmark.runner import BENCHMARK_PACKS, main, run_benchmark
+from src.narrativeos.content_quality_strategy_execution import (
+    build_strategy_bundle_batch_validation_summary,
+    build_strategy_bundle_batch_validation_trend,
+    list_strategy_bundle_batch_validation_history,
+    record_strategy_bundle_batch_validation_run,
+)
+from src.narrativeos.benchmark.runner import (
+    BENCHMARK_PACKS,
+    _DiagnosticIssueScanCache,
+    _surface_issue_codes_for_payload,
+    main,
+    run_benchmark,
+)
+from src.narrativeos.benchmark.reporting import render_benchmark_markdown
 from src.narrativeos.eval.taxonomy import ISSUE_TAXONOMY
 from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.worldpacks.registry import FileSystemWorldRegistry
@@ -16,6 +31,7 @@ def test_registry_benchmark_worldpacks_excludes_template_assets():
         "urban_mystery_lotus_lane",
         "xianxia_forgotten_vow",
         "synthetic_min_pack",
+        "tide_archive_memory_debt",
     } <= world_ids
 
 
@@ -60,6 +76,12 @@ def test_cross_pack_benchmark_outputs_kernel_metrics(tmp_path):
     assert "strongest_packs" in report
     assert "weakest_packs" in report
     assert "weakest_pack_diagnostics" in report
+    assert "weakest_pack_polish_program" in report
+    assert "content_quality_contract_gate" in report
+    assert "commercial_long_route_gate" in report
+    assert report["commercial_long_route_gate"]["applicable"] is False
+    assert "strategy_validation_summary" in report
+    assert "content_quality_contract_summary" in report
     assert report["top_failing_packs"] == report["weakest_packs"]
     assert "delta_summary" in report
     assert "cross_pack_pass_rate_delta" in report["delta_summary"]
@@ -72,6 +94,659 @@ def test_cross_pack_benchmark_outputs_kernel_metrics(tmp_path):
     assert "worst_chapters" in report["weakest_pack_diagnostics"][0]
     assert "attribution_map" in report["weakest_pack_diagnostics"][0]
     assert "next_fix_candidates" in report["weakest_pack_diagnostics"][0]
+    assert "stop_condition" in report["weakest_pack_diagnostics"][0]
+    assert "polish_bundle" in report["weakest_pack_diagnostics"][0]
+    assert "recommended_strategy_bundles" in report["weakest_pack_diagnostics"][0]
+    if report["strategy_validation_summary"]["available"]:
+        assert report["strategy_validation_summary"]["bundle_count"] >= 1
+        assert report["weakest_pack_diagnostics"][0]["recommended_strategy_bundles"][0]["execution_protocol_enabled"] is True
+    else:
+        assert report["content_quality_contract_gate"]["ok"] is True
+        assert report["strategy_validation_summary"]["bundle_count"] == 0
+        assert report["weakest_pack_diagnostics"][0]["recommended_strategy_bundles"] == []
+    assert "content_quality_contract_window_metrics" in sample
+    assert "content_quality_contract_coverage" in sample
+
+
+def test_cross_pack_benchmark_outputs_runtime_profile(tmp_path):
+    repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "benchmark_runtime.db"))
+    simulated = _simulation_report(
+        pass_rate=1.0,
+        rewrite_rate=0.0,
+        block_rate=0.0,
+        overall_scores=[0.91, 0.9],
+        issue_codes=[],
+        detail_density=0.08,
+    )
+    simulated["chapter_trace"] = [
+        {
+            "runtime_latency_ms": 12.0,
+            "lint_latency_ms": 1.5,
+            "evaluation_latency_ms": 2.0,
+            "render_timing_ms": {"write_draft": 7.0, "post_repair_lint": 1.0, "total_render_scene": 8.5},
+            "quality_pass_timing_ms": {"total_ms": 5.0},
+            "quality_pass_actions": ["q03_repetition_guard", "q05_detail_inline"],
+        },
+        {
+            "runtime_latency_ms": 10.0,
+            "lint_latency_ms": 1.0,
+            "evaluation_latency_ms": 1.5,
+            "render_timing_ms": {"write_draft": 6.0, "post_repair_lint": 0.8, "total_render_scene": 7.2},
+            "quality_pass_timing_ms": {"total_ms": 4.0},
+            "quality_pass_actions": ["q04_exposition_guard"],
+        },
+    ]
+    report = run_benchmark(
+        repository=repository,
+        golden_dir=tmp_path / "goldens",
+        worldpack=["jade_court_exam"],
+        baseline=None,
+        simulation_runner=lambda _world_id, _world_version_id: simulated,
+    )
+    world_profile = report["worlds"][0]["runtime_profile"]
+    assert world_profile["stages_ms"]["generation_runtime"] == 22.0
+    assert world_profile["stages_ms"]["quality_pass"] == 9.0
+    assert world_profile["stages_ms"]["lint"] == 2.5
+    assert world_profile["quality_pass_stage_action_counts"]["q03_repetition"] == 1
+    assert world_profile["quality_pass_stage_action_counts"]["q05_detail"] == 1
+    assert report["benchmark_runtime_profile"]["stage_totals_ms"]["quality_pass"] == 9.0
+    assert report["benchmark_runtime_profile"]["safe_caches"]["repetition_signal_bundle"]["enabled"] is True
+    markdown = render_benchmark_markdown(report)
+    assert "Benchmark Runtime Profile" in markdown
+    assert "quality-pass stage actions" in markdown
+
+
+def test_cross_pack_benchmark_writes_progress_and_checkpoint(tmp_path):
+    repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "benchmark_progress.db"))
+    progress_path = tmp_path / "benchmark_progress.jsonl"
+    checkpoint_path = tmp_path / "benchmark_progress.checkpoint.json"
+
+    report = run_benchmark(
+        repository=repository,
+        golden_dir=tmp_path / "goldens",
+        worldpack=["jade_court_exam"],
+        baseline=None,
+        simulation_runner=lambda _world_id, _world_version_id: _simulation_report(
+            pass_rate=1.0,
+            rewrite_rate=0.0,
+            block_rate=0.0,
+            overall_scores=[0.9, 0.91],
+            issue_codes=[],
+            detail_density=0.08,
+        ),
+        progress_out=progress_path,
+        checkpoint_out=checkpoint_path,
+    )
+
+    events = [
+        json.loads(line)
+        for line in progress_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert [item["event"] for item in events if item["event"] in {"benchmark_start", "world_start", "world_complete", "benchmark_complete"}] == [
+        "benchmark_start",
+        "world_start",
+        "world_complete",
+        "benchmark_complete",
+    ]
+    checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+    assert checkpoint["schema_version"] == "benchmark_checkpoint/v1"
+    assert checkpoint["stage"] == "complete"
+    assert checkpoint["completed_world_count"] == 1
+    assert checkpoint["completed_worlds"][0]["world_id"] == "jade_court_exam"
+    assert checkpoint["diagnostic_issue_scan_cache"]["payload_policy"] == "bounded_metrics_only"
+    assert report["benchmark_runtime_profile"]["safe_caches"]["diagnostic_issue_scan"]["enabled"] is True
+
+
+def test_diagnostic_issue_scan_cache_bounds_payload_and_reuses_result():
+    cache = _DiagnosticIssueScanCache()
+    payload = {
+        "chapter_id": "chapter_20",
+        "body": "很长的可见正文" * 10000,
+        "summary": "不应该传入诊断扫描的长摘要" * 1000,
+        "issues": [],
+        "hard_validator_results": {
+            "lint_metrics": {
+                "repetition_score": 0.33,
+                "exposition_ratio": 0.2,
+                "concrete_detail_density": 0.09,
+                "dialogue_plus_action_ratio": 0.5,
+                "repetition_signal_bundle": {
+                    "event_coverage_gap_score": 0.0,
+                    "beat_coverage_gap_score": 0.0,
+                },
+            }
+        },
+        "scores": {"hook_quality": 0.9, "overall_score": 0.91},
+    }
+    scanned_payloads = []
+
+    def fake_scan(scan_payload, *, target_chapters):
+        scanned_payloads.append(dict(scan_payload))
+        assert "body" not in scan_payload
+        assert "summary" not in scan_payload
+        assert target_chapters == 500
+        return ["Q03"]
+
+    with patch("src.narrativeos.benchmark.runner.diagnostic_issue_codes_for_chapter_payload", side_effect=fake_scan):
+        assert _surface_issue_codes_for_payload(payload, target_chapters=500, diagnostic_scan_cache=cache) == ["Q03"]
+        assert _surface_issue_codes_for_payload(payload, target_chapters=500, diagnostic_scan_cache=cache) == ["Q03"]
+
+    assert len(scanned_payloads) == 1
+    assert cache.summary()["hits"] == 1
+    assert cache.summary()["misses"] == 1
+
+
+def test_fast_acceptance_profile_selects_changed_and_baseline_weakest_packs(tmp_path):
+    repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "benchmark_fast_gate.db"))
+    seen_worlds: list[str] = []
+
+    def simulation_runner(world_id, _world_version_id):
+        seen_worlds.append(world_id)
+        return _simulation_report(
+            pass_rate=1.0,
+            rewrite_rate=0.0,
+            block_rate=0.0,
+            overall_scores=[0.9] * 3,
+            issue_codes=[],
+            detail_density=0.08,
+        )
+
+    report = run_benchmark(
+        repository=repository,
+        golden_dir=tmp_path / "goldens",
+        worldpack="all",
+        baseline={"weakest_packs": [{"world_id": "jade_court_exam"}, {"world_id": "synthetic_min_pack"}]},
+        simulation_runner=simulation_runner,
+        acceptance_profile="fast",
+        changed_worldpacks=["urban_mystery_lotus_lane"],
+        fast_gate_weakest_limit=1,
+    )
+    assert set(seen_worlds) == {"jade_court_exam", "urban_mystery_lotus_lane"}
+    assert report["acceptance_profile"] == "fast"
+    assert report["benchmark_scope_complete"] is False
+    assert report["fast_gate"]["enabled"] is True
+    assert report["fast_gate"]["nightly_full_gate_required"] is True
+    assert set(report["benchmark_world_ids"]) == set(seen_worlds)
+
+
+def test_commercial_long_route_gate_is_reported_in_markdown():
+    markdown = render_benchmark_markdown(
+        {
+            "benchmark_mode": "long_route",
+            "chapter_budget": 50,
+            "cross_pack_pass_rate": 0.95,
+            "worlds": [{"world_id": "a"}],
+            "delta_summary": {"cross_pack_pass_rate_delta": 0.0, "regressions": []},
+            "phase_a_quality_gate": {
+                "ok": True,
+                "config_version": "phase_a_quality_gate_v1",
+                "failed_checks": [],
+                "evaluated_weakest_world_ids": ["a"],
+            },
+            "commercial_long_route_gate": {
+                "applicable": True,
+                "ok": True,
+                "failed_checks": [],
+            },
+            "weakest_packs": [
+                {
+                    "world_id": "a",
+                    "pass_rate": 0.9,
+                    "long_route_quality": 0.82,
+                    "mid_arc_drop": 0.03,
+                    "completion_ratio": 1.0,
+                    "stop_reason": "chapter_budget_reached",
+                    "issue_mix": [
+                        {"issue_code": "Q03", "count": 1, "share": 0.02},
+                        {"issue_code": "Q09", "count": 0, "share": 0.0},
+                    ],
+                }
+            ],
+            "strongest_packs": [],
+        }
+    )
+    assert "Commercial Long-Route 50 Gate" in markdown
+    assert "commercial_long_route_50.db" in markdown
+    assert "focus issues: Q03 x1" in markdown
+
+
+def test_strategy_bundle_batch_validation_summary_decides_continue_adapt_retire():
+    continue_summary = build_strategy_bundle_batch_validation_summary(
+        strategy_bundle_id="q03_q04_scene_dialogue_cadence_task_coupling",
+        strategy_bundle_label="Scene + Dialogue + Cadence + Task Coupling",
+        batch_execution_mode="ephemeral_copy",
+        benchmark_mode="standard",
+        chapter_budget=6,
+        weakest_source_world_ids=["a", "b", "c"],
+        compatible_world_ids=["a", "b", "c"],
+        skipped_worlds=[],
+        validated_worlds=[
+            {
+                "world_id": "a",
+                "step_receipt_summary": {
+                    "step_status_counts": {"applied": 2},
+                    "asset_type_counts": {"scene_blueprint": 1},
+                    "operation_counts": {"replace": 2},
+                    "applied_step_count": 2,
+                    "applied_edit_count": 4,
+                },
+                "step_level_apply_receipt": [{"asset_type": "scene_blueprint", "status": "applied"}],
+                "result_attribution": {
+                    "overall_status": "improved",
+                    "improved_metrics": ["avg_repetition_score"],
+                    "regressed_metrics": [],
+                    "flat_metrics": [],
+                },
+                "stop_decision": {"decision": "stop"},
+                "ready_for_validation": True,
+            },
+            {
+                "world_id": "b",
+                "step_receipt_summary": {
+                    "step_status_counts": {"applied": 1},
+                    "asset_type_counts": {"voice_profiles": 1},
+                    "operation_counts": {"expand": 1},
+                    "applied_step_count": 1,
+                    "applied_edit_count": 2,
+                },
+                "step_level_apply_receipt": [{"asset_type": "voice_profiles", "status": "applied"}],
+                "result_attribution": {
+                    "overall_status": "improved",
+                    "improved_metrics": ["dialogue_ratio"],
+                    "regressed_metrics": [],
+                    "flat_metrics": [],
+                },
+                "stop_decision": {"decision": "stop"},
+                "ready_for_validation": False,
+            },
+            {
+                "world_id": "c",
+                "step_receipt_summary": {
+                    "step_status_counts": {"applied": 1},
+                    "asset_type_counts": {"response_cadence_profiles": 1},
+                    "operation_counts": {"expand": 1},
+                    "applied_step_count": 1,
+                    "applied_edit_count": 1,
+                },
+                "step_level_apply_receipt": [{"asset_type": "response_cadence_profiles", "status": "applied"}],
+                "result_attribution": {
+                    "overall_status": "improved",
+                    "improved_metrics": ["mid_window_exposition_breach_rate"],
+                    "regressed_metrics": [],
+                    "flat_metrics": [],
+                },
+                "stop_decision": {"decision": "stop"},
+                "ready_for_validation": False,
+            },
+        ],
+    )
+    assert continue_summary["available"] is True
+    assert continue_summary["decision"] == "continue"
+    assert continue_summary["effectiveness_rate"] == 1.0
+
+    adapt_summary = build_strategy_bundle_batch_validation_summary(
+        strategy_bundle_id="q04_scene_dialogue_cadence",
+        strategy_bundle_label="Scene + Dialogue + Cadence",
+        batch_execution_mode="ephemeral_copy",
+        benchmark_mode="standard",
+        chapter_budget=6,
+        weakest_source_world_ids=["a", "b"],
+        compatible_world_ids=["a", "b"],
+        skipped_worlds=[],
+        validated_worlds=[
+            {
+                "world_id": "a",
+                "step_receipt_summary": {
+                    "step_status_counts": {"applied": 1},
+                    "asset_type_counts": {"scene_realization_contracts": 1},
+                    "operation_counts": {"replace": 1},
+                    "applied_step_count": 1,
+                    "applied_edit_count": 1,
+                },
+                "step_level_apply_receipt": [{"asset_type": "scene_realization_contracts", "status": "applied"}],
+                "result_attribution": {
+                    "overall_status": "improved",
+                    "improved_metrics": ["dialogue_ratio"],
+                    "regressed_metrics": [],
+                    "flat_metrics": [],
+                },
+                "stop_decision": {"decision": "stop"},
+                "ready_for_validation": False,
+            },
+            {
+                "world_id": "b",
+                "step_receipt_summary": {
+                    "step_status_counts": {"skipped": 1},
+                    "asset_type_counts": {"emotion_action_policies": 1},
+                    "operation_counts": {"replace": 1},
+                    "applied_step_count": 0,
+                    "applied_edit_count": 0,
+                },
+                "step_level_apply_receipt": [{"asset_type": "emotion_action_policies", "status": "skipped"}],
+                "result_attribution": {
+                    "overall_status": "flat",
+                    "improved_metrics": [],
+                    "regressed_metrics": [],
+                    "flat_metrics": ["avg_exposition_ratio"],
+                },
+                "stop_decision": {"decision": "continue"},
+                "ready_for_validation": False,
+            },
+        ],
+    )
+    assert adapt_summary["decision"] == "adapt"
+    assert any(item["kind"] == "asset_step" for item in adapt_summary["adaptation_targets"])
+
+    retire_summary = build_strategy_bundle_batch_validation_summary(
+        strategy_bundle_id="q09_continuation_runway",
+        strategy_bundle_label="Continuation Runway",
+        batch_execution_mode="ephemeral_copy",
+        benchmark_mode="longform_100",
+        chapter_budget=100,
+        weakest_source_world_ids=["a", "b"],
+        compatible_world_ids=["a", "b"],
+        skipped_worlds=[],
+        validated_worlds=[
+            {
+                "world_id": "a",
+                "step_receipt_summary": {"step_status_counts": {"applied": 1}, "asset_type_counts": {}, "operation_counts": {}, "applied_step_count": 1, "applied_edit_count": 1},
+                "step_level_apply_receipt": [{"asset_type": "chapter_task", "status": "applied"}],
+                "result_attribution": {
+                    "overall_status": "regressed",
+                    "improved_metrics": [],
+                    "regressed_metrics": ["late_window_q09_breach_rate"],
+                    "flat_metrics": [],
+                },
+                "stop_decision": {"decision": "escalate"},
+                "ready_for_validation": False,
+            },
+            {
+                "world_id": "b",
+                "step_receipt_summary": {"step_status_counts": {"applied": 1}, "asset_type_counts": {}, "operation_counts": {}, "applied_step_count": 1, "applied_edit_count": 1},
+                "step_level_apply_receipt": [{"asset_type": "arc_plan", "status": "applied"}],
+                "result_attribution": {
+                    "overall_status": "regressed",
+                    "improved_metrics": [],
+                    "regressed_metrics": ["q09_incidence_rate"],
+                    "flat_metrics": [],
+                },
+                "stop_decision": {"decision": "escalate"},
+                "ready_for_validation": False,
+            },
+        ],
+    )
+    assert retire_summary["decision"] == "retire"
+
+    empty_summary = build_strategy_bundle_batch_validation_summary(
+        strategy_bundle_id="q03_scene_dialogue_cadence",
+        strategy_bundle_label="Scene + Dialogue + Cadence",
+        batch_execution_mode="ephemeral_copy",
+        benchmark_mode="standard",
+        chapter_budget=6,
+        weakest_source_world_ids=["a"],
+        compatible_world_ids=[],
+        skipped_worlds=[{"world_id": "a", "reason": "bundle_not_recommended_for_world"}],
+        validated_worlds=[],
+    )
+    assert empty_summary["available"] is False
+    assert empty_summary["decision"] == ""
+    assert empty_summary["decision_reason"] == "no_compatible_weakest_packs"
+
+
+def test_strategy_bundle_batch_validation_history_persists_and_builds_trend(tmp_path):
+    repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "strategy_bundle_history.db"))
+    record_strategy_bundle_batch_validation_run(
+        repository=repository,
+        batch_validation={
+            "generated_at": "2026-04-13T10:00:00+00:00",
+            "strategy_bundle_id": "q03_scene_dialogue_cadence",
+            "strategy_bundle_label": "Scene + Dialogue + Cadence",
+            "benchmark_mode": "standard",
+            "chapter_budget": 6,
+            "weakest_source_world_ids": ["jade_court_exam"],
+            "compatible_world_ids": ["jade_court_exam"],
+            "validated_world_count": 1,
+            "effectiveness_rate": 0.25,
+            "decision": "adapt",
+            "decision_reason": "bundle_mixed_signal_requires_adjustment",
+            "aggregated_result_attribution": {"overall_status_counts": {"flat": 1}, "stop_decision_counts": {"continue": 1}},
+            "adaptation_targets": [{"kind": "metric", "name": "avg_exposition_ratio", "count": 1}],
+        },
+    )
+    record_strategy_bundle_batch_validation_run(
+        repository=repository,
+        batch_validation={
+            "generated_at": "2026-04-13T11:00:00+00:00",
+            "strategy_bundle_id": "q03_scene_dialogue_cadence",
+            "strategy_bundle_label": "Scene + Dialogue + Cadence",
+            "benchmark_mode": "standard",
+            "chapter_budget": 6,
+            "weakest_source_world_ids": ["jade_court_exam"],
+            "compatible_world_ids": ["jade_court_exam"],
+            "validated_world_count": 1,
+            "effectiveness_rate": 0.45,
+            "decision": "continue",
+            "decision_reason": "bundle_effective_across_weakest_packs",
+            "aggregated_result_attribution": {"overall_status_counts": {"improved": 1}, "stop_decision_counts": {"stop": 1}},
+            "adaptation_targets": [],
+        },
+    )
+    history = list_strategy_bundle_batch_validation_history(
+        repository=repository,
+        strategy_bundle_id="q03_scene_dialogue_cadence",
+        limit=5,
+    )
+    trend = build_strategy_bundle_batch_validation_trend(history)
+    assert history["available"] is True
+    assert history["entry_count"] == 2
+    assert history["entries"][0]["decision"] == "continue"
+    assert trend["trend_status"] == "improving"
+    assert trend["delta_effectiveness_rate"] == 0.2
+    assert trend["retire_recommended"] is False
+
+
+def test_strategy_bundle_batch_validation_trend_flags_retire_watch():
+    trend = build_strategy_bundle_batch_validation_trend(
+        {
+            "available": True,
+            "strategy_bundle_id": "q09_continuation_runway",
+            "entry_count": 2,
+            "entries": [
+                {
+                    "generated_at": "2026-04-13T11:00:00+00:00",
+                    "strategy_bundle_id": "q09_continuation_runway",
+                    "decision": "retire",
+                    "effectiveness_rate": 0.1,
+                },
+                {
+                    "generated_at": "2026-04-13T10:00:00+00:00",
+                    "strategy_bundle_id": "q09_continuation_runway",
+                    "decision": "retire",
+                    "effectiveness_rate": 0.12,
+                },
+            ],
+        }
+    )
+    assert trend["trend_status"] == "retire_watch"
+    assert trend["retire_recommended"] is True
+
+
+def test_run_benchmark_exposes_strategy_bundle_batch_validation_when_enabled(tmp_path):
+    repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "benchmark_batch_validation.db"))
+    with patch(
+        "src.narrativeos.benchmark.runner._validate_strategy_bundle_batch",
+        return_value={
+            "available": True,
+            "strategy_bundle_id": "q03_scene_dialogue_cadence",
+            "strategy_bundle_label": "Scene + Dialogue + Cadence",
+            "batch_execution_mode": "ephemeral_copy",
+            "benchmark_mode": "standard",
+            "chapter_budget": 6,
+            "weakest_source_world_ids": ["jade_court_exam"],
+            "compatible_world_ids": ["jade_court_exam"],
+            "skipped_worlds": [],
+            "validated_world_count": 1,
+            "validated_worlds": [],
+            "aggregated_step_receipts": {},
+            "aggregated_result_attribution": {},
+            "effectiveness_rate": 1.0,
+            "decision": "continue",
+            "decision_reason": "bundle_effective_across_weakest_packs",
+            "adaptation_targets": [],
+        },
+    ) as validator:
+        report = run_benchmark(
+            repository=repository,
+            golden_dir=tmp_path / "goldens",
+            worldpack=["jade_court_exam", "synthetic_min_pack"],
+            baseline=None,
+            simulation_runner=lambda _world_id, _world_version_id: _simulation_report(
+                pass_rate=0.8,
+                rewrite_rate=0.2,
+                block_rate=0.0,
+                overall_scores=[0.82] * 6,
+                issue_codes=["Q03"],
+                detail_density=0.012,
+            ),
+            validate_strategy_bundle=True,
+            strategy_bundle_id="q03_scene_dialogue_cadence",
+            weakest_limit=2,
+        )
+    assert validator.called is True
+    assert report["strategy_bundle_batch_validation"]["available"] is True
+    assert report["strategy_bundle_batch_validation"]["strategy_bundle_id"] == "q03_scene_dialogue_cadence"
+    markdown = render_benchmark_markdown(report)
+    assert "Strategy Bundle Batch Validation" in markdown
+    assert "bundle_effective_across_weakest_packs" in markdown
+
+
+def test_run_benchmark_persists_strategy_bundle_batch_validation_history_when_enabled(tmp_path):
+    repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "benchmark_batch_history_persist.db"))
+    with patch(
+        "src.narrativeos.benchmark.runner._validate_strategy_bundle_batch",
+        return_value={
+            "available": True,
+            "generated_at": "2026-04-13T12:00:00+00:00",
+            "strategy_bundle_id": "q03_scene_dialogue_cadence",
+            "strategy_bundle_label": "Scene + Dialogue + Cadence",
+            "batch_execution_mode": "ephemeral_copy",
+            "benchmark_mode": "standard",
+            "chapter_budget": 6,
+            "weakest_source_world_ids": ["jade_court_exam"],
+            "compatible_world_ids": ["jade_court_exam"],
+            "skipped_worlds": [],
+            "validated_world_count": 1,
+            "validated_worlds": [],
+            "aggregated_step_receipts": {},
+            "aggregated_result_attribution": {"overall_status_counts": {"improved": 1}, "stop_decision_counts": {"stop": 1}},
+            "effectiveness_rate": 0.8,
+            "decision": "continue",
+            "decision_reason": "bundle_effective_across_weakest_packs",
+            "adaptation_targets": [],
+        },
+    ):
+        report = run_benchmark(
+            repository=repository,
+            golden_dir=tmp_path / "goldens",
+            worldpack=["jade_court_exam", "synthetic_min_pack"],
+            baseline=None,
+            simulation_runner=lambda _world_id, _world_version_id: _simulation_report(
+                pass_rate=0.8,
+                rewrite_rate=0.2,
+                block_rate=0.0,
+                overall_scores=[0.82] * 6,
+                issue_codes=["Q03"],
+                detail_density=0.012,
+            ),
+            validate_strategy_bundle=True,
+            strategy_bundle_id="q03_scene_dialogue_cadence",
+            weakest_limit=2,
+        )
+    saved = repository.list_review_records(
+        asset_type="strategy_bundle_batch_validation",
+        asset_id="q03_scene_dialogue_cadence",
+    )
+    assert len(saved) == 1
+    assert saved[0]["status"] == "continue"
+    assert report["strategy_bundle_batch_validation_history"]["available"] is True
+    assert report["strategy_bundle_batch_validation_trend"]["trend_status"] == "insufficient_history"
+
+
+def test_run_benchmark_can_read_strategy_bundle_history_without_new_rerun(tmp_path):
+    repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "benchmark_batch_history_read.db"))
+    record_strategy_bundle_batch_validation_run(
+        repository=repository,
+        batch_validation={
+            "generated_at": "2026-04-13T09:00:00+00:00",
+            "strategy_bundle_id": "q03_scene_dialogue_cadence",
+            "strategy_bundle_label": "Scene + Dialogue + Cadence",
+            "benchmark_mode": "standard",
+            "chapter_budget": 6,
+            "weakest_source_world_ids": ["jade_court_exam"],
+            "compatible_world_ids": ["jade_court_exam"],
+            "validated_world_count": 1,
+            "effectiveness_rate": 0.55,
+            "decision": "adapt",
+            "decision_reason": "bundle_mixed_signal_requires_adjustment",
+            "aggregated_result_attribution": {"overall_status_counts": {"flat": 1}, "stop_decision_counts": {"continue": 1}},
+            "adaptation_targets": [{"kind": "metric", "name": "avg_exposition_ratio", "count": 1}],
+        },
+    )
+    with patch("src.narrativeos.benchmark.runner._validate_strategy_bundle_batch") as validator:
+        report = run_benchmark(
+            repository=repository,
+            golden_dir=tmp_path / "goldens",
+            worldpack=["jade_court_exam", "synthetic_min_pack"],
+            baseline=None,
+            simulation_runner=lambda _world_id, _world_version_id: _simulation_report(
+                pass_rate=0.8,
+                rewrite_rate=0.2,
+                block_rate=0.0,
+                overall_scores=[0.82] * 6,
+                issue_codes=["Q03"],
+                detail_density=0.012,
+            ),
+            validate_strategy_bundle=False,
+            strategy_bundle_id="q03_scene_dialogue_cadence",
+            weakest_limit=2,
+        )
+    assert validator.called is False
+    assert report["strategy_bundle_batch_validation"]["decision_reason"] == "history_only_query"
+    assert report["strategy_bundle_batch_validation_history"]["entry_count"] == 1
+    assert report["strategy_bundle_batch_validation_trend"]["trend_status"] == "insufficient_history"
+
+
+def test_render_benchmark_markdown_shows_batch_validation_placeholder_when_unavailable():
+    markdown = render_benchmark_markdown(
+        {
+            "cross_pack_pass_rate": 0.0,
+            "worlds": [],
+            "strongest_packs": [],
+            "weakest_packs": [],
+            "weakest_pack_diagnostics": [],
+            "weakest_pack_polish_program": {},
+            "delta_summary": {},
+            "strategy_bundle_batch_validation": {
+                "available": False,
+                "strategy_bundle_id": "q03_scene_dialogue_cadence",
+                "strategy_bundle_label": "Scene + Dialogue + Cadence",
+                "batch_execution_mode": "ephemeral_copy",
+                "weakest_source_world_ids": ["jade_court_exam"],
+                "compatible_world_ids": [],
+                "skipped_worlds": [{"world_id": "jade_court_exam", "reason": "bundle_not_recommended_for_world"}],
+                "validated_world_count": 0,
+                "aggregated_result_attribution": {},
+                "effectiveness_rate": 0.0,
+                "decision": "",
+                "decision_reason": "no_compatible_weakest_packs",
+                "adaptation_targets": [],
+            },
+        }
+    )
+    assert "Strategy Bundle Batch Validation" in markdown
+    assert "status: not_run" in markdown
+    assert "no_compatible_weakest_packs" in markdown
 
 
 def test_cross_pack_benchmark_lifts_weakest_packs_above_zero(tmp_path):
@@ -163,6 +838,8 @@ def _simulation_report(
     exposition_ratio: float = 0.3,
     dialogue_ratio: float = 0.38,
     hook_quality_sequence: Optional[list[float]] = None,
+    interactive_summary: Optional[dict[str, object]] = None,
+    post_steer_issue_window_summary: Optional[list[dict[str, object]]] = None,
 ) -> dict[str, object]:
     issue_count = len(overall_scores) if issue_codes else 0
     top_issue_categories = [
@@ -174,7 +851,7 @@ def _simulation_report(
         }
         for code in issue_codes
     ]
-    return {
+    report = {
         "evaluation_summary": {
             "pass_rate": pass_rate,
             "rewrite_rate": rewrite_rate,
@@ -210,11 +887,15 @@ def _simulation_report(
             for index, score in enumerate(overall_scores, start=1)
         ],
     }
+    if interactive_summary is not None:
+        report["interactive_summary"] = interactive_summary
+    if post_steer_issue_window_summary is not None:
+        report["post_steer_issue_window_summary"] = post_steer_issue_window_summary
+    return report
 
 
 def test_cross_pack_benchmark_composite_ranking_and_delta_changes(tmp_path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "benchmark_delta.db"))
-    target_worlds = list(BENCHMARK_PACKS)
     baseline_reports = {
         "jade_court_exam": _simulation_report(
             pass_rate=1.0,
@@ -257,6 +938,7 @@ def test_cross_pack_benchmark_composite_ranking_and_delta_changes(tmp_path):
             detail_density=0.004,
         ),
     }
+    target_worlds = list(baseline_reports)
     baseline = run_benchmark(
         repository=repository,
         golden_dir=tmp_path / "goldens",
@@ -322,6 +1004,10 @@ def test_cross_pack_benchmark_composite_ranking_and_delta_changes(tmp_path):
     assert report["weakest_pack_diagnostics"][0]["worst_chapters"][0]["chapter_id"] == "chapter_3"
     assert report["weakest_pack_diagnostics"][0]["attribution_map"]["modules"][0]["module"] == "planner"
     assert report["weakest_pack_diagnostics"][0]["next_fix_candidates"][0]["asset"] == "scene_blueprints"
+    assert report["weakest_pack_diagnostics"][0]["stop_condition"]["status"] == "continue_polish"
+    assert report["weakest_pack_polish_program"]["status"] == "continue_polish"
+    assert "phase_a_quality_gate" in report
+    assert report["phase_a_quality_gate"]["config_version"] == "phase_a_quality_gate_v1"
     markdown = main(
         [
             "--worldpack",
@@ -342,6 +1028,9 @@ def test_cross_pack_benchmark_composite_ranking_and_delta_changes(tmp_path):
     assert "Strongest Packs" in markdown_text
     assert "Weakest Packs" in markdown_text
     assert "Weakest Pack Diagnostics" in markdown_text
+    assert "Weakest Pack Polish Program" in markdown_text
+    assert "Phase A Quality Gate" in markdown_text
+    assert "Longform L1 Sign-off" in markdown_text
     assert "issue mix" in markdown_text
 
 
@@ -426,3 +1115,110 @@ def test_long_route_benchmark_outputs_route_level_metrics(tmp_path):
     assert "benchmark mode: long_route" in markdown_text
     assert "Long-Route Summary" in markdown_text
     assert "target chapters: 36" in markdown_text
+    assert "q03 calibration recommendations" in markdown_text
+    assert "q09 calibration recommendations" in markdown_text
+
+
+def test_long_route_benchmark_supports_strong_interactive_profile(tmp_path):
+    repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "interactive_long_route.db"))
+    target_worlds = ["jade_court_exam", "synthetic_min_pack"]
+    seen_scenarios: dict[str, list[dict[str, object]]] = {}
+
+    def simulation_runner(world_id, _world_version_id, interactive_scenarios):
+        seen_scenarios[world_id] = [dict(item) for item in interactive_scenarios]
+        return _simulation_report(
+            pass_rate=0.95,
+            rewrite_rate=0.05,
+            block_rate=0.0,
+            overall_scores=[0.89] * 200,
+            issue_codes=["Q03"],
+            detail_density=0.024,
+            chapter_budget=200,
+            interactive_summary={
+                "scenario_count": len(interactive_scenarios),
+                "steering_recovery_rate": 1.0,
+                "post_steer_route_survival": 0.92,
+                "memory_consistency_after_steer": 0.88,
+                "promise_reconciliation_after_steer": 0.84,
+                "replan_stability_score": 0.9,
+            },
+            post_steer_issue_window_summary=[
+                {
+                    "scenario_id": f"scenario_{index}",
+                    "scenario_kind": str(scenario.get("scenario_kind") or ""),
+                    "chapter_index": int(scenario.get("trigger_chapter", 0) or 0),
+                    "short_window": {
+                        "chapter_count": 3,
+                        "issue_counts": {"Q03": 1, "Q04": 0, "Q05": 0, "Q09": 0},
+                        "issue_rates": {"Q03": 0.333, "Q04": 0.0, "Q05": 0.0, "Q09": 0.0},
+                    },
+                    "long_window": {
+                        "chapter_count": 10,
+                        "issue_counts": {"Q03": 2, "Q04": 1, "Q05": 0, "Q09": 1},
+                        "issue_rates": {"Q03": 0.2, "Q04": 0.1, "Q05": 0.0, "Q09": 0.1},
+                    },
+                }
+                for index, scenario in enumerate(interactive_scenarios, start=1)
+            ],
+        )
+
+    report = run_benchmark(
+        repository=repository,
+        golden_dir=tmp_path / "goldens",
+        worldpack=target_worlds,
+        baseline=None,
+        simulation_runner=simulation_runner,
+        benchmark_mode="long_route",
+        max_chapters=200,
+        interactive_profile="strong",
+    )
+
+    assert report["benchmark_mode"] == "long_route"
+    assert report["interactive_profile"] == "strong"
+    assert report["content_quality_contract_summary"]["band"] == "200"
+    assert report["content_quality_contract_summary"]["gate_enforced"] is False
+    assert report["interactive_long_route_summary"]["scenario_count"] == 5
+    assert report["interactive_long_route_summary"]["avg_short_window_issue_rates"]["Q03"] == 0.333
+    assert report["interactive_long_route_summary"]["avg_long_window_issue_rates"]["Q09"] == 0.1
+    assert [item["trigger_chapter"] for item in seen_scenarios["jade_court_exam"]] == [20, 60, 100, 140, 180]
+
+    exam = next(item for item in report["worlds"] if item["world_id"] == "jade_court_exam")
+    assert exam["interactive_summary"]["scenario_count"] == 5
+    assert len(exam["post_steer_issue_window_summary"]) == 5
+
+    markdown = render_benchmark_markdown(report)
+    assert "Interactive Long-Route Summary" in markdown
+    assert "Content Quality Contract Summary" in markdown
+    assert "band: 200" in markdown
+    assert "profile: strong" in markdown
+    assert "Post-Steer Issue Windows" in markdown
+
+
+def test_200_diagnostic_surface_exposes_q05_detail_breaches(tmp_path):
+    repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "diagnostic_q05.db"))
+    target_worlds = ["synthetic_min_pack"]
+    report = run_benchmark(
+        repository=repository,
+        golden_dir=tmp_path / "goldens",
+        worldpack=target_worlds,
+        baseline=None,
+        benchmark_mode="long_route",
+        max_chapters=200,
+        simulation_runner=lambda _world_id, _world_version_id: _simulation_report(
+            pass_rate=0.9,
+            rewrite_rate=0.1,
+            block_rate=0.0,
+            overall_scores=[0.82] * 200,
+            issue_codes=[],
+            detail_density=0.001,
+            dialogue_ratio=0.25,
+            exposition_ratio=0.55,
+            chapter_budget=200,
+        ),
+    )
+    world = report["worlds"][0]
+    issue_codes = [item["issue_code"] for item in world["issue_mix"]]
+    assert "Q05" in issue_codes
+    assert report["content_quality_contract_summary"]["band"] == "200"
+    diagnostic = report["weakest_pack_diagnostics"][0]
+    assert any("Q05" in item.get("issue_codes", []) for item in diagnostic["window_breach_attribution"])

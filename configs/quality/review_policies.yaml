@@ -1,0 +1,40 @@
+config_version: quality_review_policies_v1
+policies:
+  - policy_id: qp_reader_continue_v1
+    version: v1
+    scenario_id: reader_continue
+    risk_tier: L2
+    rule_ids:
+      - chapter_quality_gate
+      - runtime_grounding_placeholder
+      - review_route_on_non_pass
+    mode: observe
+  - policy_id: qp_author_generate_v1
+    version: v1
+    scenario_id: author_generate_chapter
+    risk_tier: L2
+    rule_ids:
+      - chapter_quality_gate
+      - content_quality_contract
+      - runtime_grounding_placeholder
+      - review_route_on_non_pass
+    mode: observe
+  - policy_id: qp_author_manual_edit_v1
+    version: v1
+    scenario_id: author_manual_edit
+    risk_tier: L2
+    rule_ids:
+      - chapter_quality_gate
+      - content_quality_contract
+      - runtime_grounding_placeholder
+      - review_route_on_non_pass
+    mode: observe
+  - policy_id: qp_publish_candidate_v1
+    version: v1
+    scenario_id: publish_candidate
+    risk_tier: L3
+    rule_ids:
+      - content_quality_contract
+      - runtime_grounding_placeholder
+      - review_route_on_non_pass
+    mode: observe

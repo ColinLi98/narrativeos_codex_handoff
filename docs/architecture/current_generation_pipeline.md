@@ -61,7 +61,18 @@ Reader Input
 - 动作线补写
 - story card 文案
 
+当前长篇补写与场景实现还有两条需要明确记住的 shared behavior：
+
+- `scene_realizer / sensory_grounding / quality_pass` 现在会带着 `chapter_index` 做开场、hook、感官细节与扩写段落的变体选择，避免长线章节每次都掉回同一组开头句和收尾句。
+- runtime event metadata 会携带通用的 `scene_quality_contract`，供感官细节与质量补写读取 `detail_anchor_types / dialogue_pressure` 这类 pack 资产，而不把 pack-specific 逻辑写进 `core/`。
+
 这意味着它还没有和 planner / presenter 完整解耦。
+
+当前长篇章节长度约束也已经明确挂在这里：
+
+- renderer 应使用 `state.word_budget / chapter_task.target_words`
+- 长篇章节默认预算目标为 `2000`，允许范围 `1800-2200`
+- 低于最小长度 gate 的章节不能直接出稿，需要在 quality pass 中扩写到目标区间
 
 ### 3. Presenter 输出
 
@@ -88,7 +99,9 @@ Reader Input
 主要文件：
 
 - `src/narrativeos/web/index.html`
-- `src/narrativeos/web/app.js`
+- `src/narrativeos/web/dom_shared.js`
+- `src/narrativeos/web/shell_dom.js`
+- `src/narrativeos/web/reader_dom.js`
 
 当前问题是：
 

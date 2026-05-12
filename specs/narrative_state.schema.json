@@ -574,6 +574,98 @@
         "type": "string"
       }
     },
+    "current_series_id": {
+      "type": ["string", "null"]
+    },
+    "current_volume_id": {
+      "type": ["string", "null"]
+    },
+    "current_arc_id": {
+      "type": ["string", "null"]
+    },
+    "current_chapter_task": {
+      "$ref": "chapter_task.schema.json"
+    },
+    "word_budget": {
+      "type": "integer",
+      "minimum": 200
+    },
+    "canonical_memory": {
+      "type": "array",
+      "items": {
+        "$ref": "longform_memory_unit.schema.json"
+      }
+    },
+    "active_arc_memory": {
+      "type": "array",
+      "items": {
+        "$ref": "longform_memory_unit.schema.json"
+      }
+    },
+    "rolling_recap": {
+      "type": "array",
+      "items": {
+        "$ref": "longform_memory_unit.schema.json"
+      }
+    },
+    "archive_memory": {
+      "type": "array",
+      "items": {
+        "$ref": "longform_memory_unit.schema.json"
+      }
+    },
+    "volume_memory_snapshots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "series_memory_snapshots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "steering_ledger": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "storyline_checkpoint": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "volume_storyline_checkpoint": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "series_ending_checkpoint": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "character_memory_runtime": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "replan_checkpoint": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "replan_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "replan_stability_metrics": {
+      "type": "object",
+      "additionalProperties": true
+    },
     "rating_ceiling": {
       "type": "string",
       "enum": [

@@ -1,0 +1,104 @@
+name: reader-storybook-long-route-smoke
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+      - name: Resolve prior history artifact run
+        id: history
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifactName = "reader-storybook-long-route-smoke-history";
+            const branchCandidates = Array.from(
+              new Set([
+                process.env.GITHUB_HEAD_REF,
+                process.env.GITHUB_REF_NAME,
+                context.payload.repository?.default_branch,
+              ].filter(Boolean))
+            );
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+              }
+            );
+            const candidates = artifacts
+              .filter((item) =>
+                item.name === artifactName &&
+                !item.expired &&
+                item.workflow_run &&
+                branchCandidates.includes(item.workflow_run.head_branch)
+              )
+              .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at));
+            core.setOutput("artifact-name", artifactName);
+            core.setOutput("run-id", candidates[0] ? String(candidates[0].workflow_run.id) : "");
+      - name: Restore reader storybook history artifact
+        if: steps.history.outputs.run-id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.history.outputs.artifact-name }}
+          path: artifacts
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.history.outputs.run-id }}
+          github-token: ${{ github.token }}
+      - name: Run reader storybook long-route smoke
+        run: |
+          CI_HEADLESS=1 \
+          CHROME_BIN="${{ steps.setup-chrome.outputs.chrome-path }}" \
+          bash scripts/run_reader_storybook_long_route_smoke.sh
+      - name: Publish reader storybook long-route smoke summary
+        if: always()
+        run: |
+          . .venv/bin/activate
+          python scripts/write_reader_storybook_long_route_smoke_step_summary.py \
+            --result-file artifacts/reader_storybook_long_route_smoke_result.json \
+            --server-log /tmp/reader_storybook_long_route_smoke_server.log \
+            --chrome-log /tmp/reader_storybook_long_route_smoke_chrome.log \
+            --failure-artifact artifacts/reader_storybook_long_route_smoke_failure_snapshot.json \
+            >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload reader storybook long-route smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reader-storybook-long-route-smoke-artifacts
+          if-no-files-found: warn
+          path: |
+            artifacts/reader_storybook_long_route_smoke_seed.json
+            artifacts/reader_storybook_long_route_smoke_result.json
+            artifacts/reader_storybook_long_route_smoke_history.json
+            artifacts/reader_storybook_long_route_smoke_failure_snapshot.json
+            artifacts/reader_storybook_long_route_smoke_failure.png
+            artifacts/reader_storybook_long_route_smoke_storybook.png
+            /tmp/reader_storybook_long_route_smoke_server.log
+            /tmp/reader_storybook_long_route_smoke_chrome.log
+      - name: Upload reader storybook history artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reader-storybook-long-route-smoke-history
+          if-no-files-found: warn
+          path: artifacts/reader_storybook_long_route_smoke_history.json

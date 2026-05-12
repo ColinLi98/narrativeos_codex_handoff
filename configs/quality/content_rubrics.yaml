@@ -1,0 +1,36 @@
+config_version: content_rubrics_v1
+rubrics:
+  default:
+    rubric_version: content_quality_rubric_v1
+    overall_scale:
+      min: 1
+      max: 5
+    dimensions:
+      correctness:
+        min: 1
+        max: 5
+      groundedness:
+        min: 1
+        max: 5
+      completeness:
+        min: 1
+        max: 5
+      task_fit:
+        min: 1
+        max: 5
+      readability:
+        min: 1
+        max: 5
+      style_consistency:
+        min: 1
+        max: 5
+      safety_compliance:
+        min: 1
+        max: 5
+      executability:
+        min: 1
+        max: 5
+    veto_reason_codes:
+      - chapter_quality_guard_failed
+      - grounding_contradiction
+      - missing_critical_evidence

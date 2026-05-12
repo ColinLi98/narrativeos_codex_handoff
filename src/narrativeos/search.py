@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from time import perf_counter
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from .critics import BaseCritic, default_critics
@@ -59,7 +60,9 @@ def evaluate_candidates(
     min_candidates: int = 6,
     max_candidates: int = 10,
 ) -> Tuple[CandidateBatch, List[ScoredCandidate]]:
+    total_started = perf_counter()
     critics = list(critics or default_critics())
+    provider_started = perf_counter()
     candidate_batch = candidate_provider.generate(
         state,
         world,
@@ -67,11 +70,15 @@ def evaluate_candidates(
         min_candidates=min_candidates,
         max_candidates=max_candidates,
     )
+    provider_latency_ms = round((perf_counter() - provider_started) * 1000.0, 3)
     legal_candidates = list(candidate_batch.legal_candidates)
+    critics_started = perf_counter()
     decision_map = _critic_decisions_by_event(state, world, legal_candidates, critics)
+    critics_latency_ms = round((perf_counter() - critics_started) * 1000.0, 3)
 
     rejected_event_ids = []
     scored_candidates: List[ScoredCandidate] = []
+    scoring_started = perf_counter()
     for event in legal_candidates:
         decisions = decision_map.get(event.event_id, [])
         verdicts = [decision["verdict"] for decision in decisions]
@@ -100,11 +107,27 @@ def evaluate_candidates(
             )
             base.explanation = "%s; critics=%s" % (base.explanation, verdict_summary)
         scored_candidates.append(base)
+    scoring_latency_ms = round((perf_counter() - scoring_started) * 1000.0, 3)
 
+    sort_started = perf_counter()
     scored_candidates.sort(
         key=lambda candidate: (-candidate.total_score, candidate.event.event_id)
     )
+    sort_latency_ms = round((perf_counter() - sort_started) * 1000.0, 3)
     candidate_batch.debug["critic_rejections"] = rejected_event_ids
+    candidate_batch.debug["candidate_counts"] = {
+        "raw": len(list(candidate_batch.raw_candidates or [])),
+        "legal": len(legal_candidates),
+        "scored": len(scored_candidates),
+        "critic_rejections": len(rejected_event_ids),
+    }
+    candidate_batch.debug["timing_ms"] = {
+        "provider": provider_latency_ms,
+        "critics": critics_latency_ms,
+        "scoring": scoring_latency_ms,
+        "sort": sort_latency_ms,
+        "total": round((perf_counter() - total_started) * 1000.0, 3),
+    }
     return candidate_batch, scored_candidates
 
 

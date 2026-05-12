@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 from typing import Any, Iterable, List, Optional
 
@@ -331,9 +332,10 @@ def bootstrap_schema_lifecycle(
     before = inspect_schema_lifecycle(engine, migrations_dir=migrations_dir, schema_path=schema_path)
     applied_now: List[str] = []
     alembic_action: Optional[dict] = None
+    skip_runtime_alembic = bool(os.getenv("VERCEL")) or str(os.getenv("NARRATIVEOS_SKIP_RUNTIME_ALEMBIC", "")).strip().lower() in {"1", "true", "yes", "on"}
     if apply and before["pending_versions"]:
         applied_now = apply_pending_migrations(engine, migrations_dir=migrations_dir)
-    if apply and _repo_schema_paths(migrations_dir=migrations_dir, schema_path=schema_path) and before["alembic"]["enabled"]:
+    if apply and not skip_runtime_alembic and _repo_schema_paths(migrations_dir=migrations_dir, schema_path=schema_path) and before["alembic"]["enabled"]:
         current_revision = before["alembic"]["current_revision"]
         head_revision = before["alembic"]["head_revision"]
         if head_revision and current_revision != head_revision:
@@ -349,6 +351,7 @@ def bootstrap_schema_lifecycle(
         "changed": bool(applied_now),
         "dry_run": not apply,
         "alembic_action": alembic_action,
+        "runtime_alembic_skipped": skip_runtime_alembic,
     }
 
 

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LongformChapterTask",
+  "type": "object",
+  "required": [
+    "chapter_task_id",
+    "objective",
+    "duty_type",
+    "target_words",
+    "reveal_budget",
+    "promise_actions"
+  ],
+  "properties": {
+    "chapter_task_id": {"type": "string"},
+    "objective": {"type": "string"},
+    "duty_type": {
+      "type": "string",
+      "enum": [
+        "advance_plot",
+        "advance_relationship",
+        "resolve_promise",
+        "expand_world",
+        "pace_breath",
+        "deliver_climax"
+      ]
+    },
+    "target_words": {"type": "integer", "minimum": 200},
+    "reveal_budget": {"type": "integer", "minimum": 0},
+    "promise_actions": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "promise_targets": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "allow_terminal": {"type": "boolean"},
+    "bridge_only": {"type": "boolean"},
+    "notes": {"type": "string"},
+    "quality_contract": {
+      "type": "object",
+      "required": [
+        "delayed_payoff_window",
+        "continuation_pressure_required",
+        "max_exposition_ratio",
+        "min_dialogue_action_ratio",
+        "min_detail_density"
+      ],
+      "properties": {
+        "delayed_payoff_window": {
+          "type": "object",
+          "required": ["min_chapters", "max_chapters"],
+          "properties": {
+            "min_chapters": {"type": "integer", "minimum": 0},
+            "max_chapters": {"type": "integer", "minimum": 0}
+          }
+        },
+        "continuation_pressure_required": {"type": "boolean"},
+        "max_exposition_ratio": {"type": "number"},
+        "min_dialogue_action_ratio": {"type": "number"},
+        "min_detail_density": {"type": "number"}
+      }
+    }
+  }
+}

@@ -3,8 +3,26 @@ from __future__ import annotations
 from typing import Iterable, List, Sequence
 
 from ..models import EvaluationIssue, EvaluationScores, NarrativeState, SceneBeat
-from ..repetition_detector import repetition_score
+from ..prose_linter import story_text_unit_count
+from ..repetition_detector import repetition_score, repetition_signal_bundle
 from .taxonomy import ISSUE_TAXONOMY
+
+
+LONGFORM_SOFT_ISSUE_THRESHOLDS = {
+    "q04_exposition_threshold": 0.5,
+    "q05_detail_density_threshold": 1.0 / 220.0,
+    "q05_scene_density_threshold": 0.34,
+    "q09_pacing_threshold": 0.34,
+    "q09_hook_threshold": 0.42,
+}
+
+SHORTFORM_SOFT_ISSUE_THRESHOLDS = {
+    "q04_exposition_threshold": 0.44,
+    "q05_detail_density_threshold": 1.0 / 180.0,
+    "q05_scene_density_threshold": 0.42,
+    "q09_pacing_threshold": 0.45,
+    "q09_hook_threshold": 0.45,
+}
 
 
 def _clamp(value: float, lower: float = 0.0, upper: float = 1.0) -> float:
@@ -45,8 +63,37 @@ def causal_continuity(issues: Sequence[EvaluationIssue]) -> float:
     return 0.88
 
 
-def pacing(ending_ready: bool, state_after: NarrativeState, repetition: float) -> float:
-    score = 0.82 - repetition
+def _repetition_pressure(bundle: dict[str, object]) -> float:
+    lexical = float(bundle.get("lexical_repetition_score", 0.0) or 0.0)
+    semantic = float(bundle.get("semantic_paragraph_similarity_score", 0.0) or 0.0)
+    paragraph_similarity = float(bundle.get("paragraph_similarity_score", 0.0) or 0.0)
+    n_gram = float(bundle.get("n_gram_repetition_score", 0.0) or 0.0)
+    beat_structure = float(bundle.get("beat_structure_repetition_score", 0.0) or 0.0)
+    event_coverage_gap = float(bundle.get("event_coverage_gap_score", 0.0) or 0.0)
+    beat_coverage_gap = float(bundle.get("beat_coverage_gap_score", 0.0) or 0.0)
+    suspicious_refrain = min(1.0, float(int(bundle.get("suspicious_refrain_count", 0) or 0)) / 8.0)
+    coverage_pressure = min(
+        1.0,
+        max(event_coverage_gap, beat_coverage_gap, float(int(bundle.get("uncovered_beat_count", 0) or 0)) / 3.0, float(int(bundle.get("overcovered_beat_count", 0) or 0)) / 3.0),
+    )
+    return max(
+        lexical * 0.45,
+        semantic,
+        paragraph_similarity * 0.7,
+        n_gram * 0.35,
+        beat_structure * 0.85,
+        suspicious_refrain,
+        coverage_pressure,
+    )
+
+
+def pacing(ending_ready: bool, state_after: NarrativeState, repetition_pressure: float, *, text_unit_count: int) -> float:
+    repetition_penalty = repetition_pressure * (0.55 if text_unit_count >= 1800 else 1.0)
+    score = 0.82 - repetition_penalty
+    if text_unit_count >= 1800:
+        score += 0.06
+        if len(state_after.open_promises) > 0:
+            score += 0.04
     if len(state_after.open_promises) == 0 and not ending_ready and state_after.chapter_index < state_after.min_end_turn:
         score -= 0.18
     if ending_ready and state_after.chapter_index < state_after.min_end_turn:
@@ -98,21 +145,35 @@ def derive_scoring_issues(
     scores: EvaluationScores,
     exposition_ratio: float,
     concrete_detail_density: float,
+    text_unit_count: int,
     ending_ready: bool,
     state_after: NarrativeState,
 ) -> List[EvaluationIssue]:
     issues: List[EvaluationIssue] = []
-    if exposition_ratio > 0.44:
+    longform_chapter = text_unit_count >= 1800
+    thresholds = LONGFORM_SOFT_ISSUE_THRESHOLDS if longform_chapter else SHORTFORM_SOFT_ISSUE_THRESHOLDS
+    exposition_threshold = float(thresholds["q04_exposition_threshold"])
+    if not longform_chapter and str(getattr(state_after, "story_phase", "") or "") == "setup":
+        exposition_threshold = max(exposition_threshold, 0.55)
+    detail_density_threshold = float(thresholds["q05_detail_density_threshold"])
+    scene_density_threshold = float(thresholds["q05_scene_density_threshold"])
+    pacing_threshold = float(thresholds["q09_pacing_threshold"])
+    hook_threshold = float(thresholds["q09_hook_threshold"])
+    if exposition_ratio > exposition_threshold:
         issues.append(
             EvaluationIssue(
                 issue_code="Q04",
                 severity="medium",
                 summary="解释句比例偏高，场面推进感不足。",
                 owning_module=ISSUE_TAXONOMY["Q04"]["owning_module"],
-                evidence=["exposition_ratio=%.3f" % exposition_ratio],
+                evidence=[
+                    "exposition_ratio=%.3f" % exposition_ratio,
+                    "threshold=%.3f" % exposition_threshold,
+                    "text_units=%s" % text_unit_count,
+                ],
             )
         )
-    if scores.scene_density < 0.42 or concrete_detail_density < (1.0 / 180.0):
+    if scores.scene_density < scene_density_threshold or concrete_detail_density < detail_density_threshold:
         issues.append(
             EvaluationIssue(
                 issue_code="Q05",
@@ -122,6 +183,9 @@ def derive_scoring_issues(
                 evidence=[
                     "scene_density=%.3f" % scores.scene_density,
                     "detail_density=%.4f" % concrete_detail_density,
+                    "scene_density_threshold=%.3f" % scene_density_threshold,
+                    "detail_density_threshold=%.4f" % detail_density_threshold,
+                    "text_units=%s" % text_unit_count,
                 ],
             )
         )
@@ -135,7 +199,10 @@ def derive_scoring_issues(
                 evidence=["choice_distinctness=%.3f" % scores.choice_distinctness],
             )
         )
-    if scores.pacing < 0.45 or scores.hook_quality < 0.45 or (ending_ready and state_after.chapter_index < state_after.min_end_turn):
+    q09_due_to_ending = ending_ready and state_after.chapter_index < state_after.min_end_turn
+    q09_due_to_pacing = scores.pacing < pacing_threshold
+    q09_due_to_hook = scores.hook_quality < hook_threshold and len(state_after.open_promises) == 0
+    if q09_due_to_ending or q09_due_to_pacing or q09_due_to_hook:
         severity = "high" if ending_ready and state_after.chapter_index < state_after.min_end_turn else "medium"
         issues.append(
             EvaluationIssue(
@@ -146,6 +213,10 @@ def derive_scoring_issues(
                 evidence=[
                     "pacing=%.3f" % scores.pacing,
                     "hook_quality=%.3f" % scores.hook_quality,
+                    "pacing_threshold=%.3f" % pacing_threshold,
+                    "hook_threshold=%.3f" % hook_threshold,
+                    "text_units=%s" % text_unit_count,
+                    "open_promises=%s" % len(state_after.open_promises),
                     "chapter_index=%s" % state_after.chapter_index,
                 ],
             )
@@ -186,12 +257,18 @@ def score_chapter(
     choices: Sequence[str],
     paywall_required: bool,
 ) -> EvaluationScores:
-    repetition = repetition_score(body.split("\n\n"))
+    repetition_bundle = repetition_signal_bundle(body.split("\n\n"))
+    text_unit_count = story_text_unit_count(body)
     readability_score = readability(body)
     scene_density_score = scene_density(dialogue_count, action_count, detail_count, body)
     fidelity_score = character_fidelity(character_fidelity_score)
     continuity_score = causal_continuity(issues)
-    pacing_score = pacing(ending_ready, state_after, repetition)
+    pacing_score = pacing(
+        ending_ready,
+        state_after,
+        _repetition_pressure(repetition_bundle),
+        text_unit_count=text_unit_count,
+    )
     choice_score = choice_distinctness(choices)
     hook_score = hook_quality(body)
     monetize_score = monetize_ready(choice_score, body, paywall_required)

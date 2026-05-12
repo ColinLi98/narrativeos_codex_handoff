@@ -54,6 +54,30 @@
     },
     "ending_gate": {
       "type": "object"
+    },
+    "quality_contract": {
+      "type": "object",
+      "required": [
+        "variation_axes",
+        "detail_anchor_types",
+        "dialogue_pressure",
+        "continuation_obligation"
+      ],
+      "properties": {
+        "variation_axes": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "detail_anchor_types": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "dialogue_pressure": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "continuation_obligation": {"type": "boolean"}
+      }
     }
   }
 }

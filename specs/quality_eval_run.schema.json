@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QualityEvalRun",
+  "type": "object",
+  "required": [
+    "run_id",
+    "generated_at",
+    "sample_count",
+    "overall_pass_rate",
+    "veto_rate",
+    "average_content_score",
+    "grounding_pass_rate",
+    "failed_sample_count",
+    "failed_samples"
+  ],
+  "properties": {
+    "run_id": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "sample_count": {"type": "integer"},
+    "overall_pass_rate": {"type": "number"},
+    "veto_rate": {"type": "number"},
+    "average_content_score": {"type": "number"},
+    "grounding_pass_rate": {"type": "number"},
+    "failed_sample_count": {"type": "integer"},
+    "failed_samples": {
+      "type": "array",
+      "items": {"type": "object"}
+    }
+  }
+}

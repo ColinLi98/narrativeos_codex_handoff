@@ -1,0 +1,34 @@
+{
+  "quick_brief_max_target_chapters": 100,
+  "structured_longform_bands": ["250", "500", "1000"],
+  "bands": {
+    "100": {
+      "min_characters": 8,
+      "min_scene_blueprints": 8,
+      "min_locations": 6,
+      "min_scene_family_count": 6,
+      "min_distinct_role_pairs": 6
+    },
+    "250": {
+      "min_characters": 12,
+      "min_scene_blueprints": 12,
+      "min_locations": 8,
+      "min_scene_family_count": 8,
+      "min_distinct_role_pairs": 8
+    },
+    "500": {
+      "min_characters": 16,
+      "min_scene_blueprints": 16,
+      "min_locations": 12,
+      "min_scene_family_count": 10,
+      "min_distinct_role_pairs": 10
+    },
+    "1000": {
+      "min_characters": 24,
+      "min_scene_blueprints": 24,
+      "min_locations": 16,
+      "min_scene_family_count": 12,
+      "min_distinct_role_pairs": 12
+    }
+  }
+}

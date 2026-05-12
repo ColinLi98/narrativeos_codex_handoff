@@ -3,6 +3,7 @@ from src.narrativeos.eval.scorers import (
     derive_scoring_issues,
     hook_quality,
     monetize_ready,
+    pacing,
     readability,
     scene_density,
 )
@@ -67,11 +68,124 @@ def test_q04_q05_q08_q09_soft_issues_are_derived():
         scores=scores,
         exposition_ratio=0.55,
         concrete_detail_density=0.001,
+        text_unit_count=600,
         ending_ready=False,
         state_after=state,
     )
     codes = {issue.issue_code for issue in issues}
     assert {"Q04", "Q05", "Q08", "Q09"} <= codes
+
+
+def test_longform_thresholds_do_not_trigger_q03_q09_by_default():
+    state = NarrativeState.from_dict(
+        {
+            "state_id": "s",
+            "world_id": "w",
+            "turn_index": 0,
+            "story_phase": "midpoint",
+            "chapter_index": 3,
+            "min_end_turn": 8,
+            "fate_pressure": 0.1,
+            "karmic_weather": {},
+            "unresolved_debts": [],
+            "world_facts": [],
+            "timeline": [],
+            "characters": {},
+            "relationship_graph": [],
+            "open_promises": [
+                {
+                    "promise_id": "p1",
+                    "description": "还有一件事没说完。",
+                    "opened_at_turn": 1,
+                    "due_by_turn": 8,
+                    "holders": ["lead", "counterpart"],
+                    "fulfillment_modes": ["truth"],
+                    "status": "open",
+                    "stakes": "关系与真相",
+                    "tags": ["truth"],
+                }
+            ],
+            "tension": 0.5,
+            "themes": {},
+            "player_intent": {},
+            "recent_scene_functions": [],
+            "visited_event_ids": [],
+            "route_fingerprint": [],
+            "rating_ceiling": "PG13",
+            "word_budget": 2000,
+        }
+    )
+    scores = EvaluationScores(
+        readability=0.9,
+        scene_density=0.92,
+        character_fidelity=0.85,
+        causal_continuity=0.88,
+        pacing=pacing(False, state, 0.24, text_unit_count=1900),
+        choice_distinctness=0.72,
+        hook_quality=0.9,
+        monetize_ready=0.8,
+        overall_score=0.84,
+    )
+    issues = derive_scoring_issues(
+        scores=scores,
+        exposition_ratio=0.33,
+        concrete_detail_density=0.01,
+        text_unit_count=1900,
+        ending_ready=False,
+        state_after=state,
+    )
+    codes = {issue.issue_code for issue in issues}
+    assert "Q09" not in codes
+
+
+def test_longform_q09_still_triggers_when_hook_and_promises_are_weak():
+    state = NarrativeState.from_dict(
+        {
+            "state_id": "s",
+            "world_id": "w",
+            "turn_index": 0,
+            "story_phase": "midpoint",
+            "chapter_index": 5,
+            "min_end_turn": 8,
+            "fate_pressure": 0.1,
+            "karmic_weather": {},
+            "unresolved_debts": [],
+            "world_facts": [],
+            "timeline": [],
+            "characters": {},
+            "relationship_graph": [],
+            "open_promises": [],
+            "tension": 0.5,
+            "themes": {},
+            "player_intent": {},
+            "recent_scene_functions": [],
+            "visited_event_ids": [],
+            "route_fingerprint": [],
+            "rating_ceiling": "PG13",
+            "word_budget": 2000,
+        }
+    )
+    scores = EvaluationScores(
+        readability=0.88,
+        scene_density=0.9,
+        character_fidelity=0.85,
+        causal_continuity=0.88,
+        pacing=pacing(False, state, 0.22, text_unit_count=1900),
+        choice_distinctness=0.72,
+        hook_quality=0.2,
+        monetize_ready=0.8,
+        overall_score=0.84,
+    )
+    issues = derive_scoring_issues(
+        scores=scores,
+        exposition_ratio=0.3,
+        concrete_detail_density=0.01,
+        text_unit_count=1900,
+        ending_ready=False,
+        state_after=state,
+    )
+    codes = {issue.issue_code for issue in issues}
+    assert "Q09" in codes
 
 
 def test_phase_penalty_strongly_discourages_terminal_events_before_min_end_turn():

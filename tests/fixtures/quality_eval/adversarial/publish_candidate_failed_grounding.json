@@ -1,0 +1,38 @@
+{
+  "sample_id": "publish_candidate_failed_grounding",
+  "scenario": "publish_candidate",
+  "risk_tier": "L3",
+  "input": {
+    "text": "她已经回到了从未存在过的第七王朝，并公开承认旧世界的债已经全部结束。"
+  },
+  "context": {
+    "scene_beats": [
+      {
+        "event": {
+          "title": "公开承认旧债",
+          "summary": "她承认旧债",
+          "scene_function": "truth_trial"
+        }
+      }
+    ],
+    "chapter_task": {
+      "objective": "承认旧债"
+    }
+  },
+  "materials": {
+    "world_facts": ["旧债仍未结束"],
+    "world_bible": {
+      "theme": "旧债"
+    }
+  },
+  "expected_behavior": "failed_grounding",
+  "expected_veto": true,
+  "expected_reason_codes": ["grounding_missing_support"],
+  "rubric_targets": {
+    "max_overall_score": 0.8
+  },
+  "grounding_expectation": {
+    "status": "failed",
+    "max_unsupported_claims": 3
+  }
+}

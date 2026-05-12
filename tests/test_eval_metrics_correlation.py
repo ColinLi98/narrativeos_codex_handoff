@@ -17,6 +17,16 @@ from src.narrativeos.persistence.db import SessionRow
 from src.narrativeos.repository import SQLAlchemyRepository
 
 
+def _reviewer_headers(client: TestClient) -> dict[str, str]:
+    client.post(
+        "/v1/auth/register",
+        json={"actor_id": "ops_eval_reviewer", "actor_role": "reviewer", "password": "secret123", "account_id": "ops_eval_reviewer"},
+    )
+    login = client.post("/v1/auth/login", json={"actor_id": "ops_eval_reviewer", "password": "secret123"})
+    assert login.status_code == 200
+    return {"Authorization": f"Bearer {login.json()['token']['access_token']}"}
+
+
 def _seed_reader_chapter(
     repository: SQLAlchemyRepository,
     *,
@@ -141,18 +151,31 @@ def test_repository_eval_metrics_computes_real_continuation_correlation(tmp_path
     correlations = {item["metric"]: item["correlation"] for item in metrics["quality_signal_correlations"]}
     assert correlations["overall_score"] > 0.9
     assert correlations["pacing"] > 0.9
+    assert "semantic_paragraph_similarity_score" in correlations
+    assert "event_coverage_gap_score" in correlations
+    assert "beat_coverage_gap_score" in correlations
+    assert "uncovered_beat_count" in correlations
+    assert "overcovered_beat_count" in correlations
+    assert "paragraph_similarity_score" in correlations
+    assert "n_gram_repetition_score" in correlations
+    assert "beat_structure_repetition_score" in correlations
+    assert "q03_q09_calibration" in metrics
+    assert "q03" in metrics["q03_q09_calibration"]
+    assert "q09" in metrics["q03_q09_calibration"]
 
 
 def test_eval_metrics_endpoint_exposes_correlation_summary(tmp_path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "eval_corr_api.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    headers = _reviewer_headers(client)
 
-    response = client.get("/v1/ops/eval-metrics")
+    response = client.get("/v1/ops/eval-metrics", headers=headers)
     assert response.status_code == 200
     payload = response.json()
     assert "continuation_signal_summary" in payload
     assert "quality_signal_correlations" in payload
+    assert "q03_q09_calibration" in payload
     assert "continuation_world_details" in payload
     assert "continuation_version_details" in payload
     assert "continuation_sample_accumulation" in payload
@@ -199,9 +222,10 @@ def test_eval_metrics_detail_endpoints_return_world_and_version_drilldown(tmp_pa
 
     app = create_app(repository=repository)
     client = TestClient(app)
+    headers = _reviewer_headers(client)
 
-    world_detail = client.get(f"/v1/ops/eval-metrics/worlds/{world['world_id']}")
-    version_detail = client.get(f"/v1/ops/eval-metrics/world-versions/{world['latest_version']}")
+    world_detail = client.get(f"/v1/ops/eval-metrics/worlds/{world['world_id']}", headers=headers)
+    version_detail = client.get(f"/v1/ops/eval-metrics/world-versions/{world['latest_version']}", headers=headers)
 
     assert world_detail.status_code == 200
     assert version_detail.status_code == 200

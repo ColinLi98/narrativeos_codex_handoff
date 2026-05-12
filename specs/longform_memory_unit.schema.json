@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LongformMemoryUnit",
+  "type": "object",
+  "required": [
+    "memory_id",
+    "memory_type",
+    "scope",
+    "entity_refs",
+    "summary",
+    "importance",
+    "created_chapter",
+    "last_referenced_chapter",
+    "resolution_status"
+  ],
+  "properties": {
+    "memory_id": {"type": "string"},
+    "memory_type": {"type": "string"},
+    "scope": {"type": "string"},
+    "entity_refs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {"type": "string"}
+      }
+    },
+    "summary": {"type": "string"},
+    "importance": {"type": "number"},
+    "created_chapter": {"type": "integer", "minimum": 0},
+    "last_referenced_chapter": {"type": "integer", "minimum": 0},
+    "resolution_status": {"type": "string"}
+  }
+}

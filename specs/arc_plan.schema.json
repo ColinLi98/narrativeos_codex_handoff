@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ArcPlan",
+  "type": "object",
+  "required": [
+    "arc_id",
+    "volume_id",
+    "order",
+    "title",
+    "goal",
+    "conflict",
+    "reveal_budget",
+    "payoff_targets",
+    "completion_conditions",
+    "target_chapters",
+    "chapter_tasks"
+  ],
+  "properties": {
+    "arc_id": {"type": "string"},
+    "volume_id": {"type": "string"},
+    "order": {"type": "integer", "minimum": 1},
+    "title": {"type": "string"},
+    "goal": {"type": "string"},
+    "conflict": {"type": "string"},
+    "reveal_budget": {"type": "integer", "minimum": 0},
+    "payoff_targets": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "completion_conditions": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "target_chapters": {"type": "integer", "minimum": 1},
+    "arc_promises": {
+      "type": "array",
+      "items": {"type": "object", "additionalProperties": true}
+    },
+    "chapter_tasks": {
+      "type": "array",
+      "items": {"$ref": "chapter_task.schema.json"}
+    }
+  }
+}

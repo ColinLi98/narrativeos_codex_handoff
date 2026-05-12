@@ -5397,7 +5397,14 @@ class AuthoringService:
         elif latest_approval_status == "changes_requested":
             stage = "changes_requested"
             recommended_action = "revise"
-        elif latest_approval_status == "approved" and simulation_freshness.get("status") == "fresh" and stage == "ready_to_submit":
+        elif (
+            latest_approval_status == "approved"
+            and validation_summary.get("ok")
+            and simulation_freshness.get("status") == "fresh"
+            and simulation_summary.get("block_rate", 0.0) <= 0.0
+            and str(simulation_summary.get("latest_decision") or "").lower() not in {"block", "blocked", "failed"}
+            and stage in {"ready_to_submit", "simulated"}
+        ):
             stage = "approved_for_submit"
             recommended_action = "submit"
         blockers = self._workflow_blockers(
@@ -5408,6 +5415,8 @@ class AuthoringService:
             simulation_freshness=simulation_freshness,
             longform_readiness=longform_capability["longform_readiness"],
         )
+        if latest_approval_status == "approved" and stage == "approved_for_submit":
+            blockers = [item for item in blockers if item.get("key") != "simulation_requires_revision"]
         return {
             "account_id": resolved_account_id,
             "world_version_id": version.world_version_id if version else None,

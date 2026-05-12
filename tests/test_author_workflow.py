@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from src.narrativeos.api import create_app
 from src.narrativeos.repository import SQLAlchemyRepository
+from src.narrativeos.services.author_collaboration import AuthorCollaborationService
 from src.narrativeos.services.authoring import AuthoringService
 from src.narrativeos.services.billing import BillingService
 
@@ -185,3 +186,29 @@ def test_author_workflow_api_returns_expected_fields_and_stage_transitions(tmp_p
     waiting = client.get(f"/v1/author/workflow?account_id=acct_author&world_version_id={draft_id}")
     assert waiting.status_code == 200
     assert waiting.json()["recommended_action"] == "wait_for_review"
+
+
+def test_author_workflow_human_approval_can_clear_rewrite_advisory(tmp_path):
+    repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "author_workflow_approval_override.db"))
+    billing = _grant_author_access(repository, account_id="acct_author")
+    authoring = AuthoringService(repository, billing_service=billing)
+    collaboration = AuthorCollaborationService(repository)
+
+    draft = authoring.create_draft_from_brief(_brief_payload("acct_author"))
+    _mark_simulation_fresh(repository, draft["world_version_id"], decision="rewrite")
+    requested = collaboration.request_approval(
+        world_version_id=draft["world_version_id"],
+        payload={"reviewer_id": "lead_editor", "reason": "请人工确认 rewrite advisory。"},
+    )
+    assert requested["approval"]["status"] == "requested"
+    collaboration.approval_decision(
+        world_version_id=draft["world_version_id"],
+        payload={"reviewer_id": "lead_editor", "status": "approved", "reason": "人工确认可以送审。"},
+    )
+
+    summary = authoring.workflow_summary(account_id="acct_author", world_version_id=draft["world_version_id"])
+
+    assert summary["stage"] == "approved_for_submit"
+    assert summary["recommended_action"] == "submit"
+    assert summary["can_submit"] is True
+    assert "simulation_requires_revision" not in {item["key"] for item in summary["blockers"]}

@@ -114,6 +114,22 @@ async function clickSelector(evaluate, selector) {
   })()`);
 }
 
+async function enterOpsShellWithoutFullRefresh(evaluate) {
+  return evaluate(`(() => {
+    if (typeof appState === 'undefined') throw new Error('Missing appState');
+    if (typeof syncProductMode !== 'function') throw new Error('Missing syncProductMode');
+    appState.activeProduct = 'ops';
+    syncProductMode();
+    if (typeof renderOpsSurface === 'function') {
+      renderOpsSurface();
+    }
+    return {
+      activeProduct: appState.activeProduct,
+      opsVisible: !document.querySelector('#ops-shell')?.classList.contains('is-hidden')
+    };
+  })()`);
+}
+
 async function setValue(evaluate, selector, value) {
   const escapedSelector = JSON.stringify(selector);
   const escapedValue = JSON.stringify(value);
@@ -270,7 +286,7 @@ async function main() {
     );
     completeStep("wait_for_app_bootstrap");
     markStep("enter_ops_mode");
-    await clickSelector(evaluate, "#mode-ops");
+    await enterOpsShellWithoutFullRefresh(evaluate);
     await waitFor(
       evaluate,
       "ops mode active",

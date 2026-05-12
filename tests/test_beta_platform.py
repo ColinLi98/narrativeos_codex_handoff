@@ -95,21 +95,21 @@ def test_repo_alembic_scaffold_is_discoverable_and_stampable(tmp_path: Path):
 
     history = alembic_history()
     assert history["enabled"] is True
-    assert history["head_revision"] == "20260404_0012"
+    assert history["head_revision"] == "20260414_0016"
     assert history["history"]
 
     engine = create_engine(f"sqlite:///{tmp_path / 'alembic_lifecycle.db'}", future=True)
     before = inspect_alembic_state(engine)
-    assert before["head_revision"] == "20260404_0012"
+    assert before["head_revision"] == "20260414_0016"
     assert before["status"] == "not_stamped"
 
     stamped = stamp_alembic_head(str(engine.url))
     assert stamped["enabled"] is True
-    assert stamped["target_revision"] == "20260404_0012"
+    assert stamped["target_revision"] == "20260414_0016"
 
     after = inspect_alembic_state(engine)
     assert after["status"] == "at_head"
-    assert after["current_revision"] == "20260404_0012"
+    assert after["current_revision"] == "20260414_0016"
 
 
 def test_schema_lifecycle_can_report_pending_and_apply_temp_migrations(tmp_path: Path):

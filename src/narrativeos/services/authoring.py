@@ -5010,10 +5010,12 @@ class AuthoringService:
         simulation_summary: Dict[str, Any],
         simulation_freshness: Dict[str, Any],
         longform_readiness: Optional[Dict[str, Any]] = None,
-    ) -> tuple[str, str]:
+        ) -> tuple[str, str]:
         readiness = dict(longform_readiness or {})
         if version is None:
             return "brief", "create_from_brief"
+        if version.status == "submitted":
+            return "submitted", "wait_for_review"
         if readiness.get("status") == "blocked":
             if any(dict(item or {}).get("key") == "structured_longform_required" for item in list(readiness.get("blockers") or [])):
                 return "draft_created", "bootstrap_structured_longform"
@@ -5022,8 +5024,6 @@ class AuthoringService:
             if str(readiness.get("band") or "100") == "100":
                 return "draft_created", "bootstrap_quick_brief_enrich"
             return "draft_created", "bootstrap_structured_longform"
-        if version.status == "submitted":
-            return "submitted", "wait_for_review"
         if not validation_summary.get("available"):
             return "draft_created", "validate"
         if not validation_summary.get("ok"):

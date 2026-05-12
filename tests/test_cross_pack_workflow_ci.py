@@ -27,6 +27,23 @@ def test_cross_pack_quality_workflow_avoids_duplicate_pr_branch_push_runs():
     assert "push:\n    branches:\n      - main" in workflow_text
 
 
+def test_cross_pack_quality_workflow_runs_targeted_quality_contract_tests():
+    workflow_path = ROOT / ".github" / "workflows" / "cross-pack-quality.yml"
+    payload = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+
+    quality_job = payload["jobs"]["quality"]
+    steps = quality_job["steps"]
+    test_step = next(step for step in steps if step.get("name") == "Run tests")
+    test_run = test_step["run"]
+
+    assert "python -m pytest -q" in test_run
+    assert "tests/test_cross_pack_benchmark.py" in test_run
+    assert "tests/test_cross_pack_merge_gate.py" in test_run
+    assert "tests/test_cross_pack_workflow_ci.py" in test_run
+    assert "tests/test_phase0_guardrails.py" in test_run
+    assert "python -m pytest -q\n" not in test_run
+
+
 def test_cross_pack_quality_workflow_keeps_safe_summary_fallbacks():
     workflow_path = ROOT / ".github" / "workflows" / "cross-pack-quality.yml"
     payload = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))

@@ -24,6 +24,11 @@ class AuthorAccountRequest(BaseModel):
     account_id: Optional[str] = None
 
 
+class LocalStudioBootstrapAccessRequest(BaseModel):
+    account_id: Optional[str] = None
+    minimum_studio_credits: float = Field(default=20, ge=0, le=200)
+
+
 class AuthorLongformBootstrapRequest(BaseModel):
     account_id: Optional[str] = None
     mode: str = "structured_longform"
@@ -363,6 +368,17 @@ def _authenticated_author_actor_context(
         "actor_role": actor_role,
         "account_id": account_id,
     }
+
+
+def _require_local_studio_loopback(request: Request) -> None:
+    host = str(request.headers.get("host") or "").split(":", 1)[0].strip("[]").lower()
+    client_host = str(request.client.host if request.client else "").strip("[]").lower()
+    loopback_hosts = {"127.0.0.1", "localhost", "::1"}
+    if host not in loopback_hosts or client_host not in loopback_hosts | {"testclient"}:
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "local_studio_bootstrap_forbidden", "reason": "local_loopback_required"},
+        )
 
 
 def _record_author_audit_log(
@@ -706,6 +722,73 @@ def _execute_collaboration_action(fn):
         raise HTTPException(status_code=404, detail={"code": "author_collaboration_missing", "reason": str(exc)}) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"code": "author_collaboration_invalid", "reason": str(exc)}) from exc
+
+
+@router.post("/local-studio/bootstrap-access")
+def local_studio_bootstrap_access(payload: LocalStudioBootstrapAccessRequest, request: Request) -> Dict[str, Any]:
+    _require_local_studio_loopback(request)
+    identity = _authenticated_author_actor_context(
+        request,
+        missing_code="local_studio_author_token_required",
+        forbidden_code="local_studio_author_role_required",
+        allowed_roles={"author"},
+    )
+    account_id = identity["account_id"]
+    requested_account_id = str(payload.account_id or account_id or "").strip()
+    if not account_id or requested_account_id != account_id:
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "local_studio_account_mismatch", "reason": "author_can_bootstrap_own_local_account_only"},
+        )
+
+    billing_service = request.app.state.billing_service
+    before = billing_service.entitlement_audit(account_id=account_id)
+    tier_id = str((before.get("subscription") or {}).get("tier_id") or "").strip()
+    if tier_id not in {"creator_pass", "studio_pass"}:
+        subscription = billing_service.grant_subscription(
+            {
+                "account_id": account_id,
+                "tier_id": "creator_pass",
+                "provider": "local_agent_studio",
+                "status": "active",
+            }
+        )
+        request.app.state.analytics_service.track(
+            "subscription_activated",
+            reader_id=account_id,
+            account_id=account_id,
+            access_tier=subscription.get("tier_id"),
+            payload_json={**subscription, "reason": "local_agent_studio_bootstrap"},
+        )
+
+    refreshed = billing_service.entitlement_audit(account_id=account_id)
+    wallet = dict((refreshed.get("wallets") or {}).get("studio_credits") or {})
+    current_balance = float(wallet.get("balance") or 0.0)
+    minimum_balance = float(payload.minimum_studio_credits or 0.0)
+    if current_balance < minimum_balance:
+        wallet = billing_service.grant_wallet_credits(
+            account_id=account_id,
+            wallet_type="studio_credits",
+            amount=minimum_balance - current_balance,
+            tier_id="creator_pass",
+        )
+        request.app.state.analytics_service.track(
+            "entitlement_granted",
+            reader_id=account_id,
+            account_id=account_id,
+            access_tier="creator_pass",
+            payload_json={**wallet, "reason": "local_agent_studio_bootstrap"},
+        )
+
+    after = billing_service.entitlement_audit(account_id=account_id)
+    return {
+        "schema_version": "local_agent_studio_bootstrap_access/v1",
+        "status": "ready",
+        "account_id": account_id,
+        "subscription": after.get("subscription"),
+        "wallets": after.get("wallets"),
+        "minimum_studio_credits": minimum_balance,
+    }
 
 
 @router.get("/drafts")

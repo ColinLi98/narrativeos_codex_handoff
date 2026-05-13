@@ -9,6 +9,7 @@ var AgentStudioRuntime = (() => {
     setBusy,
     downloadTextFile,
     formatTimestamp,
+    parseErrorDetail,
   } = UIShared;
 
   const QUICK_INTENTS = [
@@ -40,6 +41,27 @@ var AgentStudioRuntime = (() => {
   function clampLabel(value, fallback = "新的走向") {
     const normalized = String(value || "").trim();
     return normalized ? normalized.slice(0, 28) : fallback;
+  }
+
+  function normalizedErrorDetail(error) {
+    const detail = parseErrorDetail(error) || {};
+    return detail.detail && typeof detail.detail === "object" ? detail.detail : detail;
+  }
+
+  function safeStudioErrorMessage(error, fallback = "当前操作暂时没有完成，可以稍后重试。") {
+    const detail = normalizedErrorDetail(error);
+    const code = String(detail.code || error?.code || "").trim();
+    const reason = String(detail.reason || "").trim();
+    if (code === "author_entitlement_required") {
+      return "本地创作权限还未准备好，请重新打开 Agent Studio 本地入口后再试。";
+    }
+    if (code === "chapter_quality_guard_failed" || reason.includes("chapter_quality_guard_failed") || String(error?.message || "").includes("chapter_quality_guard_failed")) {
+      return "这一章还没有达到可读质量，作品设定已保留。补一句导演意图后可以直接重试生成。";
+    }
+    if (code === "local_studio_bootstrap_forbidden") {
+      return "本地创作模式只能从 localhost 或 127.0.0.1 打开。";
+    }
+    return fallback;
   }
 
   function activeAccountId() {
@@ -278,7 +300,7 @@ var AgentStudioRuntime = (() => {
   }
 
   function setBriefFieldsFromStartup() {
-    const title = String(dom.title?.value || "").trim() || "未命名作品";
+    const title = String(dom.title?.value || "").trim() || "雾港回潮";
     const genre = String(dom.genre?.value || "urban_mystery");
     const readerGoal = String(dom.readerGoal?.value || "").trim();
     const lengthGoal = String(dom.length?.value || "").trim();
@@ -291,6 +313,9 @@ var AgentStudioRuntime = (() => {
         `作品标题：${title}`,
         `读者体验目标：${readerGoal || "稳定追更"}`,
         `长度目标：${lengthGoal || "短篇"}`,
+        "开场场景：雨夜旧码头、潮湿仓库、熄灯的渡轮候船厅。",
+        "核心冲突：主角追查一份失踪证词，却发现证人和反派都在隐瞒同一段旧案。",
+        "第一章要求：用可感知的动作、对话和场景细节推进，不要解释真相，不要提前收束。",
         remixAllowed,
       ].join("\n");
     }
@@ -324,6 +349,7 @@ var AgentStudioRuntime = (() => {
       });
       authorState.activeWorkId = work.work_id;
       let generated = false;
+      let lastGenerationError = null;
       for (let attempt = 0; attempt < 2 && !generated; attempt += 1) {
         try {
           authorState.activeWorkDetail = await api(`/v1/author/works/${encodeURIComponent(work.work_id)}/chapters/generate`, {
@@ -331,7 +357,8 @@ var AgentStudioRuntime = (() => {
             body: JSON.stringify({ mode: "first", account_id: accountId }),
           });
           generated = Number(authorState.activeWorkDetail?.chapter_count || 0) >= 1;
-        } catch (_error) {
+        } catch (error) {
+          lastGenerationError = error;
           authorState.activeWorkDetail = await api(`/v1/author/works/${encodeURIComponent(work.work_id)}`);
           if (attempt === 0) {
             setGenerationStatus("第一章生成中", "pending", "正在补足场景细节并重新生成第一章。");
@@ -340,16 +367,18 @@ var AgentStudioRuntime = (() => {
       }
       currentChapterIndex = Number(authorState.activeWorkDetail?.active_chapter_index || authorState.activeWorkDetail?.chapter_count || 0) || null;
       if (!generated) {
-        setGenerationStatus("第一章暂未通过质量校验。", "error", "作品已保留，可以点击续写下一章重试。");
-        reportUiMessage("第一章暂未通过质量校验，请稍后重试。", "warning");
+        const message = safeStudioErrorMessage(lastGenerationError, "作品已创建，第一章暂时没有生成成功。可以调整导演意图后重试。");
+        setGenerationStatus("第一章需要重试。", "warning", message);
+        reportUiMessage(message, "warning");
         render();
         return;
       }
       setGenerationStatus("第 1 章已完成。", "success", "本章已加入当前路线，可以继续阅读或选择下一步。");
       render();
     } catch (error) {
-      setGenerationStatus("启动失败，请检查账号权限后重试。", "error", "当前作品草稿已尽量保留，可以稍后重试。");
-      reportUiMessage(`Agent Studio 启动失败：${error.message}`, "error");
+      const message = safeStudioErrorMessage(error, "当前作品草稿已尽量保留，可以稍后重试。");
+      setGenerationStatus("启动失败，请检查账号权限后重试。", "error", message);
+      reportUiMessage(`Agent Studio 启动失败：${message}`, "error");
     } finally {
       releaseBusy?.();
     }
@@ -419,8 +448,9 @@ var AgentStudioRuntime = (() => {
       setGenerationStatus(`第 ${currentChapterIndex || ""} 章已完成。`, "success", "新章节已加入当前路线，下一步选择也已更新。");
       render();
     } catch (error) {
-      setGenerationStatus("续写失败，当前路线已保留。", "error", "可以调整导演意图后重试。");
-      reportUiMessage("续写暂未通过质量校验，当前路线已保留。", "error");
+      const message = safeStudioErrorMessage(error, "可以调整导演意图后重试。");
+      setGenerationStatus("续写失败，当前路线已保留。", "error", message);
+      reportUiMessage(`续写失败：${message}`, "error");
     } finally {
       releaseBusy?.();
     }

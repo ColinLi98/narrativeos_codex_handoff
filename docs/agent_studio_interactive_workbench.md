@@ -62,8 +62,12 @@ bash scripts/run_agent_studio_local.sh
 The launcher reuses `scripts/run_backend_local.sh`, waits for `/health`, and opens:
 
 ```text
-http://127.0.0.1:8000/app?product=author&workspace=studio&debug=1
+http://127.0.0.1:8000/app?product=author&workspace=studio&debug=1&local_studio=1&account_id=agent_studio_user_demo
 ```
+
+`local_studio=1` is accepted only on a local debug Studio route. It creates or logs in the local demo author, calls the loopback-only `POST /v1/author/local-studio/bootstrap-access` helper to grant local `creator_pass` access plus a small `studio_credits` balance, and lands directly on the Studio startup form so authors can set a story goal without first navigating the generic login/workspace shell. Set `AGENT_STUDIO_LOCAL_ACCOUNT_ID` when a local agent run should use a different demo account.
+
+For a clean local checkout, the launcher defaults `DATABASE_URL` to a local SQLite file at `narrativeos_agent_studio_local.db`. Set `DATABASE_URL` explicitly when using Postgres or another prepared local database.
 
 Set `AGENT_STUDIO_OPEN_BROWSER=0` to keep the browser closed while still starting the local backend.
 

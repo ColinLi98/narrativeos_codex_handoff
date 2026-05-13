@@ -182,6 +182,10 @@ def test_agent_studio_shell_assets_are_registered_and_parseable(tmp_path: Path):
     assert "正在沿导演意图推进下一章，完成后会自动跳到新章节。" in runtime.text
     assert "新路线创建中" in runtime.text
     assert "正在从当前章节保存分支。" in runtime.text
+    assert "safeStudioErrorMessage" in runtime.text
+    assert "第一章需要重试。" in runtime.text
+    assert "这一章还没有达到可读质量" in runtime.text
+    assert "第一章暂时没有入库" not in runtime.text
     assert "Q03" not in runtime.text
     assert "Q04" not in runtime.text
     assert "Q05" not in runtime.text
@@ -224,12 +228,20 @@ def test_agent_studio_layout_css_keeps_reader_primary():
 
 def test_agent_studio_local_launcher_opens_studio_frontend():
     launcher = ROOT / "scripts" / "run_agent_studio_local.sh"
+    shell_runtime = ROOT / "src" / "narrativeos" / "web" / "shell_runtime.js"
+    author_api = ROOT / "src" / "narrativeos" / "api" / "author.py"
     assert launcher.exists()
     assert launcher.stat().st_mode & 0o111
 
     text = launcher.read_text(encoding="utf-8")
+    shell_text = shell_runtime.read_text(encoding="utf-8")
+    author_api_text = author_api.read_text(encoding="utf-8")
     assert "AGENT_STUDIO_URL" in text
-    assert "product=author&workspace=studio&debug=1" in text
+    assert "product=author&workspace=studio&debug=1&local_studio=1" in text
+    assert "AGENT_STUDIO_LOCAL_DB" in text
+    assert "DATABASE_URL=\"${DATABASE_URL:-sqlite:///${AGENT_STUDIO_LOCAL_DB}}\"" in text
+    assert "export DATABASE_URL" in text
+    assert "AGENT_STUDIO_LOCAL_ACCOUNT_ID" in text
     assert "AGENT_STUDIO_OPEN_BROWSER" in text
     assert "scripts/run_backend_local.sh" in text
     assert "/health" in text
@@ -237,3 +249,50 @@ def test_agent_studio_local_launcher_opens_studio_frontend():
     assert "open \"${AGENT_STUDIO_URL}\"" in text
     assert "xdg-open \"${AGENT_STUDIO_URL}\"" in text
     assert "python3 -m webbrowser \"${AGENT_STUDIO_URL}\"" in text
+    assert "bootstrapLocalStudioAuthorIfRequested" in shell_text
+    assert "local_studio" in shell_text
+    assert "isLocalStudioOrigin" in shell_text
+    assert "127.0.0.1" in shell_text
+    assert "/v1/auth/register" in shell_text
+    assert "/v1/auth/login" in shell_text
+    assert "/v1/author/local-studio/bootstrap-access" in shell_text
+    assert "local_studio_bootstrap_access" in author_api_text
+    assert "local_loopback_required" in author_api_text
+    assert "creator_pass" in author_api_text
+    assert "studio_credits" in author_api_text
+    assert "可直接设定故事目标开始创作" in shell_text
+
+
+def test_local_studio_bootstrap_access_grants_author_creation_entitlements(tmp_path: Path):
+    repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "local_studio_bootstrap.db"))
+    app = create_app(repository=repository)
+    client = TestClient(app)
+    headers = _auth_headers(client, actor_id="agent_studio_local_author")
+
+    blocked = client.post(
+        "/v1/author/local-studio/bootstrap-access",
+        headers={**headers, "host": "example.com"},
+        json={"account_id": "agent_studio_local_author"},
+    )
+    assert blocked.status_code == 403
+    assert blocked.json()["detail"]["code"] == "local_studio_bootstrap_forbidden"
+
+    response = client.post(
+        "/v1/author/local-studio/bootstrap-access",
+        headers={**headers, "host": "127.0.0.1"},
+        json={"account_id": "agent_studio_local_author", "minimum_studio_credits": 20},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["schema_version"] == "local_agent_studio_bootstrap_access/v1"
+    assert payload["status"] == "ready"
+    assert payload["subscription"]["tier_id"] == "creator_pass"
+    assert float(payload["wallets"]["studio_credits"]["balance"]) >= 20
+
+    entitlements = client.get(
+        "/v1/reader/entitlements?account_id=agent_studio_local_author",
+        headers=headers,
+    )
+    assert entitlements.status_code == 200
+    assert entitlements.json()["subscription"]["tier_id"] == "creator_pass"
+    assert float(entitlements.json()["wallets"]["studio_credits"]["balance"]) >= 20

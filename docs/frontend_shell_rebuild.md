@@ -189,7 +189,7 @@ This keeps `public shell`, `frontend shell smoke`, and `internal Ops guards` rea
 
 Use the Agent Studio smoke when validating the Author-side co-directed fiction workbench:
 
-- local author launcher: `scripts/run_agent_studio_local.sh` opens `/app?product=author&workspace=studio&debug=1` after the backend health check passes
+- local author launcher: `scripts/run_agent_studio_local.sh` opens `/app?product=author&workspace=studio&debug=1&local_studio=1` after the backend health check passes, defaults clean local checkouts to `narrativeos_agent_studio_local.db` when `DATABASE_URL` is unset, then the local shell auto-provisions the demo author through the loopback-only `/v1/author/local-studio/bootstrap-access` helper with `creator_pass` and `studio_credits`
 - local runner: `scripts/run_agent_studio_smoke.sh`
 - CI/headless form: `CI_HEADLESS=1 CHROME_BIN=/path/to/google-chrome bash scripts/run_agent_studio_smoke.sh`
 - artifacts:

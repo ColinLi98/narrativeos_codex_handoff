@@ -19,6 +19,7 @@ var ShellRuntime = (() => {
     resetStatus: "idle",
     resetMessage: "",
   };
+  const startupQuery = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
 
   function requireRuntimeFunction(name, fn) {
     if (typeof fn !== "function") {
@@ -47,6 +48,16 @@ var ShellRuntime = (() => {
   function currentAuthQuery() {
     if (typeof window === "undefined") return new URLSearchParams();
     return new URLSearchParams(window.location.search);
+  }
+
+  function currentOrStartupQueryValue(name) {
+    const currentValue = String(currentAuthQuery().get(name) || "").trim();
+    return currentValue || String(startupQuery.get(name) || "").trim();
+  }
+
+  function startupOrCurrentQueryValue(name) {
+    const startupValue = String(startupQuery.get(name) || "").trim();
+    return startupValue || String(currentAuthQuery().get(name) || "").trim();
   }
 
   function currentAuthFlow() {
@@ -97,6 +108,166 @@ var ShellRuntime = (() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem("narrativeos_author_auth", JSON.stringify(authorState.authorAuthSession));
     }
+  }
+
+  function normalizedErrorDetail(error) {
+    const detail = parseErrorDetail(error) || {};
+    return detail.detail && typeof detail.detail === "object" ? detail.detail : detail;
+  }
+
+  function localStudioQueryEnabled() {
+    const value = currentOrStartupQueryValue("local_studio").toLowerCase();
+    return ["1", "true", "yes", "on"].includes(value);
+  }
+
+  function isLocalStudioOrigin() {
+    if (typeof window === "undefined") return false;
+    return ["127.0.0.1", "localhost", "::1"].includes(window.location.hostname);
+  }
+
+  function shouldBootstrapLocalStudioAuthor() {
+    const workspace = shellState.authorWorkspace || shellState.startupRouteWorkspace || "";
+    const product = shellState.activeProduct || shellState.startupRouteProduct || "";
+    return Boolean(
+      localStudioQueryEnabled() &&
+      isLocalStudioOrigin() &&
+      (shellState.debug || currentOrStartupQueryValue("debug") === "1") &&
+      product === "author" &&
+      workspace === "studio" &&
+      !shellState.authPage
+    );
+  }
+
+  function normalizeLocalStudioId(value, fallback) {
+    const normalized = String(value || "")
+      .trim()
+      .replace(/[^A-Za-z0-9_.-]/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 80);
+    return normalized || fallback;
+  }
+
+  function resolveLocalStudioAuthorContext() {
+    const accountId = normalizeLocalStudioId(startupOrCurrentQueryValue("account_id"), "agent_studio_user_demo");
+    const actorId = normalizeLocalStudioId(startupOrCurrentQueryValue("local_actor_id") || accountId, "agent_studio_user_demo");
+    return {
+      actorId,
+      accountId,
+      displayName: "Agent Studio 本地作者",
+      password: "agent-studio-local-author-pass",
+      minimumStudioCredits: 20,
+    };
+  }
+
+  function seedLocalStudioAuthInputs(context) {
+    if (dom.shellAuthActorId) dom.shellAuthActorId.value = context.actorId;
+    if (dom.shellAuthDisplayName) dom.shellAuthDisplayName.value = context.displayName;
+    if (dom.shellAuthPassword) dom.shellAuthPassword.value = context.password;
+    if (AuthorDOM.authorAuthActorId) AuthorDOM.authorAuthActorId.value = context.actorId;
+    if (AuthorDOM.authorAuthDisplayName) AuthorDOM.authorAuthDisplayName.value = context.displayName;
+    if (AuthorDOM.authorAuthPassword) AuthorDOM.authorAuthPassword.value = context.password;
+    if (AuthorDOM.authorAuthRole) AuthorDOM.authorAuthRole.value = "author";
+    if (AuthorDOM.authorAccountId) AuthorDOM.authorAccountId.value = context.accountId;
+  }
+
+  async function mirrorLocalStudioReaderSession() {
+    if (typeof ReaderRuntime !== "undefined" && typeof ReaderRuntime.mirrorReaderAuthSession === "function") {
+      await ReaderRuntime.mirrorReaderAuthSession(authorState.authorAuthSession);
+    }
+  }
+
+  async function registerLocalStudioAuthor(context) {
+    try {
+      await api("/v1/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          actor_id: context.actorId,
+          actor_role: "author",
+          password: context.password,
+          account_id: context.accountId,
+          display_name: context.displayName,
+        }),
+      });
+    } catch (error) {
+      const detail = normalizedErrorDetail(error);
+      if (detail.reason === "actor_id_already_registered") {
+        return;
+      }
+      throw error;
+    }
+  }
+
+  async function loginLocalStudioAuthor(context) {
+    const payload = await api("/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        actor_id: context.actorId,
+        password: context.password,
+      }),
+    });
+    setStoredAuthorSession(payload);
+    authorState.authorAuthSession.cookieBacked = false;
+    if (AuthorDOM.authorAccountId && payload.identity?.account_id) {
+      AuthorDOM.authorAccountId.value = payload.identity.account_id;
+    }
+    await mirrorLocalStudioReaderSession();
+    renderAuthorAuthStatus();
+  }
+
+  async function ensureLocalStudioCreatorAccess(context) {
+    await api("/v1/author/local-studio/bootstrap-access", {
+      method: "POST",
+      body: JSON.stringify({
+        account_id: context.accountId,
+        minimum_studio_credits: context.minimumStudioCredits,
+      }),
+    });
+  }
+
+  async function bootstrapLocalStudioAuthorIfRequested() {
+    if (!shouldBootstrapLocalStudioAuthor()) {
+      return false;
+    }
+    const context = resolveLocalStudioAuthorContext();
+    const state = authorState.agentStudio || (authorState.agentStudio = {});
+    state.localBootstrap = {
+      status: "running",
+      accountId: context.accountId,
+      actorId: context.actorId,
+    };
+    shellState.activeProduct = "author";
+    shellState.authorWorkspace = "studio";
+    seedLocalStudioAuthInputs(context);
+    reportUiMessage("正在进入本地创作模式…", "info");
+
+    const existingRole = String(authorState.authorAuthSession?.identity?.actor_role || "").trim();
+    const existingHasToken = Boolean(authorState.authorAuthSession?.accessToken);
+    const existingAccountId = String(authorState.authorAuthSession?.identity?.account_id || authorState.authorAuthSession?.identity?.actor_id || "").trim();
+    if (!(existingRole === "author" && existingHasToken && existingAccountId === context.accountId)) {
+      await registerLocalStudioAuthor(context);
+      await loginLocalStudioAuthor(context);
+    } else {
+      if (AuthorDOM.authorAccountId && authorState.authorAuthSession?.identity?.account_id) {
+        AuthorDOM.authorAccountId.value = authorState.authorAuthSession.identity.account_id;
+      }
+      await mirrorLocalStudioReaderSession();
+    }
+
+    const activeAccountId = authorState.authorAuthSession?.identity?.account_id || context.accountId;
+    const accessContext = { ...context, accountId: activeAccountId };
+    await ensureLocalStudioCreatorAccess(accessContext);
+    await refreshAuthorSurface();
+    if (typeof AgentStudioRuntime !== "undefined" && typeof AgentStudioRuntime.refreshStudio === "function") {
+      AgentStudioRuntime.refreshStudio();
+    }
+    state.localBootstrap = {
+      status: "ready",
+      accountId: accessContext.accountId,
+      actorId: authorState.authorAuthSession?.identity?.actor_id || context.actorId,
+    };
+    reportUiMessage("已进入本地 Agent Studio，可直接设定故事目标开始创作。", "success");
+    return true;
   }
 
   async function submitAuthRouteSignup() {
@@ -681,6 +852,12 @@ var ShellRuntime = (() => {
       await hydrateAuthorAuthSession();
     } catch (error) {
       console.error("author auth bootstrap failed", error);
+    }
+    try {
+      await bootstrapLocalStudioAuthorIfRequested();
+    } catch (error) {
+      console.error("local Agent Studio bootstrap failed", error);
+      reportUiMessage(`本地创作模式启动失败：${describeAuthError(error, error.message || "请检查本地账号状态。")}`, "error");
     }
     try {
       await resolveAdminViewBridgeIfPresent();

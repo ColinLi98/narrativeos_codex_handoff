@@ -13,9 +13,14 @@ if [ -f ".env" ]; then
   source ".env"
 fi
 
+AGENT_STUDIO_LOCAL_DB="${AGENT_STUDIO_LOCAL_DB:-${ROOT_DIR}/narrativeos_agent_studio_local.db}"
+DATABASE_URL="${DATABASE_URL:-sqlite:///${AGENT_STUDIO_LOCAL_DB}}"
+export DATABASE_URL
+
 APP_HOST="${APP_HOST:-127.0.0.1}"
 APP_PORT="${APP_PORT:-8000}"
-AGENT_STUDIO_URL="${AGENT_STUDIO_URL:-http://${APP_HOST}:${APP_PORT}/app?product=author&workspace=studio&debug=1}"
+AGENT_STUDIO_LOCAL_ACCOUNT_ID="${AGENT_STUDIO_LOCAL_ACCOUNT_ID:-agent_studio_user_demo}"
+AGENT_STUDIO_URL="${AGENT_STUDIO_URL:-http://${APP_HOST}:${APP_PORT}/app?product=author&workspace=studio&debug=1&local_studio=1&account_id=${AGENT_STUDIO_LOCAL_ACCOUNT_ID}}"
 AGENT_STUDIO_OPEN_BROWSER="${AGENT_STUDIO_OPEN_BROWSER:-1}"
 AGENT_STUDIO_OPEN_TIMEOUT_SECONDS="${AGENT_STUDIO_OPEN_TIMEOUT_SECONDS:-90}"
 

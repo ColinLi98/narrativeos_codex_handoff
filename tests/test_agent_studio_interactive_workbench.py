@@ -161,6 +161,7 @@ def test_agent_studio_shell_assets_are_registered_and_parseable(tmp_path: Path):
     shell = client.get("/app")
     assert shell.status_code == 200
     assert 'id="agent-studio-shell"' in shell.text
+    assert 'id="agent-studio-director"' in shell.text
     assert "/assets/agent_studio_dom.js" in shell.text
     assert "/assets/agent_studio.js" in shell.text
     assert shell.text.index("/assets/author_workspace.js") < shell.text.index("/assets/agent_studio.js")
@@ -249,6 +250,9 @@ def test_agent_studio_local_launcher_opens_studio_frontend():
     assert "open \"${AGENT_STUDIO_URL}\"" in text
     assert "xdg-open \"${AGENT_STUDIO_URL}\"" in text
     assert "python3 -m webbrowser \"${AGENT_STUDIO_URL}\"" in text
+    readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "product=author&workspace=studio&debug=1&local_studio=1&account_id=agent_studio_user_demo" in readme_text
+    assert "narrativeos_agent_studio_local.db" in readme_text
     assert "bootstrapLocalStudioAuthorIfRequested" in shell_text
     assert "local_studio" in shell_text
     assert "isLocalStudioOrigin" in shell_text

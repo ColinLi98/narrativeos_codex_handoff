@@ -933,8 +933,10 @@ bash scripts/run_agent_studio_local.sh
 该脚本会启动本地后端，并在健康检查通过后自动打开：
 
 ```text
-http://127.0.0.1:8000/app?product=author&workspace=studio&debug=1
+http://127.0.0.1:8000/app?product=author&workspace=studio&debug=1&local_studio=1&account_id=agent_studio_user_demo
 ```
+
+`local_studio=1` 会在 localhost/127.0.0.1 的 debug Studio 入口自动创建或登录本地 demo author，并补齐本地 `creator_pass` 与 `studio_credits`，所以用户打开后会直接看到 Agent Studio 创作启动页。若没有设置 `DATABASE_URL`，脚本会默认使用仓库根目录的 `narrativeos_agent_studio_local.db` SQLite 文件。
 
 如果只想启动服务、不自动打开浏览器：
 

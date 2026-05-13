@@ -1,0 +1,58 @@
+name: reader-live-generation-latency-smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+concurrency:
+  group: reader-live-generation-latency-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run Reader live-generation latency smoke
+        env:
+          PUBLIC_APP_URL: ${{ vars.READER_LIVE_GENERATION_PUBLIC_APP_URL || 'https://pilot.lixidol.com' }}
+          API_ORIGIN: ${{ vars.READER_LIVE_GENERATION_API_ORIGIN || vars.READER_LIVE_GENERATION_PUBLIC_APP_URL || 'https://pilot.lixidol.com' }}
+          READER_LIVE_GENERATION_BUDGET_MS: ${{ vars.READER_LIVE_GENERATION_BUDGET_MS || '300000' }}
+          READER_LIVE_GENERATION_TOTAL_TIMEOUT_MS: ${{ vars.READER_LIVE_GENERATION_TOTAL_TIMEOUT_MS || '420000' }}
+          READER_LIVE_GENERATION_RESUME_TIMEOUT_MS: ${{ vars.READER_LIVE_GENERATION_RESUME_TIMEOUT_MS || '360000' }}
+        run: bash scripts/run_reader_live_generation_latency_smoke.sh
+      - name: Publish latency summary
+        if: always()
+        run: |
+          if [ -f artifacts/reader_live_generation_latency/latest/summary.json ]; then
+            node - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+            const fs = require("fs");
+            const summary = JSON.parse(fs.readFileSync("artifacts/reader_live_generation_latency/latest/summary.json", "utf8"));
+            console.log(`## Reader live-generation latency smoke`);
+            console.log(`- status: ${summary.status}`);
+            console.log(`- public app: ${summary.public_app_url}`);
+            console.log(`- generation total ms: ${summary.latency?.generation_total_ms}`);
+            console.log(`- latency budget ms: ${summary.latency?.latency_budget_ms}`);
+            console.log(`- reader status: ${summary.job?.reader_status}`);
+            console.log(`- projection violations: ${summary.projection_sample?.violation_count}`);
+            NODE
+          elif [ -f artifacts/reader_live_generation_latency/latest/failure.json ]; then
+            echo "## Reader live-generation latency smoke" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`failure.json\` was produced." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Reader live-generation latency smoke produced no artifact." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload latency smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reader-live-generation-latency-smoke-artifacts
+          if-no-files-found: warn
+          path: |
+            artifacts/reader_live_generation_latency/latest/summary.json
+            artifacts/reader_live_generation_latency/latest/failure.json

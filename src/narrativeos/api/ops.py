@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
@@ -51,6 +52,7 @@ from ..eval.learned_review_quality import (
     build_learned_review_quality_world_detail,
 )
 from ..services.provider_rollout import ProviderRolloutService
+from ..services.ops_permissions import OpsPermissionPolicyService
 
 class PublishRequest(BaseModel):
     reviewer_id: Optional[str] = None
@@ -199,6 +201,143 @@ class BillingRetryRequest(BaseModel):
     requested_by: Optional[str] = None
 
 
+class AccountBillingReconcileRequest(BaseModel):
+    requested_by: Optional[str] = None
+    provider: Optional[str] = None
+
+
+class BillableEventStatusRequest(BaseModel):
+    status: str
+
+
+class CampaignDecisionRequest(BaseModel):
+    decision: str
+    note: Optional[str] = None
+
+
+class PartnerStatusRequest(BaseModel):
+    status: str
+    note: Optional[str] = None
+
+
+class ProductionSignoffInitializeRequest(BaseModel):
+    launch_label: Optional[str] = None
+    due_in_days: int = 2
+
+
+class ProductionSignoffAssignRequest(BaseModel):
+    owner_actor_id: Optional[str] = None
+
+
+class ProductionSignoffDecisionRequest(BaseModel):
+    decision: str
+    note: Optional[str] = None
+
+
+class ProductionSignoffEvidenceRequest(BaseModel):
+    evidence_type: str
+    summary: Optional[str] = None
+    source_ref: Dict[str, Any] = {}
+    payload: Dict[str, Any] = {}
+    customer_safe: bool = False
+
+
+class ProductionSignoffOperatorEvidenceRequest(BaseModel):
+    evidence_key: str
+    summary: str
+    source_ref: Dict[str, Any] = {}
+    payload: Dict[str, Any] = {}
+
+
+class ProductionSignoffOperatorCloseRequest(BaseModel):
+    decision: str
+    note: Optional[str] = None
+
+
+class ProductionCutoverWindowRequest(BaseModel):
+    launch_wave: str
+    target_environment: str
+    starts_at: Optional[str] = None
+    ends_at: Optional[str] = None
+    rollback_owner_role: Optional[str] = None
+    status: str = "planned"
+    payload: Dict[str, Any] = {}
+
+
+class ProductionAcceptanceGenerateRequest(BaseModel):
+    account_id: str
+    launch_wave: str = "wave_1"
+    signoff_id: Optional[str] = None
+
+
+class LaunchWaveStatusUpdateRequest(BaseModel):
+    status: str
+    note: Optional[str] = None
+
+
+class ProductionPreflightRunRequest(BaseModel):
+    signoff_id: Optional[str] = None
+    launch_wave: str = "wave_1"
+    target_environment: str = "production"
+
+
+class CustomerSuccessSyncRequest(BaseModel):
+    account_id: Optional[str] = None
+    launch_wave: Optional[str] = None
+
+
+class LaunchLedgerSyncRequest(BaseModel):
+    launch_wave: str = "wave_1"
+
+
+class WaveActivationRequest(BaseModel):
+    note: Optional[str] = None
+
+
+class GoLiveDayRunRequest(BaseModel):
+    launch_wave: str = "wave_1"
+    signoff_id: Optional[str] = None
+    account_id: Optional[str] = None
+
+
+class LaunchWeekGuardSyncRequest(BaseModel):
+    launch_wave: str = "wave_1"
+
+
+class DisputeDecisionRequest(BaseModel):
+    decision: str
+    note: Optional[str] = None
+
+
+class ManualAdjustmentRequest(BaseModel):
+    account_id: str
+    dispute_id: Optional[str] = None
+    refund_request_id: Optional[str] = None
+    invoice_preview_id: Optional[str] = None
+    billable_event_id: Optional[str] = None
+    adjustment_type: str
+    amount_usd: float
+    target_billable_status: Optional[str] = None
+    adjustment_payload: Dict[str, Any] = {}
+
+
+class SupportCaseStatusRequest(BaseModel):
+    status: str
+    note: Optional[str] = None
+
+
+class InvoiceIssueRequest(BaseModel):
+    requested_by: Optional[str] = None
+
+
+class InvoiceRetryRequest(BaseModel):
+    requested_by: Optional[str] = None
+
+
+class LifecycleAutomationSyncRequest(BaseModel):
+    account_id: str
+
+
 class InvestigationRequest(BaseModel):
     limit: int = 50
 
@@ -208,6 +347,21 @@ class AlertStatusRequest(BaseModel):
     status: str
     reviewer_id: Optional[str] = None
     note: Optional[str] = None
+
+
+class OpsReviewItemAssignRequest(BaseModel):
+    owner_id: str
+    reviewer_id: Optional[str] = None
+
+
+class OpsReviewItemStatusRequest(BaseModel):
+    status: str
+    reviewer_id: Optional[str] = None
+
+
+class OpsReviewItemDecisionRequest(BaseModel):
+    decision: str
+    reviewer_id: Optional[str] = None
 
 
 class GovernanceCaseRequest(BaseModel):
@@ -271,6 +425,49 @@ class GovernanceRestrictionRequest(BaseModel):
 class GovernanceRestrictionReleaseRequest(BaseModel):
     reviewer_id: Optional[str] = None
     release_reason: Optional[str] = None
+
+
+class GovernanceRestrictionUpdateRequest(BaseModel):
+    reviewer_id: Optional[str] = None
+    restriction_type: Optional[str] = None
+    restriction_reason: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
+class GovernanceCaseRestrictionRequest(BaseModel):
+    reviewer_id: Optional[str] = None
+    restriction_type: str
+    restriction_reason: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
+class GovernanceBulkActionRequest(BaseModel):
+    case_ids: list[str]
+    action: str
+    owner_id: Optional[str] = None
+    owner_assignments: Dict[str, str] = {}
+    due_at: Optional[str] = None
+    note: Optional[str] = None
+    status: Optional[str] = None
+    resolution_notes: Optional[str] = None
+    disposition: Optional[str] = None
+    policy_labels: list[str] = []
+    restriction_type: Optional[str] = None
+    restriction_reason: Optional[str] = None
+    expires_at: Optional[str] = None
+    reviewer_id: Optional[str] = None
+
+
+class GovernanceCapacityOverrideRequest(BaseModel):
+    reviewer_id: Optional[str] = None
+    capacity_units_per_day: Optional[float] = None
+    critical_case_limit: Optional[int] = None
+    active_restriction_limit: Optional[int] = None
+    sla_hours: Optional[int] = None
+    role_multiplier: Optional[float] = None
+    enabled: Optional[bool] = None
+    clear_override: bool = False
+    note: Optional[str] = None
 
 
 class GovernanceSupportEscalationRequest(BaseModel):
@@ -404,28 +601,63 @@ class AsyncJobHandoffSlaRequest(BaseModel):
 
 
 router = APIRouter(prefix="/v1/ops", tags=["ops"])
+logger = logging.getLogger(__name__)
 ACTOR_ID_HEADER = "X-NarrativeOS-Actor-Id"
 ACTOR_ROLE_HEADER = "X-NarrativeOS-Actor-Role"
 ACCOUNT_ID_HEADER = "X-NarrativeOS-Account-Id"
+ADMIN_VIEW_BRIDGE_HEADER = "X-NarrativeOS-Admin-Bridge"
 
 
 def _ops_request_identity(request: Request) -> Dict[str, Optional[str]]:
+    bridge_token = request.headers.get(ADMIN_VIEW_BRIDGE_HEADER) or ""
+    if bridge_token.strip():
+        try:
+            resolved = request.app.state.auth_service.resolve_admin_view_bridge_token(raw_token=bridge_token.strip())
+        except (PermissionError, KeyError) as exc:
+            raise HTTPException(status_code=401, detail={"code": "admin_view_bridge_invalid", "reason": str(exc)}) from exc
+        return {
+            "actor_id": resolved.get("actor_id"),
+            "actor_role": resolved.get("actor_role"),
+            "account_id": resolved.get("account_id") or resolved.get("context", {}).get("account_id"),
+        }
     authorization = request.headers.get("Authorization") or ""
     if authorization.lower().startswith("bearer "):
-        raw_token = authorization.split(" ", 1)[1].strip()
-        if raw_token:
-            try:
-                resolved = request.app.state.auth_service.resolve_bearer_token(raw_token)
-            except (PermissionError, KeyError) as exc:
-                raise HTTPException(status_code=401, detail={"code": "auth_token_invalid", "reason": str(exc)}) from exc
-            return {
-                "actor_id": resolved.get("actor_id"),
-                "actor_role": resolved.get("actor_role"),
-                "account_id": resolved.get("account_id"),
-            }
+        raw_token = request.app.state.auth_service.extract_request_token(
+            authorization=authorization,
+            cookies=None,
+        )
+        try:
+            resolved = request.app.state.auth_service.resolve_bearer_token(raw_token or "")
+        except (PermissionError, KeyError) as exc:
+            raise HTTPException(status_code=401, detail={"code": "auth_token_invalid", "reason": str(exc)}) from exc
+        return {
+            "actor_id": resolved.get("actor_id"),
+            "actor_role": resolved.get("actor_role"),
+            "account_id": resolved.get("account_id"),
+        }
     actor_id = request.headers.get(ACTOR_ID_HEADER)
     actor_role = request.headers.get(ACTOR_ROLE_HEADER)
     account_id = request.headers.get(ACCOUNT_ID_HEADER)
+    if actor_id or actor_role or account_id:
+        return {
+            "actor_id": actor_id.strip() if actor_id else None,
+            "actor_role": actor_role.strip() if actor_role else None,
+            "account_id": account_id.strip() if account_id else None,
+        }
+    raw_token = request.app.state.auth_service.extract_request_token(
+        authorization=None,
+        cookies=request.cookies,
+    )
+    if raw_token:
+        try:
+            resolved = request.app.state.auth_service.resolve_bearer_token(raw_token)
+        except (PermissionError, KeyError) as exc:
+            raise HTTPException(status_code=401, detail={"code": "auth_token_invalid", "reason": str(exc)}) from exc
+        return {
+            "actor_id": resolved.get("actor_id"),
+            "actor_role": resolved.get("actor_role"),
+            "account_id": resolved.get("account_id"),
+        }
     return {
         "actor_id": actor_id.strip() if actor_id else None,
         "actor_role": actor_role.strip() if actor_role else None,
@@ -459,10 +691,18 @@ def _ops_actor(request: Request, fallback_reviewer_id: Optional[str] = None) -> 
 
 def _require_ops_reviewer(request: Request, fallback_reviewer_id: Optional[str] = None) -> Dict[str, Optional[str]]:
     actor = _ops_actor(request, fallback_reviewer_id)
-    if not actor["actor_id"]:
-        raise HTTPException(status_code=403, detail={"code": "ops_actor_missing", "reason": "reviewer_identity_required"})
-    if actor["actor_role"] not in {"reviewer", "ops"}:
-        raise HTTPException(status_code=403, detail={"code": "ops_actor_forbidden", "reason": "reviewer_or_ops_required"})
+    try:
+        request.app.state.ops_permission_policy.authorize_roles(
+            actor_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
+            allowed_roles={"reviewer", "ops", "admin"},
+            missing_reason="reviewer_identity_required",
+            forbidden_reason="reviewer_or_ops_required",
+        )
+    except PermissionError as exc:
+        reason = str(exc)
+        code = "ops_actor_missing" if "identity_required" in reason else "ops_actor_forbidden"
+        raise HTTPException(status_code=403, detail={"code": code, "reason": reason}) from exc
     return actor
 
 
@@ -475,10 +715,18 @@ def _require_ops_roles(
     forbidden_reason: str = "ops_role_forbidden",
 ) -> Dict[str, Optional[str]]:
     actor = _ops_actor(request, fallback_actor_id)
-    if not actor["actor_id"]:
-        raise HTTPException(status_code=403, detail={"code": "ops_actor_missing", "reason": missing_reason})
-    if str(actor["actor_role"] or "") not in allowed_roles:
-        raise HTTPException(status_code=403, detail={"code": "ops_actor_forbidden", "reason": forbidden_reason})
+    try:
+        request.app.state.ops_permission_policy.authorize_roles(
+            actor_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
+            allowed_roles=allowed_roles,
+            missing_reason=missing_reason,
+            forbidden_reason=forbidden_reason,
+        )
+    except PermissionError as exc:
+        reason = str(exc)
+        code = "ops_actor_missing" if "identity_required" in reason else "ops_actor_forbidden"
+        raise HTTPException(status_code=403, detail={"code": code, "reason": reason}) from exc
     return actor
 
 
@@ -500,24 +748,205 @@ def _require_restore_admin(request: Request) -> Dict[str, Optional[str]]:
     )
 
 
+def ensure_ops_read_access(request: Request) -> Dict[str, Optional[str]]:
+    actor = _ops_actor(request)
+    try:
+        request.app.state.ops_permission_policy.authorize_read(
+            actor_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
+        )
+    except PermissionError as exc:
+        reason = str(exc)
+        code = "ops_actor_missing" if "identity_required" in reason else "ops_actor_forbidden"
+        raise HTTPException(status_code=403, detail={"code": code, "reason": reason}) from exc
+    return actor
+
+
+def ensure_ops_write_access(request: Request) -> Dict[str, Optional[str]]:
+    actor = _ops_actor(request)
+    try:
+        request.app.state.ops_permission_policy.authorize_write(
+            actor_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
+            method=request.method,
+            path=request.url.path.rstrip("/") or request.url.path,
+        )
+    except PermissionError as exc:
+        reason = str(exc)
+        code = "ops_actor_missing" if "identity_required" in reason else "ops_actor_forbidden"
+        raise HTTPException(status_code=403, detail={"code": code, "reason": reason}) from exc
+    return actor
+
+
 @router.get("/review-queue")
 def review_queue(request: Request) -> Dict[str, Any]:
     return {"reviews": request.app.state.review_service.queue()}
 
 
+@router.get("/review-hub")
+def review_hub(
+    request: Request,
+    queue: Optional[str] = None,
+    status: Optional[str] = None,
+    owner_id: Optional[str] = None,
+    severity: Optional[str] = None,
+    account_id: Optional[str] = None,
+    world_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    limit: int = 100,
+) -> Dict[str, Any]:
+    return request.app.state.ops_review_hub_service.review_hub(
+        queue=queue,
+        status=status,
+        owner_id=owner_id,
+        severity=severity,
+        account_id=account_id,
+        world_id=world_id,
+        world_version_id=world_version_id,
+        limit=limit,
+    )
+
+
+@router.get("/review-items/{review_item_id}")
+def review_item_detail(review_item_id: str, request: Request) -> Dict[str, Any]:
+    try:
+        return request.app.state.ops_review_hub_service.review_item_detail(review_item_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/review-items/{review_item_id}/work")
+def review_item_work_detail(review_item_id: str, request: Request) -> Dict[str, Any]:
+    try:
+        return request.app.state.ops_review_hub_service.review_item_work_detail(review_item_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post("/review-items/{review_item_id}/assign")
+def assign_review_item(review_item_id: str, payload: OpsReviewItemAssignRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, payload.reviewer_id)
+    try:
+        return request.app.state.ops_review_hub_service.assign_review_item(
+            review_item_id=review_item_id,
+            owner_id=payload.owner_id,
+            reviewer_id=str(actor["actor_id"]),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/review-items/{review_item_id}/status")
+def update_review_item_status(review_item_id: str, payload: OpsReviewItemStatusRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, payload.reviewer_id)
+    try:
+        return request.app.state.ops_review_hub_service.update_review_item_status(
+            review_item_id=review_item_id,
+            status=payload.status,
+            reviewer_id=str(actor["actor_id"]),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/review-items/{review_item_id}/decision")
+def decide_review_item(review_item_id: str, payload: OpsReviewItemDecisionRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, payload.reviewer_id)
+    try:
+        return request.app.state.ops_review_hub_service.decide_review_item(
+            review_item_id=review_item_id,
+            decision=payload.decision,
+            reviewer_id=str(actor["actor_id"]),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @router.get("/worlds/{world_id}/status")
 def world_status(world_id: str, request: Request) -> Dict[str, Any]:
-    payload = request.app.state.review_service.world_status(world_id)
-    payload["learned_shadow_summary"] = request.app.state.learned_shadow_service.summarize(
-        payload.get("latest_simulation", {}).get("learned_evaluation_summary", {})
-    )
-    reranker_bundle = request.app.state.training_signal_service.export_bundle(
-        world_id=world_id,
-        dataset_view="reranker",
-    )
-    payload["learned_reranker_shadow_summary"] = request.app.state.learned_reranker_shadow_service.summarize(
-        reranker_bundle
-    )
+    versions = request.app.state.repository.list_world_versions(world_id=world_id)
+    published_version = next((item["world_version_id"] for item in versions if item.get("status") == "published"), None)
+    rollback_targets = [item for item in versions if item.get("world_version_id") != published_version]
+    payload: Dict[str, Any] = {
+        "world_id": world_id,
+        "versions": versions,
+        "published_version": published_version,
+        "evaluation_summary": {},
+        "latest_simulation": {},
+        "publish_checklist": [],
+        "publish_checklist_summary": {
+            "total": 0,
+            "ok_count": 0,
+            "blocked_count": 0,
+            "publish_ready": False,
+            "blocker_keys": [],
+            "owners": [],
+            "next_actions": [],
+            "review_status_counts": {},
+        },
+        "recent_reviews": [],
+        "recent_reviews_drilldown": [],
+        "rollback_targets": rollback_targets,
+        "recent_entitlement_events": [],
+        "risk_summary": {
+            "publish_ready": False,
+            "publish_gate_errors": [],
+            "latest_rollback_reason": None,
+            "latest_rollback_target": None,
+            "entitlement_alerts": [],
+        },
+        "release_evidence_bundle": {},
+        "author_longform_capability": {},
+        "author_claim_alignment": {},
+        "longform_1000_readiness": {},
+        "longform_1000_interactive_signoff": {},
+        "longform_1000_human_review_closeout": {},
+        "longform_1000_feasibility": {},
+        "character_fidelity_remediation_framework": {},
+        "quality_projection_summary": {},
+        "status_warnings": [],
+    }
+    try:
+        payload.update(request.app.state.review_service.world_status(world_id))
+    except Exception as exc:  # pragma: no cover - production fallback
+        logger.exception("ops world status base payload failed", extra={"world_id": world_id})
+        payload["status_warnings"].append({"stage": "review_world_status", "reason": str(exc)})
+    try:
+        payload["learned_shadow_summary"] = request.app.state.learned_shadow_service.summarize(
+            payload.get("latest_simulation", {}).get("learned_evaluation_summary", {})
+        )
+    except Exception as exc:  # pragma: no cover - production fallback
+        logger.exception("ops world status learned shadow summary failed", extra={"world_id": world_id})
+        payload["learned_shadow_summary"] = {
+            "available": False,
+            "status": "unavailable",
+            "warnings": [str(exc)],
+            "recommended_next_action": "inspect_world_status_warning",
+        }
+        payload["status_warnings"].append({"stage": "learned_shadow_summary", "reason": str(exc)})
+    try:
+        reranker_bundle = request.app.state.training_signal_service.export_bundle(
+            world_id=world_id,
+            dataset_view="reranker",
+        )
+        payload["learned_reranker_shadow_summary"] = request.app.state.learned_reranker_shadow_service.summarize(
+            reranker_bundle
+        )
+    except Exception as exc:  # pragma: no cover - production fallback
+        logger.exception("ops world status reranker summary failed", extra={"world_id": world_id})
+        payload["learned_reranker_shadow_summary"] = {
+            "available": False,
+            "status": "unavailable",
+            "warnings": [str(exc)],
+            "recommended_next_action": "inspect_world_status_warning",
+        }
+        payload["status_warnings"].append({"stage": "learned_reranker_shadow_summary", "reason": str(exc)})
     return payload
 
 
@@ -527,6 +956,16 @@ def world_release_workspace(world_id: str, request: Request, limit: int = 12) ->
         return request.app.state.ops_release_workspace_service.world_release_workspace(world_id=world_id, limit=limit)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/worlds/{world_id}/release-evidence-bundle")
+def world_release_evidence_bundle(world_id: str, request: Request) -> Dict[str, Any]:
+    payload = request.app.state.review_service.world_status(world_id)
+    return {
+        "world_id": world_id,
+        "release_evidence_bundle": payload.get("release_evidence_bundle", {}),
+        "published_version": payload.get("published_version"),
+    }
 
 
 @router.post("/world-versions/{world_version_id}/publish")
@@ -602,6 +1041,65 @@ def runtime_receipts(
     }
 
 
+@router.get("/quality/summary")
+def quality_summary(
+    request: Request,
+    account_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+    source_surface: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    return request.app.state.ops_quality_projection_service.quality_summary(
+        account_id=account_id,
+        world_version_id=world_version_id,
+        session_id=session_id,
+        source_surface=source_surface,
+        status=status,
+        limit=limit,
+    )
+
+
+@router.get("/quality/events")
+def quality_events(
+    request: Request,
+    account_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+    source_surface: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    summary = request.app.state.ops_quality_projection_service.quality_summary(
+        account_id=account_id,
+        world_version_id=world_version_id,
+        session_id=session_id,
+        source_surface=source_surface,
+        status=status,
+        limit=limit,
+    )
+    return {
+        "generated_at": summary.get("generated_at"),
+        "filters": summary.get("filters", {}),
+        "summary": summary.get("summary", {}),
+        "events": summary.get("events", []),
+    }
+
+
+@router.get("/quality/traces/{trace_id}")
+def quality_trace_detail(trace_id: str, request: Request) -> Dict[str, Any]:
+    try:
+        payload = request.app.state.ops_quality_projection_service.quality_trace_detail(trace_id)
+        account_id = str((payload.get("linked_context") or {}).get("account_id") or "").strip()
+        if account_id:
+            request.app.state.commercial_billing_service.sync_account_billing(account_id=account_id)
+        payload["billing_projection"] = request.app.state.commercial_billing_service.trace_billing_projection(trace_id=trace_id)
+        return payload
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
 @router.get("/runtime-incident-snapshot")
 def runtime_incident_snapshot(
     request: Request,
@@ -612,6 +1110,26 @@ def runtime_incident_snapshot(
         account_id=account_id,
         limit=limit,
     )
+
+
+@router.get("/story-bootstrap-world-summary")
+def story_bootstrap_world_summary(
+    request: Request,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    return request.app.state.observability_service.story_bootstrap_world_summary(limit=limit)
+
+
+@router.get("/story-bootstrap-world-summary/worlds/{world_id}")
+def story_bootstrap_world_detail(
+    world_id: str,
+    request: Request,
+    limit: int = 20,
+) -> Dict[str, Any]:
+    try:
+        return request.app.state.observability_service.story_bootstrap_world_detail(world_id, limit=limit)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 @router.get("/provider-routing")
@@ -1259,6 +1777,688 @@ def account_workspace(account_id: str, request: Request, limit: int = 12) -> Dic
     return request.app.state.ops_account_workspace_service.account_workspace(account_id=account_id, limit=limit)
 
 
+@router.get("/customers")
+def list_customers(
+    request: Request,
+    status: Optional[str] = None,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    return request.app.state.customer_account_service.list_customer_accounts(status=status, limit=limit)
+
+
+@router.get("/customers/{customer_account_id}")
+def customer_detail(customer_account_id: str, request: Request) -> Dict[str, Any]:
+    return request.app.state.customer_account_service.customer_account_detail(customer_account_id=customer_account_id)
+
+
+@router.get("/billing/usage-ledgers")
+def list_usage_ledgers(
+    request: Request,
+    account_id: Optional[str] = None,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    if account_id:
+        request.app.state.commercial_billing_service.sync_account_billing(account_id=account_id)
+    return request.app.state.commercial_billing_service.list_usage_ledgers(account_id=account_id, limit=limit)
+
+
+@router.get("/billing/invoice-previews")
+def list_invoice_previews(
+    request: Request,
+    account_id: Optional[str] = None,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    if account_id:
+        request.app.state.commercial_billing_service.sync_account_billing(account_id=account_id)
+    return request.app.state.commercial_billing_service.list_invoice_previews(account_id=account_id, limit=limit)
+
+
+@router.post("/billing/billable-events/{billable_event_id}/status")
+def update_billable_event_status(
+    billable_event_id: str,
+    payload: BillableEventStatusRequest,
+    request: Request,
+) -> Dict[str, Any]:
+    try:
+        event = request.app.state.commercial_billing_service.update_billable_event_status(
+            billable_event_id=billable_event_id,
+            status=payload.status,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"code": "billable_event_status_invalid", "reason": str(exc)}) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "billable_event_missing", "reason": str(exc)}) from exc
+    return {"billable_event": event}
+
+
+@router.post("/campaigns/{campaign_id}/decision")
+def decide_campaign(campaign_id: str, payload: CampaignDecisionRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.customer_campaign_service.decide_campaign(
+            campaign_id=campaign_id,
+            reviewer_id=str(actor["actor_id"]),
+            decision=payload.decision,
+            note=payload.note,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"code": "campaign_decision_invalid", "reason": str(exc)}) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "campaign_missing", "reason": str(exc)}) from exc
+
+
+@router.get("/partners")
+def list_partners(
+    request: Request,
+    lifecycle_status: Optional[str] = None,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    return request.app.state.partner_readiness_service.list_partners(lifecycle_status=lifecycle_status, limit=limit)
+
+
+@router.get("/partners/{partner_id}")
+def partner_detail(partner_id: str, request: Request) -> Dict[str, Any]:
+    try:
+        return request.app.state.partner_readiness_service.partner_detail(partner_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "partner_missing", "reason": str(exc)}) from exc
+
+
+@router.post("/partners/{partner_id}/status")
+def update_partner_status(partner_id: str, payload: PartnerStatusRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.partner_readiness_service.change_status(
+            partner_id=partner_id,
+            status=payload.status,
+            note=payload.note or str(actor["actor_id"]),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"code": "partner_status_invalid", "reason": str(exc)}) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "partner_missing", "reason": str(exc)}) from exc
+
+
+@router.get("/disputes")
+def list_disputes(request: Request, account_id: Optional[str] = None, status: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+    return request.app.state.commercial_support_service.list_disputes(account_id=account_id, status=status, limit=limit)
+
+
+@router.post("/disputes/{dispute_id}/decision")
+def decide_dispute(dispute_id: str, payload: DisputeDecisionRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.commercial_support_service.decide_dispute(
+            dispute_id=dispute_id,
+            reviewer_id=str(actor["actor_id"]),
+            decision=payload.decision,
+            note=payload.note,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"code": "dispute_decision_invalid", "reason": str(exc)}) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "dispute_missing", "reason": str(exc)}) from exc
+
+
+@router.post("/manual-adjustments")
+def create_manual_adjustment(payload: ManualAdjustmentRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        adjustment = request.app.state.commercial_support_service.create_manual_adjustment(
+            account_id=payload.account_id,
+            reviewer_id=str(actor["actor_id"]),
+            payload=payload.model_dump(),
+        )
+        return {"manual_adjustment": adjustment}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"code": "manual_adjustment_invalid", "reason": str(exc)}) from exc
+
+
+@router.get("/support-cases")
+def list_support_cases(request: Request, account_id: Optional[str] = None, status: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+    return request.app.state.commercial_support_service.list_support_cases(account_id=account_id, status=status, limit=limit)
+
+
+@router.post("/support-cases/{support_case_id}/status")
+def update_support_case_status(support_case_id: str, payload: SupportCaseStatusRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        support_case = request.app.state.commercial_support_service.update_support_case_status(
+            support_case_id=support_case_id,
+            reviewer_id=str(actor["actor_id"]),
+            status=payload.status,
+            note=payload.note,
+        )
+        return {"support_case": support_case}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"code": "support_case_status_invalid", "reason": str(exc)}) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "support_case_missing", "reason": str(exc)}) from exc
+
+
+@router.post("/invoices/{invoice_preview_id}/issue")
+def issue_invoice(invoice_preview_id: str, payload: InvoiceIssueRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.stripe_invoicing_service.issue_invoice(
+            invoice_preview_id=invoice_preview_id,
+            requested_by=payload.requested_by or str(actor["actor_id"]),
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=400, detail={"code": "invoice_issue_invalid", "reason": str(exc)}) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "invoice_preview_missing", "reason": str(exc)}) from exc
+
+
+@router.get("/invoices")
+def list_issued_invoices(request: Request, account_id: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+    return request.app.state.stripe_invoicing_service.list_invoices(account_id=account_id, limit=limit)
+
+
+@router.post("/invoices/{invoice_id}/retry-payment")
+def retry_invoice_payment(invoice_id: str, payload: InvoiceRetryRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.stripe_invoicing_service.retry_invoice_payment(
+            invoice_id=invoice_id,
+            requested_by=payload.requested_by or str(actor["actor_id"]),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "invoice_missing", "reason": str(exc)}) from exc
+
+
+@router.post("/provider-webhooks/{provider_webhook_event_id}/replay")
+def replay_provider_webhook(provider_webhook_event_id: str, request: Request) -> Dict[str, Any]:
+    _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.stripe_invoicing_service.replay_webhook(provider_webhook_event_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "provider_webhook_missing", "reason": str(exc)}) from exc
+
+
+@router.get("/audit")
+def list_ops_audit(
+    request: Request,
+    account_id: Optional[str] = None,
+    customer_account_id: Optional[str] = None,
+    action_type: Optional[str] = None,
+    limit: int = 100,
+) -> Dict[str, Any]:
+    return request.app.state.commercial_audit_service.audit_log_listing(
+        account_id=account_id,
+        customer_account_id=customer_account_id,
+        action_type=action_type,
+        limit=limit,
+    )
+
+
+@router.get("/commercialization-summary")
+def commercialization_summary(request: Request, limit: int = 50) -> Dict[str, Any]:
+    return request.app.state.ops_commercialization_dashboard_service.summary(limit=limit)
+
+
+@router.get("/production-signoff")
+def list_production_signoff(request: Request, limit: int = 25) -> Dict[str, Any]:
+    return request.app.state.production_signoff_service.list_signoffs(limit=limit)
+
+
+@router.post("/production-signoff/initialize")
+def initialize_production_signoff(payload: ProductionSignoffInitializeRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.production_signoff_service.initialize_signoff_run(
+            actor_id=str(actor["actor_id"]),
+            actor_role=str(actor["actor_role"]),
+            launch_label=payload.launch_label,
+            due_in_days=payload.due_in_days,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=400, detail={"code": "production_signoff_seed_artifact_missing", "reason": str(exc)}) from exc
+
+
+@router.get("/production-signoff/{signoff_id}")
+def production_signoff_detail(signoff_id: str, request: Request) -> Dict[str, Any]:
+    try:
+        return request.app.state.production_signoff_service.signoff_detail(signoff_id=signoff_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_signoff_missing", "reason": str(exc)}) from exc
+
+
+@router.post("/production-signoff/items/{signoff_item_id}/assign")
+def assign_production_signoff_item(signoff_item_id: str, payload: ProductionSignoffAssignRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.production_signoff_service.assign_signoff_item_owner(
+            actor_id=str(actor["actor_id"]),
+            actor_role=str(actor["actor_role"]),
+            signoff_item_id=signoff_item_id,
+            owner_actor_id=payload.owner_actor_id,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_signoff_item_missing", "reason": str(exc)}) from exc
+
+
+@router.post("/production-signoff/items/{signoff_item_id}/decision")
+def decide_production_signoff_item(signoff_item_id: str, payload: ProductionSignoffDecisionRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.production_signoff_service.decide_signoff_item(
+            actor_id=str(actor["actor_id"]),
+            actor_role=str(actor["actor_role"]),
+            signoff_item_id=signoff_item_id,
+            decision=payload.decision,
+            note=payload.note,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"code": "production_signoff_decision_invalid", "reason": str(exc)}) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_signoff_item_missing", "reason": str(exc)}) from exc
+
+
+@router.post("/production-signoff/items/{signoff_item_id}/evidence")
+def append_production_signoff_evidence(signoff_item_id: str, payload: ProductionSignoffEvidenceRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.production_signoff_service.append_signoff_evidence(
+            actor_id=str(actor["actor_id"]),
+            actor_role=str(actor["actor_role"]),
+            signoff_item_id=signoff_item_id,
+            evidence_type=payload.evidence_type,
+            summary=payload.summary,
+            source_ref=payload.source_ref,
+            payload=payload.payload,
+            customer_safe=payload.customer_safe,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_signoff_item_missing", "reason": str(exc)}) from exc
+
+
+@router.post("/production-signoff/items/{signoff_item_id}/operator-evidence")
+def append_production_signoff_operator_evidence(signoff_item_id: str, payload: ProductionSignoffOperatorEvidenceRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.human_signoff_closure_service.append_operator_evidence(
+            actor_id=str(actor["actor_id"]),
+            actor_role=str(actor["actor_role"]),
+            signoff_item_id=signoff_item_id,
+            evidence_key=payload.evidence_key,
+            summary=payload.summary,
+            source_ref=payload.source_ref,
+            payload=payload.payload,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"code": "production_operator_evidence_invalid", "reason": str(exc)}) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_signoff_item_missing", "reason": str(exc)}) from exc
+
+
+@router.post("/production-signoff/items/{signoff_item_id}/operator-close")
+def close_production_signoff_operator_item(signoff_item_id: str, payload: ProductionSignoffOperatorCloseRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.human_signoff_closure_service.close_operator_item(
+            actor_id=str(actor["actor_id"]),
+            actor_role=str(actor["actor_role"]),
+            signoff_item_id=signoff_item_id,
+            decision=payload.decision,
+            note=payload.note,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"code": "production_operator_close_invalid", "reason": str(exc)}) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_signoff_item_missing", "reason": str(exc)}) from exc
+
+
+@router.post("/production-signoff/{signoff_id}/cutover-window")
+def mark_production_cutover_window(signoff_id: str, payload: ProductionCutoverWindowRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.production_signoff_service.mark_cutover_window(
+            actor_id=str(actor["actor_id"]),
+            actor_role=str(actor["actor_role"]),
+            signoff_id=signoff_id,
+            launch_wave=payload.launch_wave,
+            target_environment=payload.target_environment,
+            starts_at=payload.starts_at,
+            ends_at=payload.ends_at,
+            rollback_owner_role=payload.rollback_owner_role,
+            status=payload.status,
+            payload=payload.payload,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_signoff_missing", "reason": str(exc)}) from exc
+
+
+@router.get("/production-signoff/{signoff_id}/export")
+def export_production_signoff(signoff_id: str, request: Request) -> Dict[str, Any]:
+    try:
+        return request.app.state.production_signoff_service.export_signoff_record(signoff_id=signoff_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_signoff_missing", "reason": str(exc)}) from exc
+
+
+@router.get("/production-signoff-board")
+def production_signoff_board(request: Request, signoff_id: Optional[str] = None) -> Dict[str, Any]:
+    try:
+        return request.app.state.production_signoff_board_service.board(signoff_id=signoff_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_signoff_missing", "reason": str(exc)}) from exc
+
+
+@router.get("/human-signoff-closure")
+def human_signoff_closure(request: Request, signoff_id: Optional[str] = None) -> Dict[str, Any]:
+    pack = request.app.state.human_signoff_closure_service.build_pack(signoff_id=signoff_id)
+    return {
+        "closure": request.app.state.human_signoff_closure_service.closure(signoff_id=signoff_id),
+        "artifact_refs": pack,
+    }
+
+
+@router.get("/human-signoff-closure/{owner_role}")
+def human_signoff_closure_owner(owner_role: str, request: Request, signoff_id: Optional[str] = None) -> Dict[str, Any]:
+    pack = request.app.state.human_signoff_closure_service.build_pack(signoff_id=signoff_id)
+    return {
+        "closure": request.app.state.human_signoff_closure_service.closure(signoff_id=signoff_id, owner_role=owner_role),
+        "artifact_refs": pack,
+    }
+
+
+@router.post("/production-preflight/runs")
+def run_production_preflight(payload: ProductionPreflightRunRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    return request.app.state.production_preflight_service.run_preflight(
+        actor_id=str(actor["actor_id"]),
+        actor_role=str(actor["actor_role"]),
+        signoff_id=payload.signoff_id,
+        launch_wave=payload.launch_wave,
+        target_environment=payload.target_environment,
+    )
+
+
+@router.get("/production-preflight")
+def list_production_preflight(
+    request: Request,
+    signoff_id: Optional[str] = None,
+    launch_wave: Optional[str] = None,
+    limit: int = 25,
+) -> Dict[str, Any]:
+    return request.app.state.production_preflight_service.list_runs(
+        signoff_id=signoff_id,
+        launch_wave=launch_wave,
+        limit=limit,
+    )
+
+
+@router.get("/production-preflight/{preflight_run_id}")
+def production_preflight_detail(preflight_run_id: str, request: Request) -> Dict[str, Any]:
+    try:
+        return request.app.state.production_preflight_service.run_detail(preflight_run_id=preflight_run_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_preflight_missing", "reason": str(exc)}) from exc
+
+
+@router.get("/production-preflight/{preflight_run_id}/report")
+def production_preflight_report(preflight_run_id: str, request: Request) -> Dict[str, Any]:
+    try:
+        return request.app.state.production_preflight_service.report(preflight_run_id=preflight_run_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_preflight_missing", "reason": str(exc)}) from exc
+
+
+@router.get("/launch-week-pack")
+def launch_week_pack(request: Request) -> Dict[str, Any]:
+    return request.app.state.production_launch_week_pack_service.latest_pack()
+
+
+@router.get("/launch-handshake-pack")
+def launch_handshake_pack(request: Request) -> Dict[str, Any]:
+    return request.app.state.production_handshake_pack_service.latest_pack()
+
+
+@router.get("/wave-activation")
+def list_wave_activation(request: Request, launch_wave: Optional[str] = None) -> Dict[str, Any]:
+    return request.app.state.wave_activation_controller_service.summary(launch_wave=launch_wave)
+
+
+@router.get("/wave-activation/{launch_wave}")
+def wave_activation_detail(launch_wave: str, request: Request) -> Dict[str, Any]:
+    return request.app.state.wave_activation_controller_service.evaluate(launch_wave=launch_wave)
+
+
+@router.post("/wave-activation/{launch_wave}/arm")
+def arm_wave_activation(launch_wave: str, payload: WaveActivationRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    return request.app.state.wave_activation_controller_service.arm(
+        actor_id=str(actor["actor_id"]),
+        actor_role=str(actor["actor_role"]),
+        launch_wave=launch_wave,
+    )
+
+
+@router.post("/wave-activation/{launch_wave}/evaluate")
+def evaluate_wave_activation(launch_wave: str, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    return request.app.state.wave_activation_controller_service.evaluate(
+        launch_wave=launch_wave,
+        actor_id=str(actor["actor_id"]),
+        actor_role=str(actor["actor_role"]),
+    )
+
+
+@router.post("/wave-activation/{launch_wave}/rollback-watch")
+def mark_wave_activation_rollback_watch(launch_wave: str, payload: WaveActivationRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    return request.app.state.wave_activation_controller_service.mark_rollback_watch(
+        actor_id=str(actor["actor_id"]),
+        actor_role=str(actor["actor_role"]),
+        launch_wave=launch_wave,
+        note=payload.note,
+    )
+
+
+@router.get("/launch-command-center")
+def launch_command_center(request: Request, launch_wave: Optional[str] = None) -> Dict[str, Any]:
+    return request.app.state.launch_command_center_service.command_center(launch_wave=launch_wave)
+
+
+@router.get("/production-acceptance")
+def list_production_acceptance(
+    request: Request,
+    launch_wave: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    return request.app.state.production_acceptance_service.list_acceptance_records(
+        launch_wave=launch_wave,
+        status=status,
+        limit=limit,
+    )
+
+
+@router.post("/production-acceptance/generate")
+def generate_production_acceptance(payload: ProductionAcceptanceGenerateRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    try:
+        return request.app.state.production_acceptance_service.generate_acceptance_record(
+            actor_id=str(actor["actor_id"]),
+            actor_role=str(actor["actor_role"]),
+            account_id=payload.account_id,
+            launch_wave=payload.launch_wave,
+            signoff_id=payload.signoff_id,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_acceptance_missing_dependency", "reason": str(exc)}) from exc
+
+
+@router.get("/production-acceptance/{acceptance_record_id}")
+def production_acceptance_detail(acceptance_record_id: str, request: Request) -> Dict[str, Any]:
+    try:
+        return request.app.state.production_acceptance_service.acceptance_record_detail(
+            acceptance_record_id=acceptance_record_id
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "production_acceptance_missing", "reason": str(exc)}) from exc
+
+
+@router.get("/launch-waves")
+def list_launch_waves(request: Request, launch_wave: Optional[str] = None, status: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+    records = request.app.state.production_acceptance_service.list_acceptance_records(
+        launch_wave=launch_wave,
+        status=status,
+        limit=limit,
+    )
+    return {
+        "launch_waves": records["launch_waves"],
+        "summary": records["summary"],
+    }
+
+
+@router.get("/launch-week-pack")
+def launch_week_pack(request: Request) -> Dict[str, Any]:
+    return request.app.state.production_launch_week_pack_service.latest_pack()
+
+
+@router.post("/launch-waves/{launch_wave}/status")
+def update_launch_wave_status(launch_wave: str, payload: LaunchWaveStatusUpdateRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    return request.app.state.production_acceptance_service.update_launch_wave_status(
+        actor_id=str(actor["actor_id"]),
+        actor_role=str(actor["actor_role"]),
+        launch_wave=launch_wave,
+        status=payload.status,
+        note=payload.note,
+    )
+
+
+@router.post("/customer-success/snapshots/sync")
+def sync_customer_success(payload: CustomerSuccessSyncRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    return request.app.state.customer_success_reporting_service.sync_snapshots(
+        actor_id=str(actor["actor_id"]),
+        actor_role=str(actor["actor_role"]),
+        account_id=payload.account_id,
+        launch_wave=payload.launch_wave,
+    )
+
+
+@router.get("/customer-success")
+def list_customer_success(request: Request, account_id: Optional[str] = None, launch_wave: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+    return request.app.state.customer_success_reporting_service.list_customer_success(
+        account_id=account_id,
+        launch_wave=launch_wave,
+        limit=limit,
+    )
+
+
+@router.get("/customer-success/report")
+def customer_success_launch_wave_report(request: Request, launch_wave: str, view: str = "investor_safe") -> Dict[str, Any]:
+    try:
+        return request.app.state.customer_success_reporting_service.report(launch_wave=launch_wave, view=view)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "customer_success_missing", "reason": str(exc)}) from exc
+
+
+@router.get("/customer-success/{account_id}")
+def customer_success_detail(account_id: str, request: Request) -> Dict[str, Any]:
+    return request.app.state.customer_success_reporting_service.detail(account_id=account_id)
+
+
+@router.get("/customer-success/{account_id}/report")
+def customer_success_account_report(account_id: str, request: Request, view: str = "internal") -> Dict[str, Any]:
+    try:
+        return request.app.state.customer_success_reporting_service.report(account_id=account_id, view=view)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "customer_success_missing", "reason": str(exc)}) from exc
+
+
+@router.post("/launch-ledger/sync")
+def sync_launch_ledger(payload: LaunchLedgerSyncRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    return request.app.state.production_launch_ledger_service.sync(
+        actor_id=str(actor["actor_id"]),
+        actor_role=str(actor["actor_role"]),
+        launch_wave=payload.launch_wave,
+    )
+
+
+@router.get("/launch-ledger")
+def list_launch_ledger(request: Request, launch_wave: Optional[str] = None, limit: int = 200) -> Dict[str, Any]:
+    return request.app.state.production_launch_ledger_service.list_events(launch_wave=launch_wave, limit=limit)
+
+
+@router.get("/launch-ledger/{launch_wave}")
+def launch_ledger_detail(launch_wave: str, request: Request, limit: int = 200) -> Dict[str, Any]:
+    return request.app.state.production_launch_ledger_service.list_events(launch_wave=launch_wave, limit=limit)
+
+
+@router.get("/postmortem-pack")
+def build_postmortem_pack(request: Request, launch_wave: str, account_id: Optional[str] = None) -> Dict[str, Any]:
+    return request.app.state.production_launch_ledger_service.build_postmortem_pack(
+        launch_wave=launch_wave,
+        account_id=account_id,
+    )
+
+
+@router.post("/go-live-day/run")
+def run_go_live_day(payload: GoLiveDayRunRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    return request.app.state.go_live_day_runner_service.run(
+        actor_id=str(actor["actor_id"]),
+        actor_role=str(actor["actor_role"]),
+        launch_wave=payload.launch_wave,
+        signoff_id=payload.signoff_id,
+        account_id=payload.account_id,
+    )
+
+
+@router.get("/go-live-day/{run_id}")
+def go_live_day_detail(run_id: str, request: Request) -> Dict[str, Any]:
+    try:
+        return request.app.state.go_live_day_runner_service.detail(run_id=run_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail={"code": "go_live_day_run_missing", "reason": str(exc)}) from exc
+
+
+@router.post("/launch-week-guard/sync")
+def sync_launch_week_guard(payload: LaunchWeekGuardSyncRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, None)
+    return request.app.state.launch_week_guard_service.sync(
+        actor_id=str(actor["actor_id"]),
+        actor_role=str(actor["actor_role"]),
+        launch_wave=payload.launch_wave,
+    )
+
+
+@router.get("/launch-week-guard")
+def list_launch_week_guard(request: Request, launch_wave: Optional[str] = None) -> Dict[str, Any]:
+    return request.app.state.launch_week_guard_service.list_runs(launch_wave=launch_wave)
+
+
+@router.get("/launch-week-guard/{launch_wave}")
+def launch_week_guard_detail(launch_wave: str, request: Request) -> Dict[str, Any]:
+    return request.app.state.launch_week_guard_service.detail(launch_wave=launch_wave)
+
+
+@router.get("/first-customer-success-pack/{launch_wave}")
+def first_customer_success_pack(launch_wave: str, request: Request) -> Dict[str, Any]:
+    detail = request.app.state.launch_week_guard_service.detail(launch_wave=launch_wave)
+    pack = detail.get("first_customer_success_pack")
+    if not pack:
+        raise HTTPException(status_code=404, detail={"code": "first_customer_success_pack_missing", "reason": launch_wave})
+    return detail
+
+
+@router.get("/lifecycle-automation")
+def lifecycle_automation_state(request: Request, account_id: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
+    return request.app.state.commercial_lifecycle_automation_service.list_account_state(account_id=account_id, limit=limit)
+
+
+@router.post("/lifecycle-automation/sync")
+def sync_lifecycle_automation(payload: LifecycleAutomationSyncRequest, request: Request) -> Dict[str, Any]:
+    _require_ops_reviewer(request, None)
+    return request.app.state.commercial_lifecycle_automation_service.sync_account(account_id=payload.account_id)
+
+
 @router.get("/accounts/{account_id}/issues")
 def account_issue_lookup(account_id: str, request: Request, limit: int = 10) -> Dict[str, Any]:
     return request.app.state.billing_service.support_issue_lookup(account_id=account_id, limit=limit)
@@ -1376,13 +2576,16 @@ def update_ops_alert_status(
     payload: AlertStatusRequest,
     request: Request,
 ) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, payload.reviewer_id)
     try:
         detail = request.app.state.ops_alerting_service.update_alert_status(
             alert_id,
             status=payload.status,
-            reviewer_id=payload.reviewer_id,
+            reviewer_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
             note=payload.note,
             account_id=payload.account_id,
+            source_surface="ops_api",
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -1439,6 +2642,73 @@ def list_governance_cases(
     )
 
 
+@router.get("/governance/workload")
+def governance_owner_workload(
+    request: Request,
+    status: Optional[str] = None,
+    owner_id: Optional[str] = None,
+    case_type: Optional[str] = None,
+    severity: Optional[str] = None,
+    target_type: Optional[str] = None,
+    has_active_restriction: Optional[bool] = None,
+    overdue_only: bool = False,
+    unassigned_only: bool = False,
+    search: Optional[str] = None,
+    selected_case_ids: Optional[str] = None,
+    limit: int = 100,
+) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request)
+    del actor
+    return request.app.state.governance_service.owner_workload(
+        status=status,
+        owner_id=owner_id,
+        case_type=case_type,
+        severity=severity,
+        target_type=target_type,
+        has_active_restriction=has_active_restriction,
+        overdue_only=overdue_only,
+        unassigned_only=unassigned_only,
+        search=search,
+        selected_case_ids=[item.strip() for item in str(selected_case_ids or "").split(",") if item.strip()],
+        limit=limit,
+    )
+
+
+@router.put("/governance/capacity/owners/{owner_id}")
+def update_governance_capacity_override(
+    owner_id: str,
+    payload: GovernanceCapacityOverrideRequest,
+    request: Request,
+) -> Dict[str, Any]:
+    actor = _require_ops_roles(
+        request,
+        allowed_roles={"admin"},
+        fallback_actor_id=payload.reviewer_id,
+        missing_reason="governance_capacity_admin_required",
+        forbidden_reason="governance_capacity_admin_required",
+    )
+    try:
+        override = request.app.state.governance_service.update_capacity_override(
+            owner_id,
+            capacity_units_per_day=payload.capacity_units_per_day,
+            critical_case_limit=payload.critical_case_limit,
+            active_restriction_limit=payload.active_restriction_limit,
+            sla_hours=payload.sla_hours,
+            role_multiplier=payload.role_multiplier,
+            enabled=payload.enabled,
+            clear_override=payload.clear_override,
+            reviewer_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
+            note=payload.note,
+            source_surface="ops_api",
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"override": override}
+
+
 @router.get("/governance/cases/{case_id}")
 def governance_case_detail(case_id: str, request: Request) -> Dict[str, Any]:
     actor = _ops_actor(request)
@@ -1452,17 +2722,73 @@ def governance_case_detail(case_id: str, request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail=str(exc))
 
 
+@router.get("/governance/cases/{case_id}/restriction-history")
+def governance_case_restriction_history(case_id: str, request: Request, limit: int = 20) -> Dict[str, Any]:
+    actor = _ops_actor(request)
+    try:
+        request.app.state.ops_permission_policy.authorize_read(
+            actor_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
+            missing_reason="reviewer_identity_required",
+        )
+        return request.app.state.governance_service.restriction_history(case_id, limit=max(1, min(100, int(limit or 20))))
+    except PermissionError as exc:
+        raise HTTPException(status_code=401, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
 @router.post("/governance/cases")
 def create_governance_case(payload: GovernanceCaseRequest, request: Request) -> Dict[str, Any]:
     actor = _require_ops_reviewer(request, payload.reviewer_id)
     try:
         case = request.app.state.governance_service.create_case(
-            _apply_ops_identity(request, payload.model_dump())
+            {
+                **_apply_ops_identity(request, payload.model_dump()),
+                "actor_role": actor["actor_role"],
+                "source_surface": "ops_api",
+            }
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     request.app.state.analytics_service.track(
         "governance_case_created",
+        reader_id=case.get("account_id"),
+        account_id=case.get("account_id"),
+        world_id=case.get("world_id"),
+        world_version_id=case.get("world_version_id"),
+        payload_json=case,
+    )
+    return {"case": case}
+
+
+@router.post("/governance/cases/{case_id}/restriction")
+def apply_governance_case_restriction(
+    case_id: str,
+    payload: GovernanceCaseRestrictionRequest,
+    request: Request,
+) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, payload.reviewer_id)
+    try:
+        case = request.app.state.governance_service.apply_case_restriction(
+            case_id,
+            restriction_type=payload.restriction_type,
+            reviewer_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
+            restriction_reason=payload.restriction_reason,
+            expires_at=payload.expires_at,
+            source_surface="ops_api",
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    request.app.state.analytics_service.track(
+        "governance_restriction_applied",
         reader_id=case.get("account_id"),
         account_id=case.get("account_id"),
         world_id=case.get("world_id"),
@@ -1484,8 +2810,10 @@ def assign_governance_case(
             case_id,
             owner_id=payload.owner_id,
             reviewer_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
             due_at=payload.due_at,
             note=payload.note,
+            source_surface="ops_api",
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -1507,10 +2835,12 @@ def append_governance_case_evidence(
         case = request.app.state.governance_service.append_case_evidence(
             case_id,
             reviewer_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
             title=payload.title,
             preview=payload.preview,
             ref_id=payload.ref_id,
             kind=payload.kind,
+            source_surface="ops_api",
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -1537,10 +2867,14 @@ def list_governance_restrictions(
 
 @router.post("/governance/restrictions")
 def apply_governance_restriction(payload: GovernanceRestrictionRequest, request: Request) -> Dict[str, Any]:
-    _require_ops_reviewer(request, payload.reviewer_id)
+    actor = _require_ops_reviewer(request, payload.reviewer_id)
     try:
         case = request.app.state.governance_service.apply_restriction(
-            _apply_ops_identity(request, payload.model_dump())
+            {
+                **_apply_ops_identity(request, payload.model_dump()),
+                "actor_role": actor["actor_role"],
+                "source_surface": "ops_api",
+            }
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -1566,7 +2900,9 @@ def release_governance_restriction(
         case = request.app.state.governance_service.release_restriction(
             restriction_id,
             reviewer_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
             release_reason=payload.release_reason,
+            source_surface="ops_api",
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -1574,6 +2910,40 @@ def release_governance_restriction(
         raise HTTPException(status_code=403, detail=str(exc))
     request.app.state.analytics_service.track(
         "governance_restriction_released",
+        reader_id=case.get("account_id"),
+        account_id=case.get("account_id"),
+        world_id=case.get("world_id"),
+        world_version_id=case.get("world_version_id"),
+        payload_json=case,
+    )
+    return {"case": case}
+
+
+@router.patch("/governance/restrictions/{restriction_id}")
+def update_governance_restriction(
+    restriction_id: str,
+    payload: GovernanceRestrictionUpdateRequest,
+    request: Request,
+) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, payload.reviewer_id)
+    try:
+        case = request.app.state.governance_service.update_restriction(
+            restriction_id,
+            reviewer_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
+            restriction_type=payload.restriction_type,
+            restriction_reason=payload.restriction_reason,
+            expires_at=payload.expires_at,
+            source_surface="ops_api",
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    request.app.state.analytics_service.track(
+        "governance_restriction_updated",
         reader_id=case.get("account_id"),
         account_id=case.get("account_id"),
         world_id=case.get("world_id"),
@@ -1591,8 +2961,10 @@ def update_governance_case_status(case_id: str, payload: GovernanceCaseStatusReq
             case_id,
             status=payload.status,
             reviewer_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
             resolution_notes=payload.resolution_notes,
             disposition=payload.disposition,
+            source_surface="ops_api",
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -1609,6 +2981,39 @@ def update_governance_case_status(case_id: str, payload: GovernanceCaseStatusReq
         payload_json=case,
     )
     return {"case": case}
+
+
+@router.post("/governance/cases/bulk/preview")
+def governance_bulk_action_preview(payload: GovernanceBulkActionRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, payload.reviewer_id)
+    try:
+        return request.app.state.governance_service.bulk_action_preview(
+            case_ids=list(payload.case_ids or []),
+            action=payload.action,
+            payload=payload.model_dump(),
+            reviewer_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/governance/cases/bulk/execute")
+def governance_bulk_action_execute(payload: GovernanceBulkActionRequest, request: Request) -> Dict[str, Any]:
+    actor = _require_ops_reviewer(request, payload.reviewer_id)
+    try:
+        return request.app.state.governance_service.bulk_action_execute(
+            case_ids=list(payload.case_ids or []),
+            action=payload.action,
+            payload=payload.model_dump(),
+            reviewer_id=actor["actor_id"],
+            actor_role=actor["actor_role"],
+            source_surface="ops_api",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
 
 
 @router.get("/export/governance-audit")
@@ -1739,6 +3144,21 @@ def reconcile_subscription(subscription_id: str, payload: BillingLifecycleReplay
         reader_id=reconciled["subscription"].get("account_id"),
         account_id=reconciled["subscription"].get("account_id"),
         payload_json={"subscription_id": subscription_id, "requested_by": payload.requested_by, **reconciled},
+    )
+    return reconciled
+
+
+@router.post("/accounts/{account_id}/billing/reconcile")
+def reconcile_account_billing(account_id: str, payload: AccountBillingReconcileRequest, request: Request) -> Dict[str, Any]:
+    reconciled = request.app.state.billing_service.reconcile_account_billing(
+        account_id=account_id,
+        provider=payload.provider,
+    )
+    request.app.state.analytics_service.track(
+        "account_billing_reconcile_requested",
+        reader_id=account_id,
+        account_id=account_id,
+        payload_json={"requested_by": payload.requested_by, **reconciled},
     )
     return reconciled
 
@@ -1884,13 +3304,21 @@ def eval_metrics_world_version_detail(world_version_id: str, request: Request) -
 
 
 @router.get("/cross-pack-quality")
-def cross_pack_quality(request: Request) -> Dict[str, Any]:
+def cross_pack_quality(
+    request: Request,
+    validate_strategy_bundle: bool = False,
+    strategy_bundle_id: Optional[str] = None,
+    weakest_limit: int = 3,
+) -> Dict[str, Any]:
     return run_benchmark(
         repository=request.app.state.repository,
         golden_dir=request.app.state.base_dir / "tests" / "golden_routes",
         baseline=json.loads(
             (request.app.state.base_dir / "tests" / "benchmark_baseline.json").read_text(encoding="utf-8")
         ),
+        validate_strategy_bundle=validate_strategy_bundle,
+        strategy_bundle_id=strategy_bundle_id,
+        weakest_limit=weakest_limit,
     )
 
 
@@ -2141,6 +3569,48 @@ def review_sample_backlog(
         limit=limit,
     )
     return {"backlog": summary["review_sample_backlog"]}
+
+
+@router.get("/longform-250-human-review-closeout")
+def longform_250_human_review_closeout(
+    request: Request,
+    world_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    return request.app.state.training_signal_service.longform_250_human_review_closeout(
+        world_id=world_id,
+        world_version_id=world_version_id,
+        limit=limit,
+    )
+
+
+@router.get("/longform-500-human-review-closeout")
+def longform_500_human_review_closeout(
+    request: Request,
+    world_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    return request.app.state.training_signal_service.longform_500_human_review_closeout(
+        world_id=world_id,
+        world_version_id=world_version_id,
+        limit=limit,
+    )
+
+
+@router.get("/longform-1000-human-review-closeout")
+def longform_1000_human_review_closeout(
+    request: Request,
+    world_id: Optional[str] = None,
+    world_version_id: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> Dict[str, Any]:
+    return request.app.state.training_signal_service.longform_1000_human_review_closeout(
+        world_id=world_id,
+        world_version_id=world_version_id,
+        limit=limit,
+    )
 
 
 @router.get("/issue-fix-pair-backlog")

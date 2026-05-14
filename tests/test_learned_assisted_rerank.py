@@ -18,6 +18,7 @@ from src.narrativeos.eval.learned_rollout import activate_learned_rollout
 from src.narrativeos.models import EventAtom, ScoredCandidate
 from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.services.sessions import ReaderContinueCommand, SessionService
+from tests.ops_auth import ops_headers
 from tests.conftest import load_example
 from tests.test_learned_reranker_baseline import _seed_reranker_world
 
@@ -205,8 +206,9 @@ def test_session_service_persists_assisted_rerank_receipt(tmp_path: Path, monkey
 def test_assisted_rerank_endpoints_can_configure_and_report_summary(tmp_path: Path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "assisted_rerank_api.db"))
     client = TestClient(create_app(repository=repository))
+    headers = ops_headers(client, actor_id="ops_assisted_rerank")
 
-    initial = client.get("/v1/ops/learned-assisted-rerank")
+    initial = client.get("/v1/ops/learned-assisted-rerank", headers=headers)
     assert initial.status_code == 200
     assert initial.json()["config"]["config"]["mode"] == "shadow_only"
 
@@ -223,6 +225,7 @@ def test_assisted_rerank_endpoints_can_configure_and_report_summary(tmp_path: Pa
             "max_score_gap": 0.08,
             "world_allowlist": ["urban_mystery_lotus_lane"],
         },
+        headers=headers,
     )
     assert configured.status_code == 200
     assert configured.json()["config"]["config"]["enabled"] is True

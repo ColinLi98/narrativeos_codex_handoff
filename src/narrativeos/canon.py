@@ -30,6 +30,34 @@ def _ending_gate_for_event(state: NarrativeState, event: EventAtom) -> EndingGat
     return EndingGate.from_dict(gate_data)
 
 
+def _hard_constraint_context(
+    state: NarrativeState,
+    world: Optional[WorldBible],
+) -> dict:
+    return {
+        "facts": set(state.world_facts),
+        "state_character_ids": set(state.characters.keys()),
+        "world_character_ids": {
+            (
+                str(item)
+                if isinstance(item, str)
+                else str(getattr(item, "character_id", "") or "")
+            )
+            for item in list(world.characters or [])
+            if (
+                (isinstance(item, str) and str(item))
+                or getattr(item, "character_id", None)
+            )
+        } if world is not None else set(),
+        "ceiling": effective_rating_ceiling(state, world=world),
+        "existing_promise_ids": _promise_ids(state.open_promises),
+        "closed_promise_ids": set(state.metadata.get("closed_promise_ids", [])),
+        "recent_scene_window": [normalize_scene_function(scene_function) for scene_function in state.recent_scene_functions[-2:]],
+        "scene_history": set(state.metadata.get("scene_history", [])),
+        "forbidden_moves": list(world.forbidden_moves) if world is not None else [],
+    }
+
+
 def _matches_forbidden_move(event: EventAtom, forbidden_move: str) -> bool:
     normalized_move = forbidden_move.lower()
     normalized_event = _normalize_text(
@@ -59,9 +87,11 @@ def hard_constraint_errors(
     state: NarrativeState,
     event: EventAtom,
     world: Optional[WorldBible] = None,
+    context: Optional[dict] = None,
 ) -> List[str]:
     errors: List[str] = []
-    facts = set(state.world_facts)
+    context = context or _hard_constraint_context(state, world)
+    facts = set(context.get("facts", set()))
 
     missing = [fact for fact in event.preconditions_all if fact not in facts]
     if missing:
@@ -71,16 +101,18 @@ def hard_constraint_errors(
     if violated:
         errors.append(f"forbidden_facts_present:{','.join(sorted(violated))}")
 
-    missing_characters = [actor for actor in event.actors if actor not in state.characters]
+    state_character_ids = set(context.get("state_character_ids", set()))
+    missing_characters = [actor for actor in event.actors if actor not in state_character_ids]
     if missing_characters:
         errors.append(f"missing_characters:{','.join(sorted(missing_characters))}")
 
     if world is not None:
-        world_missing = [actor for actor in event.actors if actor not in world.characters]
+        world_character_ids = set(context.get("world_character_ids", set()))
+        world_missing = [actor for actor in event.actors if actor not in world_character_ids]
         if world_missing:
             errors.append(f"actors_not_in_world:{','.join(sorted(world_missing))}")
 
-    ceiling = effective_rating_ceiling(state, world=world)
+    ceiling = str(context.get("ceiling") or effective_rating_ceiling(state, world=world))
     if not rating_allowed(ceiling, event.rating_ceiling):
         errors.append(f"rating_exceeds_ceiling:{event.rating_ceiling}>{ceiling}")
 
@@ -99,14 +131,14 @@ def hard_constraint_errors(
         if delta.character not in state.characters:
             errors.append(f"emotion_delta_unknown_character:{delta.character}")
 
-    existing_promise_ids = _promise_ids(state.open_promises)
+    existing_promise_ids = set(context.get("existing_promise_ids", set()))
     opened_promise_ids = _promise_ids(event.promises_open)
     unknown_closed_promises = sorted(
         promise_id
         for promise_id in event.promises_close
         if promise_id not in existing_promise_ids
         and promise_id not in opened_promise_ids
-        and promise_id not in set(state.metadata.get("closed_promise_ids", []))
+        and promise_id not in set(context.get("closed_promise_ids", set()))
     )
     if unknown_closed_promises:
         errors.append(
@@ -119,15 +151,16 @@ def hard_constraint_errors(
             f"duplicate_open_promises:{','.join(duplicate_opened_promises)}"
         )
 
-    if len(state.recent_scene_functions) >= 2:
-        window = [normalize_scene_function(scene_function) for scene_function in state.recent_scene_functions[-2:]]
+    recent_scene_window = list(context.get("recent_scene_window", []))
+    if len(recent_scene_window) >= 2:
+        window = recent_scene_window
         if all(scene_function == normalize_scene_function(event.scene_function) for scene_function in window):
             errors.append(f"scene_function_window_repeat:{event.scene_function}")
 
     if world is not None:
         forbidden_hits = [
             forbidden_move
-            for forbidden_move in world.forbidden_moves
+            for forbidden_move in list(context.get("forbidden_moves", []))
             if _matches_forbidden_move(event, forbidden_move)
         ]
         if forbidden_hits:
@@ -137,7 +170,7 @@ def hard_constraint_errors(
         gate = _ending_gate_for_event(state, event)
         if state.chapter_index < max(6, gate.min_turn):
             errors.append(f"ending_gate_min_turn:{state.chapter_index}<{max(6, gate.min_turn)}")
-        scene_history = set(state.metadata.get("scene_history", []))
+        scene_history = set(context.get("scene_history", set()))
         missing_scene_functions = [
             scene_function
             for scene_function in gate.required_scene_functions
@@ -147,7 +180,7 @@ def hard_constraint_errors(
             errors.append(
                 "ending_gate_missing_scene_functions:%s" % ",".join(sorted(missing_scene_functions))
             )
-        closed_promise_ids = set(state.metadata.get("closed_promise_ids", []))
+        closed_promise_ids = set(context.get("closed_promise_ids", set()))
         missing_promises = [
             promise_id
             for promise_id in gate.required_closed_promises

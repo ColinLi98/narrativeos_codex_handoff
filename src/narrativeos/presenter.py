@@ -1,10 +1,16 @@
 from __future__ import annotations
 
-from typing import List, Sequence
+from typing import Dict, List, Sequence
 
 from .models import ChapterPlan, NarrativeState, NarrativeViewModel, RenderedScene, SceneBeat, WorldBible
 from .relationship_graph import summarize_relationship_changes
-from .sanitizer import sanitize_lines, sanitize_text
+from .sanitizer import (
+    sanitize_lines,
+    sanitize_reader_visible_lines,
+    sanitize_reader_visible_text,
+    sanitize_reader_visible_text_with_report,
+    sanitize_text,
+)
 
 
 def _display_name(state: NarrativeState, actor_id: str) -> str:
@@ -101,27 +107,50 @@ def present_scene_for_reader(
     scene_beats: Sequence[SceneBeat],
     rendered_scene: RenderedScene,
 ) -> NarrativeViewModel:
+    language_debug: Dict[str, object] = {
+        "reader_visible_language_sanitized": False,
+        "sanitized_latin_tokens": [],
+        "fields": [],
+    }
+
+    def sanitize_field(name: str, value: str) -> str:
+        cleaned, report = sanitize_reader_visible_text_with_report(value)
+        if report["reader_visible_language_sanitized"]:
+            language_debug["reader_visible_language_sanitized"] = True
+            language_debug["fields"].append(name)
+            language_debug["sanitized_latin_tokens"] = list(
+                dict.fromkeys(
+                    list(language_debug["sanitized_latin_tokens"])
+                    + list(report["sanitized_latin_tokens"])
+                )
+            )
+        return cleaned
+
     recap_lines = []
     for previous_title in state_before.timeline[-2:]:
         recap_lines.append(previous_title)
-    recap = sanitize_text("前情提要：" + "；".join(recap_lines)) if recap_lines else "故事刚刚开始。"
+    recap = sanitize_field("recap", "前情提要：" + "；".join(recap_lines)) if recap_lines else "故事刚刚开始。"
 
     scene_card = {
-        "title": sanitize_text(rendered_scene.story_title or chapter_plan.scene_intent.label),
-        "summary": sanitize_text(rendered_scene.chapter_summary or rendered_scene.image_caption),
-        "quote": sanitize_text(rendered_scene.pull_quote),
-        "palette_hint": sanitize_text(rendered_scene.palette_hint or ",".join(world.creator_controls.theme_targets[:2])),
-        "story_beats": sanitize_lines(rendered_scene.story_beats),
-        "visual_details": sanitize_lines(rendered_scene.visual_details),
+        "title": sanitize_field("scene_card.title", rendered_scene.story_title or chapter_plan.scene_intent.label),
+        "summary": sanitize_field("scene_card.summary", rendered_scene.chapter_summary or rendered_scene.image_caption),
+        "quote": sanitize_field("scene_card.quote", rendered_scene.pull_quote),
+        "palette_hint": sanitize_field("scene_card.palette_hint", rendered_scene.palette_hint or ",".join(world.creator_controls.theme_targets[:2])),
+        "story_beats": [sanitize_field(f"scene_card.story_beats[{index}]", item) for index, item in enumerate(rendered_scene.story_beats)],
+        "visual_details": [sanitize_field(f"scene_card.visual_details[{index}]", item) for index, item in enumerate(rendered_scene.visual_details)],
     }
+    rendered_scene.debug.setdefault("reader_visible_language_debug", language_debug)
 
     return NarrativeViewModel(
-        chapter_title=sanitize_text(rendered_scene.story_title or chapter_plan.scene_intent.label),
+        chapter_title=sanitize_field("chapter_title", rendered_scene.story_title or chapter_plan.scene_intent.label),
         chapter_index=state_after.chapter_index,
         recap=recap,
-        body=sanitize_text(rendered_scene.premium_prose),
+        body=sanitize_field("body", rendered_scene.premium_prose),
         scene_card=scene_card,
-        choices=_reader_choices(scene_beats),
-        relationship_hints=_relationship_hints(state_before, state_after, scene_beats),
+        choices=[sanitize_field(f"choice[{index}]", item) for index, item in enumerate(_reader_choices(scene_beats))],
+        relationship_hints=[
+            sanitize_field(f"relationship_hint[{index}]", item)
+            for index, item in enumerate(_relationship_hints(state_before, state_after, scene_beats))
+        ],
         can_continue=state_after.story_phase != "aftermath",
     )

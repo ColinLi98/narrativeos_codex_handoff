@@ -1,4 +1,5 @@
 from pathlib import Path
+import time
 
 from fastapi.testclient import TestClient
 
@@ -16,6 +17,48 @@ def _force_paid_chapter(repository, session_id: str) -> None:
         row.chapter_index = 3
         row.narrative_state_json = state
         db.commit()
+
+
+def _auth_headers(client: TestClient, *, actor_id: str, actor_role: str = "ops") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={
+            "actor_id": actor_id,
+            "actor_role": actor_role,
+            "password": "secret123",
+            "account_id": actor_id,
+        },
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _resume_reader_job_if_queued(client: TestClient, payload: dict) -> dict:
+    if payload.get("status") != "queued":
+        return payload
+    job_id = payload["job"]["jobId"]
+    latest = client.post(f"/v1/reader/jobs/{job_id}/resume")
+    assert latest.status_code == 200, latest.json()
+    for _ in range(30):
+        job = latest.json()["job"]
+        if job["status"] == "succeeded":
+            result = dict(job.get("result") or {})
+            reader_result = result.get("reader_result")
+            if isinstance(reader_result, dict):
+                return reader_result
+            return {
+                **result,
+                "status": result.get("reader_status") or result.get("readerStatus") or result.get("status") or "ok",
+            }
+        assert job["status"] != "failed", latest.json()
+        time.sleep(0.2)
+        latest = client.get(f"/v1/reader/jobs/{job_id}")
+        assert latest.status_code == 200, latest.json()
+    assert False, latest.json()
 
 
 def test_subscription_grant_creates_dual_wallets_and_checkout_stub(tmp_path: Path):
@@ -115,9 +158,11 @@ def test_reader_subscription_and_checkout_api_shapes(tmp_path: Path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "monetization_reader_api.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    ops_headers = _auth_headers(client, actor_id="ops_reader_api")
 
-    client.post(
+    granted = client.post(
         "/v1/ops/subscriptions/grant",
+        headers=ops_headers,
         json={
             "account_id": "acct_reader_api",
             "tier_id": "play_pass",
@@ -125,6 +170,7 @@ def test_reader_subscription_and_checkout_api_shapes(tmp_path: Path):
             "status": "active",
         },
     )
+    assert granted.status_code == 200, granted.json()
     subscription = client.get("/v1/reader/subscription", params={"account_id": "acct_reader_api"})
     assert subscription.status_code == 200
     assert subscription.json()["subscription"]["tier_id"] == "play_pass"
@@ -144,6 +190,7 @@ def test_checkout_webhook_lifecycle_retry_cancel_reconcile_and_replay(tmp_path: 
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "monetization_lifecycle_closure.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    ops_headers = _auth_headers(client, actor_id="ops_lifecycle")
 
     checkout = client.post(
         "/v1/reader/checkout/start",
@@ -202,19 +249,28 @@ def test_checkout_webhook_lifecycle_retry_cancel_reconcile_and_replay(tmp_path: 
 
     subscription = repository.get_subscription(subscription_id)
     repository.save_subscription({**subscription, "period_end": "2025-01-31T00:00:00+00:00"})
-    reconciled = client.post(f"/v1/ops/subscriptions/{subscription_id}/reconcile", json={"requested_by": "ops_web"})
+    reconciled = client.post(
+        f"/v1/ops/subscriptions/{subscription_id}/reconcile",
+        headers=ops_headers,
+        json={"requested_by": "ops_web"},
+    )
     assert reconciled.status_code == 200
     assert reconciled.json()["subscription"]["status"] == "expired"
 
     replay = client.post(
         f"/v1/ops/billing-events/{completed.json()['event']['event_id']}/replay",
+        headers=ops_headers,
         json={"requested_by": "ops_web"},
     )
     assert replay.status_code == 200
     subscriptions = repository.list_subscriptions(account_id="acct_lifecycle_flow")
     assert len(subscriptions) == 1
 
-    monetization_events = client.get("/v1/ops/monetization-events", params={"account_id": "acct_lifecycle_flow"})
+    monetization_events = client.get(
+        "/v1/ops/monetization-events",
+        headers=ops_headers,
+        params={"account_id": "acct_lifecycle_flow"},
+    )
     assert monetization_events.status_code == 200
     assert monetization_events.json()["lifecycle_events"]
     assert monetization_events.json()["retry_attempts"]
@@ -224,12 +280,14 @@ def test_reader_continue_honors_subscription_tier_without_consuming_story_credit
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "monetization_reader.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    ops_headers = _auth_headers(client, actor_id="ops_reader_continue")
 
     session = client.post("/v1/reader/sessions", json={"world_id": "jade_court_exam", "account_id": "acct_reader"}).json()
     _force_paid_chapter(repository, session["session_id"])
 
-    client.post(
+    granted = client.post(
         "/v1/ops/subscriptions/grant",
+        headers=ops_headers,
         json={
             "account_id": "acct_reader",
             "tier_id": "play_pass",
@@ -237,13 +295,15 @@ def test_reader_continue_honors_subscription_tier_without_consuming_story_credit
             "status": "active",
         },
     )
+    assert granted.status_code == 200, granted.json()
     before = client.get("/v1/reader/entitlements", params={"account_id": "acct_reader", "world_id": "jade_court_exam"}).json()
     result = client.post(
         "/v1/reader/continue",
         json={"session_id": session["session_id"], "account_id": "acct_reader", "freeform_intent": "继续往前。"},
     )
     assert result.status_code == 200
-    assert result.json()["status"] == "ok"
+    completed = _resume_reader_job_if_queued(client, result.json())
+    assert completed["status"] == "ok"
     after = client.get("/v1/reader/entitlements", params={"account_id": "acct_reader", "world_id": "jade_court_exam"}).json()
     assert before["wallets"]["story_credits"]["balance"] == after["wallets"]["story_credits"]["balance"]
     meters = repository.list_usage_meters(account_id="acct_reader", session_id=session["session_id"])
@@ -298,7 +358,8 @@ def test_reader_story_credits_metering_consumes_wallet_and_records_credit_units(
         json={"session_id": session["session_id"], "account_id": "acct_story_meter", "freeform_intent": "继续往前。"},
     )
     assert result.status_code == 200
-    assert result.json()["status"] == "ok"
+    completed = _resume_reader_job_if_queued(client, result.json())
+    assert completed["status"] == "ok"
     after = client.get("/v1/reader/entitlements", params={"account_id": "acct_story_meter", "world_id": "jade_court_exam"}).json()
     assert after["wallets"]["story_credits"]["balance"] == before["wallets"]["story_credits"]["balance"] - 1
     meters = repository.list_usage_meters(account_id="acct_story_meter", session_id=session["session_id"])
@@ -313,6 +374,7 @@ def test_support_issue_lookup_flags_payment_required_and_credit_exhaustion(tmp_p
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "monetization_support_reader.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    ops_headers = _auth_headers(client, actor_id="ops_support_reader")
 
     session = client.post("/v1/reader/sessions", json={"world_id": "jade_court_exam", "account_id": "acct_support"}).json()
     _force_paid_chapter(repository, session["session_id"])
@@ -323,7 +385,7 @@ def test_support_issue_lookup_flags_payment_required_and_credit_exhaustion(tmp_p
     assert blocked.status_code == 200
     assert blocked.json()["status"] == "payment_required"
 
-    issues = client.get("/v1/ops/accounts/acct_support/issues")
+    issues = client.get("/v1/ops/accounts/acct_support/issues", headers=ops_headers)
     assert issues.status_code == 200
     payload = issues.json()
     issue_types = {item["issue_type"] for item in payload["support_issues"]}
@@ -362,9 +424,12 @@ def test_author_from_brief_and_simulate_require_creator_pass_and_consume_studio_
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "monetization_author.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    author_headers = _auth_headers(client, actor_id="acct_author", actor_role="author")
+    ops_headers = _auth_headers(client, actor_id="ops_author")
 
     blocked = client.post(
         "/v1/author/drafts/from-brief",
+        headers=author_headers,
         json={
             "account_id": "acct_author",
             "brief": {
@@ -381,8 +446,9 @@ def test_author_from_brief_and_simulate_require_creator_pass_and_consume_studio_
     )
     assert blocked.status_code == 402
 
-    client.post(
+    granted = client.post(
         "/v1/ops/subscriptions/grant",
+        headers=ops_headers,
         json={
             "account_id": "acct_author",
             "tier_id": "creator_pass",
@@ -390,9 +456,11 @@ def test_author_from_brief_and_simulate_require_creator_pass_and_consume_studio_
             "status": "active",
         },
     )
+    assert granted.status_code == 200, granted.json()
     before = client.get("/v1/reader/entitlements", params={"account_id": "acct_author"}).json()
     created = client.post(
         "/v1/author/drafts/from-brief",
+        headers=author_headers,
         json={
             "account_id": "acct_author",
             "brief": {
@@ -412,7 +480,11 @@ def test_author_from_brief_and_simulate_require_creator_pass_and_consume_studio_
     after_create = client.get("/v1/reader/entitlements", params={"account_id": "acct_author"}).json()
     assert after_create["wallets"]["studio_credits"]["balance"] == before["wallets"]["studio_credits"]["balance"] - 2
 
-    simulated = client.post(f"/v1/author/drafts/{draft_id}/simulate?account_id=acct_author")
+    simulated = client.post(
+        f"/v1/author/drafts/{draft_id}/simulate?account_id=acct_author",
+        headers=author_headers,
+        json={"include_cross_pack": False, "max_chapters": 1},
+    )
     assert simulated.status_code == 200
     after_sim = client.get("/v1/reader/entitlements", params={"account_id": "acct_author"}).json()
     assert after_sim["wallets"]["studio_credits"]["balance"] == after_create["wallets"]["studio_credits"]["balance"] - 1
@@ -426,7 +498,7 @@ def test_author_from_brief_and_simulate_require_creator_pass_and_consume_studio_
     assert action_map["author_simulate"]["wallet_type"] == "studio_credits"
     assert action_map["author_simulate"]["subscription_tier"] == "creator_pass"
     assert action_map["author_simulate"]["model_policy_version"] == "entitlement_matrix_v1:author_simulate_studio_credits"
-    account_detail = client.get("/v1/ops/accounts/acct_author")
+    account_detail = client.get("/v1/ops/accounts/acct_author", headers=ops_headers)
     assert account_detail.status_code == 200
     audit_actions = [item["action"] for item in account_detail.json()["audit_trail"]]
     assert "author_draft_created_from_brief" in audit_actions
@@ -438,9 +510,12 @@ def test_author_access_reflects_subscription_lifecycle_block_and_renew(tmp_path:
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "monetization_author_lifecycle_access.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    author_headers = _auth_headers(client, actor_id="acct_author_lifecycle", actor_role="author")
+    ops_headers = _auth_headers(client, actor_id="ops_author_lifecycle")
 
-    client.post(
+    granted = client.post(
         "/v1/ops/subscriptions/grant",
+        headers=ops_headers,
         json={
             "account_id": "acct_author_lifecycle",
             "tier_id": "creator_pass",
@@ -448,11 +523,16 @@ def test_author_access_reflects_subscription_lifecycle_block_and_renew(tmp_path:
             "status": "active",
         },
     )
-    allowed = client.get("/v1/author/access", params={"account_id": "acct_author_lifecycle"})
+    assert granted.status_code == 200, granted.json()
+    allowed = client.get("/v1/author/access", headers=author_headers, params={"account_id": "acct_author_lifecycle"})
     assert allowed.status_code == 200
     assert allowed.json()["actions"]["simulate"]["allowed"] is True
 
-    subscription_id = client.get("/v1/ops/subscriptions", params={"account_id": "acct_author_lifecycle"}).json()["subscriptions"][0]["subscription_id"]
+    subscription_id = client.get(
+        "/v1/ops/subscriptions",
+        headers=ops_headers,
+        params={"account_id": "acct_author_lifecycle"},
+    ).json()["subscriptions"][0]["subscription_id"]
     failed = client.post(
         "/v1/reader/checkout/webhook",
         json={
@@ -465,14 +545,14 @@ def test_author_access_reflects_subscription_lifecycle_block_and_renew(tmp_path:
         },
     )
     assert failed.status_code == 200
-    blocked = client.get("/v1/author/access", params={"account_id": "acct_author_lifecycle"})
+    blocked = client.get("/v1/author/access", headers=author_headers, params={"account_id": "acct_author_lifecycle"})
     assert blocked.status_code == 200
     assert blocked.json()["actions"]["simulate"]["allowed"] is False
     assert blocked.json()["subscription"]["status"] == "past_due"
 
-    renewed = client.post("/v1/reader/subscription/acct_author_lifecycle/renew")
+    renewed = client.post("/v1/reader/subscription/acct_author_lifecycle/renew", headers=author_headers)
     assert renewed.status_code == 200
-    restored = client.get("/v1/author/access", params={"account_id": "acct_author_lifecycle"})
+    restored = client.get("/v1/author/access", headers=author_headers, params={"account_id": "acct_author_lifecycle"})
     assert restored.status_code == 200
     assert restored.json()["actions"]["simulate"]["allowed"] is True
 
@@ -481,9 +561,11 @@ def test_ops_can_audit_and_mutate_subscription_and_wallet_state(tmp_path: Path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "monetization_ops.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    ops_headers = _auth_headers(client, actor_id="ops_monetization")
 
     granted = client.post(
         "/v1/ops/subscriptions/grant",
+        headers=ops_headers,
         json={
             "account_id": "acct_ops",
             "tier_id": "studio_pass",
@@ -494,11 +576,11 @@ def test_ops_can_audit_and_mutate_subscription_and_wallet_state(tmp_path: Path):
     assert granted.status_code == 200
     subscription_id = granted.json()["subscription"]["subscription_id"]
 
-    listed = client.get("/v1/ops/subscriptions", params={"account_id": "acct_ops"})
+    listed = client.get("/v1/ops/subscriptions", headers=ops_headers, params={"account_id": "acct_ops"})
     assert listed.status_code == 200
     assert listed.json()["subscriptions"]
 
-    entitlements = client.get("/v1/ops/entitlements", params={"account_id": "acct_ops"})
+    entitlements = client.get("/v1/ops/entitlements", headers=ops_headers, params={"account_id": "acct_ops"})
     assert entitlements.status_code == 200
     assert entitlements.json()["wallets"]["studio_credits"]["balance"] == 150
     assert entitlements.json()["entitlement_matrix"]["author"]["draft_from_brief"]["wallet_type"] == "studio_credits"
@@ -512,31 +594,35 @@ def test_ops_can_audit_and_mutate_subscription_and_wallet_state(tmp_path: Path):
 
     topped_up = client.post(
         "/v1/ops/wallets/grant",
+        headers=ops_headers,
         json={"account_id": "acct_ops", "wallet_type": "studio_credits", "amount": 10},
     )
     assert topped_up.status_code == 200
     debited = client.post(
         "/v1/ops/wallets/debit",
+        headers=ops_headers,
         json={"account_id": "acct_ops", "wallet_type": "studio_credits", "amount": 5},
     )
     assert debited.status_code == 200
     changed = client.post(
         "/v1/ops/subscriptions/state",
+        headers=ops_headers,
         json={"subscription_id": subscription_id, "status": "canceled"},
     )
     assert changed.status_code == 200
     assert changed.json()["subscription"]["status"] == "canceled"
     revoked = client.post(
         "/v1/ops/entitlements/revoke",
+        headers=ops_headers,
         json={"entitlement_id": wallet_entitlement_id, "reason": "manual_entitlement_revoke"},
     )
     assert revoked.status_code == 200
     assert revoked.json()["entitlement"]["status"] == "revoked"
-    events = client.get("/v1/ops/monetization-events", params={"account_id": "acct_ops"})
+    events = client.get("/v1/ops/monetization-events", headers=ops_headers, params={"account_id": "acct_ops"})
     assert events.status_code == 200
     assert "events" in events.json()
     assert any(item["event_name"] == "entitlement_revoked" for item in events.json()["events"])
-    account_detail = client.get("/v1/ops/accounts/acct_ops")
+    account_detail = client.get("/v1/ops/accounts/acct_ops", headers=ops_headers)
     assert account_detail.status_code == 200
     assert account_detail.json()["account_id"] == "acct_ops"
     assert "activity_summary" in account_detail.json()
@@ -602,9 +688,12 @@ def test_monetization_analytics_events_are_recorded(tmp_path: Path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "monetization_analytics.db"))
     app = create_app(repository=repository)
     client = TestClient(app)
+    author_headers = _auth_headers(client, actor_id="acct_events", actor_role="author")
+    ops_headers = _auth_headers(client, actor_id="ops_events")
 
-    client.post(
+    granted = client.post(
         "/v1/ops/subscriptions/grant",
+        headers=ops_headers,
         json={
             "account_id": "acct_events",
             "tier_id": "creator_pass",
@@ -612,12 +701,14 @@ def test_monetization_analytics_events_are_recorded(tmp_path: Path):
             "status": "active",
         },
     )
+    assert granted.status_code == 200, granted.json()
     client.post(
         "/v1/reader/checkout/start",
         json={"account_id": "acct_events", "tier_id": "studio_pass", "provider": "web_stub"},
     )
     draft = client.post(
         "/v1/author/drafts/from-brief",
+        headers=author_headers,
         json={
             "account_id": "acct_events",
             "brief": {
@@ -634,10 +725,15 @@ def test_monetization_analytics_events_are_recorded(tmp_path: Path):
     )
     assert draft.status_code == 200
     draft_id = draft.json()["world_version_id"]
-    simulate = client.post(f"/v1/author/drafts/{draft_id}/simulate?account_id=acct_events")
+    simulate = client.post(
+        f"/v1/author/drafts/{draft_id}/simulate?account_id=acct_events",
+        headers=author_headers,
+        json={"include_cross_pack": False, "max_chapters": 1},
+    )
     assert simulate.status_code == 200
     client.post(
         "/v1/ops/wallets/grant",
+        headers=ops_headers,
         json={"account_id": "acct_reader_events", "wallet_type": "story_credits", "amount": 3},
     )
     session = client.post("/v1/reader/sessions", json={"world_id": "jade_court_exam", "account_id": "acct_reader_events"}).json()
@@ -647,6 +743,7 @@ def test_monetization_analytics_events_are_recorded(tmp_path: Path):
         json={"session_id": session["session_id"], "account_id": "acct_reader_events", "freeform_intent": "继续往前。"},
     )
     assert continue_result.status_code == 200
+    _resume_reader_job_if_queued(client, continue_result.json())
 
     author_events = repository.list_analytics_events(reader_id="acct_events")
     author_event_names = {event["event_name"] for event in author_events}

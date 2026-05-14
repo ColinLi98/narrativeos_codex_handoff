@@ -1,0 +1,198 @@
+{
+  "version": "2026-04-17",
+  "scope": "reader_shell_v2",
+  "shell_state": {
+    "fields": [
+      {
+        "name": "activeProduct",
+        "type": "string",
+        "default": "reader",
+        "purpose": "current_product_surface"
+      },
+      {
+        "name": "authPage",
+        "type": "string|null",
+        "default": null,
+        "purpose": "active_auth_route"
+      },
+      {
+        "name": "debug",
+        "type": "boolean",
+        "default": false,
+        "purpose": "internal_debug_mode"
+      },
+      {
+        "name": "startupRouteProduct",
+        "type": "string|null",
+        "default": null,
+        "purpose": "startup_route_product"
+      },
+      {
+        "name": "startupRouteWorkspace",
+        "type": "string|null",
+        "default": null,
+        "purpose": "startup_route_workspace"
+      },
+      {
+        "name": "readerWorkspace",
+        "type": "landing|read",
+        "default": "landing",
+        "purpose": "reader_workspace_mode"
+      },
+      {
+        "name": "lastReaderView",
+        "type": "experience|storybook|backstage",
+        "default": "experience",
+        "purpose": "pre_backstage_reader_view"
+      }
+    ]
+  },
+  "reader_shell_state": {
+    "fields": [
+      {
+        "name": "worldId",
+        "type": "string|null",
+        "default": null,
+        "purpose": "current_world_id"
+      },
+      {
+        "name": "worldVersionId",
+        "type": "string|null",
+        "default": null,
+        "purpose": "current_world_version_id"
+      },
+      {
+        "name": "readerId",
+        "type": "string",
+        "default": "reader_demo",
+        "purpose": "reader_or_account_identifier"
+      },
+      {
+        "name": "readerAuthSession",
+        "type": "object|null",
+        "default": null,
+        "purpose": "reader_auth_session"
+      },
+      {
+        "name": "sessionId",
+        "type": "string|null",
+        "default": null,
+        "purpose": "active_reader_session"
+      },
+      {
+        "name": "currentBundle",
+        "type": "object|null",
+        "default": null,
+        "purpose": "active_example_or_world_bundle"
+      },
+      {
+        "name": "sessionLibrary",
+        "type": "array",
+        "default": [],
+        "purpose": "restorable_reader_sessions"
+      },
+      {
+        "name": "authoredWorkLibrary",
+        "type": "array",
+        "default": [],
+        "purpose": "author_work_jump_list"
+      },
+      {
+        "name": "currentState",
+        "type": "object|null",
+        "default": null,
+        "purpose": "current_narrative_state"
+      },
+      {
+        "name": "latestStep",
+        "type": "object|null",
+        "default": null,
+        "purpose": "latest_successful_reader_step"
+      },
+      {
+        "name": "latestStepFailure",
+        "type": "object|null",
+        "default": null,
+        "purpose": "latest_failed_reader_step"
+      },
+      {
+        "name": "continuityContract",
+        "type": "object|null",
+        "default": null,
+        "purpose": "reader_continuity_contract"
+      },
+      {
+        "name": "intentPrefill",
+        "type": "object|null",
+        "default": null,
+        "purpose": "reader_prefill_payload"
+      },
+      {
+        "name": "replay",
+        "type": "object|null",
+        "default": null,
+        "purpose": "reader_replay_payload"
+      },
+      {
+        "name": "sessionMedia",
+        "type": "object",
+        "default": {
+          "coverImage": "",
+          "atmosphereImage": ""
+        },
+        "purpose": "current_session_cover_and_chapter_illustration_urls"
+      },
+      {
+        "name": "readerEntitlements",
+        "type": "array",
+        "default": [],
+        "purpose": "entitlement_listing"
+      },
+      {
+        "name": "readerSubscription",
+        "type": "object|null",
+        "default": null,
+        "purpose": "subscription_payload"
+      },
+      {
+        "name": "readerCheckoutSession",
+        "type": "object|null",
+        "default": null,
+        "purpose": "latest_checkout_session"
+      },
+      {
+        "name": "pendingCheckoutContext",
+        "type": "object|null",
+        "default": null,
+        "purpose": "checkout_return_restore_context"
+      },
+      {
+        "name": "activeView",
+        "type": "experience|storybook|backstage",
+        "default": "experience",
+        "purpose": "reader_subview"
+      }
+    ]
+  },
+  "invariants": [
+    "When activeProduct is not reader, Reader shell may retain state but must not become the active surface.",
+    "When readerWorkspace is landing, sessionId is optional.",
+    "When readerWorkspace is read, rendering may be driven by latestStep or latestStepFailure or currentBundle plus sessionId.",
+    "sessionMedia.coverImage and sessionMedia.atmosphereImage are progressive enhancement fields; missing image URLs must retain text and gradient fallback rendering.",
+    "When continuityContract.status is payment_required, the shell must preserve the current session path.",
+    "When continuityContract.status is quality_guard_failed, the shell must preserve the current session context and expose a retry path.",
+    "pendingCheckoutContext must be sufficient to restore accountId, sessionId, readerWorkspace, and activeView."
+  ],
+  "legacy_reader_state_fields": [
+    "shelfWorlds",
+    "latestPreview",
+    "selectedIntentOverride",
+    "selectedReplayIndex",
+    "sessionPaywall",
+    "pendingCheckoutSessionId",
+    "pendingCheckoutStatus",
+    "continuityDiagnostics",
+    "activeTone",
+    "activeAuthoredWorkPreview"
+  ]
+}

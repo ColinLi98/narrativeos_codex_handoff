@@ -1,0 +1,22 @@
+config_version: grounding_policies_v1
+policies:
+  reader_continue:
+    status_mode: active
+    sentence_split_pattern: "[。！？!?]"
+    min_supported_token_hits: 2
+    weak_unsupported_claim_max: 1
+    min_confidence_for_pass: 0.7
+    min_confidence_for_weak: 0.15
+    failure_reason_codes:
+      - grounding_missing_support
+      - grounding_contradiction
+  publish_candidate:
+    status_mode: active
+    sentence_split_pattern: "[。！？!?]"
+    min_supported_token_hits: 2
+    weak_unsupported_claim_max: 0
+    min_confidence_for_pass: 0.75
+    min_confidence_for_weak: 0.4
+    failure_reason_codes:
+      - grounding_missing_support
+      - grounding_contradiction

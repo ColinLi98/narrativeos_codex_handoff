@@ -6,12 +6,16 @@ from fastapi.testclient import TestClient
 from src.narrativeos.api import create_app
 from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.services.billing import BillingService
+from src.narrativeos.services.auth import AuthService
 from src.narrativeos.services.governance import GovernanceService
 
 
 def test_governance_case_workflow_tracks_owner_due_evidence_and_transition_rules(tmp_path: Path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "governance_workflow.db"))
     billing = BillingService(repository)
+    auth = AuthService(repository)
+    auth.register_identity(actor_id="ops_triage", actor_role="ops", password="secret123", account_id="ops_triage")
+    auth.register_identity(actor_id="ops_owner", actor_role="ops", password="secret123", account_id="ops_owner")
     governance = GovernanceService(repository, billing_service=billing)
 
     case = governance.create_case(

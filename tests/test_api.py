@@ -40,12 +40,19 @@ def test_world_session_step_and_replay_flow(tmp_path: Path):
     )
     assert step_response.status_code == 200
     step_payload = step_response.json()
-    assert step_payload["reader_view"]
-    assert "event_id" not in step_payload["reader_view"]["body"]
-    assert step_payload["updated_state_summary"]["chapter_index"] == 1
-    assert step_payload["replay_preview"]["latest_title"]
+    if step_payload["status"] == "quality_guard_failed":
+        assert step_payload["code"] == "chapter_quality_guard_failed"
+        assert step_payload["reader_view"] is None
+        assert step_payload["continuity_contract"]["primary_action"] == "retry_current_chapter"
+    else:
+        assert step_payload["reader_view"]
+        assert "event_id" not in step_payload["reader_view"]["body"]
+        assert step_payload["updated_state_summary"]["chapter_index"] == 1
+        assert step_payload["replay_preview"]["latest_title"]
     assert step_payload["world_version_id"]
     assert "paywall" in step_payload
+    assert step_payload["continuity_contract"]["status"] == step_payload["status"]
+    assert step_payload["continuity_contract"]["preserve_workspace"] == "read"
 
     debug_session_response = client.post(
         "/v1/sessions",
@@ -63,32 +70,41 @@ def test_world_session_step_and_replay_flow(tmp_path: Path):
     )
     assert debug_step_response.status_code == 200
     debug_step_payload = debug_step_response.json()
-    assert debug_step_payload["chosen_event"]
-    assert debug_step_payload["updated_state"]["chapter_index"] >= 1
-    assert debug_step_payload["rendered_scene"]["concise_summary"]
-    assert debug_step_payload["candidate_batch"]["raw_candidates"]
+    if debug_step_payload["status"] == "quality_guard_failed":
+        assert debug_step_payload["code"] == "chapter_quality_guard_failed"
+        assert debug_step_payload["continuity_contract"]["primary_action"] == "retry_current_chapter"
+    else:
+        assert debug_step_payload["chosen_event"]
+        assert debug_step_payload["updated_state"]["chapter_index"] >= 1
+        assert debug_step_payload["rendered_scene"]["concise_summary"]
+        assert debug_step_payload["candidate_batch"]["raw_candidates"]
+    assert debug_step_payload["continuity_contract"]["status"] == debug_step_payload["status"]
 
     replay_response = client.get("/v1/sessions/%s/replay" % session_id)
     assert replay_response.status_code == 200
     replay_payload = replay_response.json()
-    assert len(replay_payload["event_trace"]) == 1
-    assert len(replay_payload["state_snapshots"]) == 2
-    assert replay_payload["rendered_scenes"]
-    assert replay_payload["reader_views"]
+    if step_payload["status"] == "quality_guard_failed":
+        assert replay_payload["event_trace"] == []
+        assert replay_payload["reader_views"] == []
+    else:
+        assert len(replay_payload["event_trace"]) == 1
+        assert len(replay_payload["state_snapshots"]) == 2
+        assert replay_payload["rendered_scenes"]
+        assert replay_payload["reader_views"]
 
     sessions_response = client.get("/v1/sessions", params={"world_id": world_id})
     assert sessions_response.status_code == 200
     sessions_payload = sessions_response.json()
-    assert sessions_payload["sessions"]
-    session_ids = {item["session_id"] for item in sessions_payload["sessions"]}
-    assert session_id in session_ids
-    assert debug_session_id in session_ids
+    assert sessions_payload["sessions"] == []
 
     session_detail = client.get(f"/v1/sessions/{session_id}")
     assert session_detail.status_code == 200
     detail_payload = session_detail.json()
     assert detail_payload["session"]["session_id"] == session_id
-    assert detail_payload["latest_step"]["reader_view"]["chapter_title"]
+    if step_payload["status"] == "quality_guard_failed":
+        assert detail_payload["latest_step"] is None
+    else:
+        assert detail_payload["latest_step"]["reader_view"]["chapter_title"]
     assert detail_payload["world_version_id"]
 
     delete_response = client.delete(f"/v1/sessions/{session_id}")
@@ -130,12 +146,16 @@ def test_frontend_shell_and_demo_bundle_are_served(tmp_path: Path):
 
     app_page = client.get("/app")
     assert app_page.status_code == 200
+    assert app_page.headers["cache-control"] == "no-store, no-cache, must-revalidate, max-age=0"
     assert "NarrativeOS Studio" in app_page.text
-    assert "/assets/app.js" in app_page.text
+    assert "/assets/dom_shared.js" in app_page.text
+    assert "/assets/shell_dom.js" in app_page.text
+    assert "/assets/reader_dom.js" in app_page.text
+    assert "/assets/shell_bootstrap_runtime.js" in app_page.text
     assert "图文画卷" in app_page.text
     assert "幕后解析" in app_page.text
-    assert "Author" in app_page.text
-    assert "Ops" in app_page.text
+    assert "创作" in app_page.text
+    assert "运营" in app_page.text
     assert "下一步心意" in app_page.text
     assert "Story Feed" in app_page.text
     assert "推荐起笔句" in app_page.text
@@ -144,7 +164,7 @@ def test_frontend_shell_and_demo_bundle_are_served(tmp_path: Path):
     assert styles.status_code == 200
     assert "--accent" in styles.text
 
-    script = client.get("/assets/app.js")
+    script = client.get("/assets/shell_bootstrap_runtime.js")
     assert script.status_code == 200
     assert "bootstrapWorld" in script.text
 

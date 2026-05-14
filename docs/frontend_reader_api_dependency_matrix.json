@@ -1,0 +1,15 @@
+{
+  "schema_version": "frontend_reader_api_dependency_matrix/v1",
+  "api_dependencies": [
+    {"path": "/v1/library/worlds", "surface": "reader"},
+    {"path": "/v1/library/worlds/{world_id}", "surface": "reader"},
+    {"path": "/v1/reader/sessions", "surface": "reader"},
+    {"path": "/v1/reader/continue", "surface": "reader"},
+    {"path": "/v1/reader/entitlements", "surface": "reader"},
+    {"path": "/v1/reader/subscription", "surface": "reader"},
+    {"path": "/v1/reader/checkout/start", "surface": "reader"},
+    {"path": "/v1/reader/checkout/{checkout_session_id}/complete", "surface": "reader"},
+    {"path": "/v1/sessions/{session_id}/replay", "surface": "reader"},
+    {"path": "/v1/sessions/{session_id}/prefill", "surface": "reader"}
+  ]
+}

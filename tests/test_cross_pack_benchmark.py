@@ -256,6 +256,14 @@ def test_cross_pack_benchmark_composite_ranking_and_delta_changes(tmp_path):
             issue_codes=["Q09"],
             detail_density=0.004,
         ),
+        "tide_archive_memory_debt": _simulation_report(
+            pass_rate=1.0,
+            rewrite_rate=0.0,
+            block_rate=0.0,
+            overall_scores=[0.89, 0.87, 0.86, 0.84],
+            issue_codes=["Q04"],
+            detail_density=0.016,
+        ),
     }
     baseline = run_benchmark(
         repository=repository,
@@ -303,6 +311,14 @@ def test_cross_pack_benchmark_composite_ranking_and_delta_changes(tmp_path):
             overall_scores=[0.92, 0.9, 0.88, 0.86],
             issue_codes=["Q03"],
             detail_density=0.018,
+        ),
+        "tide_archive_memory_debt": _simulation_report(
+            pass_rate=1.0,
+            rewrite_rate=0.0,
+            block_rate=0.0,
+            overall_scores=[0.86, 0.84, 0.82, 0.8],
+            issue_codes=["Q04"],
+            detail_density=0.014,
         ),
     }
     report = run_benchmark(

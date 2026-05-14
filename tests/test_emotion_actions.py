@@ -8,6 +8,6 @@ def test_emotion_actions_differ_across_packs():
     urban = registry.get_runtime_bundle("urban_mystery_lotus_lane@0.1.0")
     jade_beat = type("Beat", (), {"event": jade.event_atoms[0], "dramatic_job": "entry"})()
     urban_beat = type("Beat", (), {"event": urban.event_atoms[0], "dramatic_job": "entry"})()
-    jade_text = compose_emotion_action(jade.world_record.world, jade_beat, repeated=False)
-    urban_text = compose_emotion_action(urban.world_record.world, urban_beat, repeated=False)
+    jade_text = compose_emotion_action(jade.world_record.world, jade.initial_state, jade_beat, repeated=False)
+    urban_text = compose_emotion_action(urban.world_record.world, urban.initial_state, urban_beat, repeated=False)
     assert jade_text != urban_text

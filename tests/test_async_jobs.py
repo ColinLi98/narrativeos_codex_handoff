@@ -15,6 +15,21 @@ from src.narrativeos.services.async_job_adapters import (
 from src.narrativeos.services.async_jobs import AsyncJobService
 
 
+def _ops_headers(client: TestClient, *, actor_id: str = "ops_async_jobs", password: str = "secret123") -> dict[str, str]:
+    client.post(
+        "/v1/auth/register",
+        json={
+            "actor_id": actor_id,
+            "actor_role": "reviewer",
+            "password": password,
+            "account_id": actor_id,
+        },
+    )
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": password})
+    assert login.status_code == 200
+    return {"Authorization": f"Bearer {login.json()['token']['access_token']}"}
+
+
 def test_async_job_service_persists_and_runs_jobs(tmp_path: Path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "async_jobs.db"))
     analytics = AnalyticsService(repository)
@@ -385,16 +400,18 @@ def test_async_job_endpoints_enqueue_and_report_status(tmp_path: Path):
         },
     )
     client = TestClient(app)
+    headers = _ops_headers(client, actor_id="ops_async_jobs_primary")
 
     backup_response = client.post(
         "/v1/ops/jobs/runtime-backups",
         json={"label": "api_async_backup", "output_dir": str(tmp_path / "backups")},
+        headers=headers,
     )
     assert backup_response.status_code == 200
     backup_job = backup_response.json()["job"]
     if backup_job["status"] != "succeeded":
         app.state.async_job_service.run_job(backup_job["job_id"])
-    backup_detail = client.get(f"/v1/ops/jobs/{backup_job['job_id']}")
+    backup_detail = client.get(f"/v1/ops/jobs/{backup_job['job_id']}", headers=headers)
     assert backup_detail.status_code == 200
     assert backup_detail.json()["job"]["job_type"] == "runtime_backup"
     assert backup_detail.json()["job"]["status"] == "succeeded"
@@ -403,118 +420,127 @@ def test_async_job_endpoints_enqueue_and_report_status(tmp_path: Path):
     learned_response = client.post(
         "/v1/ops/jobs/learned-training",
         json={"tracks": ["evaluator"], "requested_by": "ops_async"},
+        headers=headers,
     )
     assert learned_response.status_code == 200
     learned_job = learned_response.json()["job"]
     if learned_job["status"] != "succeeded":
         app.state.async_job_service.run_job(learned_job["job_id"])
-    learned_detail = client.get(f"/v1/ops/jobs/{learned_job['job_id']}")
+    learned_detail = client.get(f"/v1/ops/jobs/{learned_job['job_id']}", headers=headers)
     assert learned_detail.status_code == 200
     assert learned_detail.json()["job"]["status"] == "succeeded"
     assert learned_detail.json()["job"]["result_summary"]["tracks_succeeded"] == ["evaluator"]
 
-    jobs = client.get("/v1/ops/jobs")
+    jobs = client.get("/v1/ops/jobs", headers=headers)
     assert jobs.status_code == 200
     assert jobs.json()["summary"]["job_count"] >= 2
     assert "runtime_backup" in jobs.json()["summary"]["supported_job_types"]
     assert "learned_training" in jobs.json()["summary"]["supported_job_types"]
 
-    incidents = client.get("/v1/ops/jobs/incidents")
+    incidents = client.get("/v1/ops/jobs/incidents", headers=headers)
     assert incidents.status_code == 200
     assert "recommended_action" in incidents.json()
-    boot = client.get("/v1/ops/jobs/boot-reconcile")
+    boot = client.get("/v1/ops/jobs/boot-reconcile", headers=headers)
     assert boot.status_code == 200
     assert "reconciled_count" in boot.json()
-    retention = client.get("/v1/ops/jobs/artifact-retention")
+    retention = client.get("/v1/ops/jobs/artifact-retention", headers=headers)
     assert retention.status_code == 200
     assert "by_status" in retention.json()
-    operator_history = client.get("/v1/ops/jobs/operator-history")
+    operator_history = client.get("/v1/ops/jobs/operator-history", headers=headers)
     assert operator_history.status_code == 200
     assert "by_operator" in operator_history.json()
-    handoff = client.get("/v1/ops/jobs/handoff-bundle")
+    handoff = client.get("/v1/ops/jobs/handoff-bundle", headers=headers)
     assert handoff.status_code == 200
     assert "acknowledgement_summary" in handoff.json()
-    remote_shipping = client.get("/v1/ops/jobs/remote-shipping")
+    remote_shipping = client.get("/v1/ops/jobs/remote-shipping", headers=headers)
     assert remote_shipping.status_code == 200
     assert "by_status" in remote_shipping.json()
     assert "registry" in remote_shipping.json()
-    handoff_sla = client.get("/v1/ops/jobs/handoff-sla")
+    handoff_sla = client.get("/v1/ops/jobs/handoff-sla", headers=headers)
     assert handoff_sla.status_code == 200
     assert "recommended_action" in handoff_sla.json()
-    notification_sinks = client.get("/v1/ops/jobs/notification-sinks")
+    notification_sinks = client.get("/v1/ops/jobs/notification-sinks", headers=headers)
     assert notification_sinks.status_code == 200
     assert "default_sink" in notification_sinks.json()
-    adapter_validation = client.get("/v1/ops/jobs/adapter-config-validation")
+    adapter_validation = client.get("/v1/ops/jobs/adapter-config-validation", headers=headers)
     assert adapter_validation.status_code == 200
     assert "remote_shipping" in adapter_validation.json()
     exported = client.post(
         "/v1/ops/jobs/handoff-bundle/export",
         json={"requested_by": "ops_export", "limit": 10, "output_dir": str(tmp_path / "handoffs")},
+        headers=headers,
     )
     assert exported.status_code == 200
     assert Path(exported.json()["export_path"]).exists()
-    notification_receipts = client.get("/v1/ops/jobs/notification-delivery-receipts")
+    notification_receipts = client.get("/v1/ops/jobs/notification-delivery-receipts", headers=headers)
     assert notification_receipts.status_code == 200
     assert "receipt_count" in notification_receipts.json()
     receipt_id = notification_receipts.json()["latest_receipts"][0]["event_id"]
-    receipt_detail = client.get(f"/v1/ops/jobs/notification-delivery-receipts/{receipt_id}")
+    receipt_detail = client.get(f"/v1/ops/jobs/notification-delivery-receipts/{receipt_id}", headers=headers)
     assert receipt_detail.status_code == 200
     assert receipt_detail.json()["receipt"]["event_id"] == receipt_id
-    adapter_probe = client.get("/v1/ops/jobs/adapter-health-probe")
+    adapter_probe = client.get("/v1/ops/jobs/adapter-health-probe", headers=headers)
     assert adapter_probe.status_code == 200
     assert "status" in adapter_probe.json()
     assert "remote_shipping" in adapter_probe.json()
-    retry_policies = client.get("/v1/ops/jobs/retry-policies")
+    retry_policies = client.get("/v1/ops/jobs/retry-policies", headers=headers)
     assert retry_policies.status_code == 200
     assert "default_policy_id" in retry_policies.json()
     retry_enqueued = client.post(
         "/v1/ops/jobs/notification-retry-queue/enqueue",
         json={"event_id": receipt_id, "requested_by": "ops_retry", "note": "retry receipt"},
+        headers=headers,
     )
     assert retry_enqueued.status_code == 200
-    retry_queue = client.get("/v1/ops/jobs/notification-retry-queue")
+    retry_queue = client.get("/v1/ops/jobs/notification-retry-queue", headers=headers)
     assert retry_queue.status_code == 200
     assert retry_queue.json()["retry_count"] >= 1
     retry_id = retry_queue.json()["retries"][0]["retry_id"]
     retry_processed = client.post(
         f"/v1/ops/jobs/notification-retry-queue/{retry_id}/process",
         json={"requested_by": "ops_retry", "dry_run": True},
+        headers=headers,
     )
     assert retry_processed.status_code == 200
     assert retry_processed.json()["retry"]["status"] == "planned"
-    dead_letters = client.get("/v1/ops/jobs/notification-dead-letter-queue")
+    dead_letters = client.get("/v1/ops/jobs/notification-dead-letter-queue", headers=headers)
     assert dead_letters.status_code == 200
     assert "dead_letter_count" in dead_letters.json()
-    outcomes = client.get("/v1/ops/jobs/retry-outcome-dashboard")
+    outcomes = client.get("/v1/ops/jobs/retry-outcome-dashboard", headers=headers)
     assert outcomes.status_code == 200
     assert "terminal_failure_count" in outcomes.json()
     acknowledged = client.post(
         f"/v1/ops/jobs/{backup_job['job_id']}/acknowledge",
         json={"requested_by": "ops_ack", "note": "taking over backup follow-up"},
+        headers=headers,
     )
     assert acknowledged.status_code == 200
     assert acknowledged.json()["job"]["acknowledged_by"] == "ops_ack"
     remote_ship = client.post(
         f"/v1/ops/jobs/{backup_job['job_id']}/ship-remote",
         json={"requested_by": "ops_ship", "remote_dir": str(tmp_path / "remote_shipments"), "dry_run": False},
+        headers=headers,
     )
     assert remote_ship.status_code == 200
     assert Path(remote_ship.json()["remote_manifest_path"]).exists()
     sla_escalation = client.post(
         "/v1/ops/jobs/handoff-sla/escalate",
         json={"requested_by": "ops_sla", "sla_minutes": 60, "limit": 20, "dry_run": True},
+        headers=headers,
     )
     assert sla_escalation.status_code == 200
     assert "escalated_count" in sla_escalation.json()
     cleanup = client.post(
         "/v1/ops/jobs/enforce-retention",
         json={"requested_by": "ops_cleanup", "dry_run": True, "limit": 10},
+        headers=headers,
     )
     assert cleanup.status_code == 200
     assert "cleaned_job_count" in cleanup.json()
     drill = client.post(
         "/v1/ops/jobs/cold-start-drill",
         json={"requested_by": "ops_drill", "stale_after_minutes": 15, "limit": 10},
+        headers=headers,
     )
     assert drill.status_code == 200
     assert "would_recover_count" in drill.json()
@@ -526,13 +552,19 @@ def test_async_job_endpoints_enqueue_and_report_status(tmp_path: Path):
         lambda job: (_ for _ in ()).throw(RuntimeError("forced_failure")),
     )
     failing_client = TestClient(failing_app)
-    failing_job = failing_client.post("/v1/ops/jobs/runtime-backups", json={"label": "fail_me"}).json()["job"]
+    failing_headers = _ops_headers(failing_client, actor_id="ops_async_jobs_failing")
+    failing_job = failing_client.post(
+        "/v1/ops/jobs/runtime-backups",
+        json={"label": "fail_me"},
+        headers=failing_headers,
+    ).json()["job"]
     if failing_job["status"] != "failed":
         failing_app.state.async_job_service.run_job(failing_job["job_id"])
 
     retry_response = failing_client.post(
         f"/v1/ops/jobs/{failing_job['job_id']}/retry",
         json={"requested_by": "ops_retry"},
+        headers=failing_headers,
     )
     assert retry_response.status_code in {200, 400}
 
@@ -554,12 +586,14 @@ def test_async_job_endpoints_enqueue_and_report_status(tmp_path: Path):
     resume_response = failing_client.post(
         f"/v1/ops/jobs/{stale_job['job_id']}/resume",
         json={"requested_by": "ops_resume", "stale_after_minutes": 15},
+        headers=failing_headers,
     )
     assert resume_response.status_code == 200
 
     recovery_response = failing_client.post(
         "/v1/ops/jobs/recover-incidents",
         json={"requested_by": "ops_recover", "stale_after_minutes": 1, "limit": 5},
+        headers=failing_headers,
     )
     assert recovery_response.status_code == 200
 
@@ -585,10 +619,11 @@ def test_create_app_boot_reconciles_orphaned_running_jobs(tmp_path: Path):
 
     app = create_app(repository=repository)
     with TestClient(app) as client:
-        payload = client.get("/v1/ops/jobs/boot-reconcile")
+        headers = _ops_headers(client, actor_id="ops_async_jobs_boot")
+        payload = client.get("/v1/ops/jobs/boot-reconcile", headers=headers)
         assert payload.status_code == 200
         assert payload.json()["reconciled_count"] >= 1
-        jobs = client.get("/v1/ops/jobs").json()["jobs"]
+        jobs = client.get("/v1/ops/jobs", headers=headers).json()["jobs"]
         target = next(item for item in jobs if item["job_id"] == orphaned["job_id"])
         assert target["status"] == "queued"
         assert target["last_recovery_action"] == "boot_reconciled_orphaned_running_job"

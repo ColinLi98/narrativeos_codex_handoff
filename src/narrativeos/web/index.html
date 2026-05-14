@@ -5,65 +5,141 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NarrativeOS Studio</title>
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/styles.css" />
+    <link rel="stylesheet" href="/assets/styles.css?v=20260409-author-ui-pass2" />
   </head>
   <body>
-    <div class="app-shell" id="app-shell">
+    <a class="skip-link" href="#product-stage">跳到当前工作区</a>
+    <div class="app-shell" id="app-shell" data-product="reader" data-debug="off">
       <header class="topbar">
-        <div class="brand-block">
-          <p class="eyebrow">NarrativeOS</p>
-          <h1>把一句心意，推进成一条命运。</h1>
-          <p class="brand-copy">
-            先挑一个世界，再写下一句你此刻真正想做的事。NarrativeOS 会把它变成下一幕剧情、图文画面和命运走向。
-          </p>
+        <div class="topbar-hero">
+          <div class="brand-block">
+            <p class="eyebrow">NarrativeOS</p>
+            <h1>把一句心意，推进成一条命运。</h1>
+            <p class="brand-copy">
+              让读者更顺地进入故事，让作者与运营更快找到下一步。新的产品壳层会按任务流组织，而不是把全部能力一次性推到眼前。
+            </p>
+          </div>
+
+          <div class="shell-toolbar">
+            <div class="toolbar-group toolbar-group--mode">
+              <span class="toolbar-label">产品视图</span>
+              <div class="segmented-control">
+                <button id="mode-reader" class="segment is-active">阅读</button>
+                <button id="mode-author" class="segment">创作</button>
+                <button id="mode-customer" class="segment is-hidden">客户</button>
+                <button id="mode-ops" class="segment admin-view-only">运营</button>
+              </div>
+            </div>
+
+            <div class="toolbar-group toolbar-group--utility">
+              <span class="toolbar-label">环境与状态</span>
+              <div class="utility-stack">
+                <button id="shell-debug-toggle" class="ghost-action internal-only" type="button" aria-pressed="false">内部模式</button>
+                <div class="status-grid status-grid--compact">
+                  <div class="status-chip">
+                    <span>服务</span>
+                    <strong id="api-status">检测中</strong>
+                  </div>
+                  <div class="status-chip">
+                    <span>当前区域</span>
+                    <strong id="shell-product-status">未登录</strong>
+                  </div>
+                </div>
+                <div id="shell-session-summary" class="session-summary is-hidden">
+                  <div>
+                    <span class="toolbar-label">当前账号</span>
+                    <p id="shell-session-copy" class="toolbar-caption">登录后，这里会显示当前账号与权限。</p>
+                  </div>
+                  <button id="shell-session-logout" class="ghost-action" type="button">退出登录</button>
+                </div>
+                <p id="shell-context-copy" class="toolbar-caption">先进入书架，再开始一段故事；需要时再切换阅读视图。</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="topbar-controls">
-          <div class="toolbar-group toolbar-group--mode">
-            <span class="toolbar-label">产品视图</span>
-            <div class="segmented-control">
-              <button id="mode-reader" class="segment is-active">Reader</button>
-              <button id="mode-author" class="segment">Author</button>
-              <button id="mode-ops" class="segment">Ops</button>
+        <div class="shell-subnav" id="product-subnav">
+          <div>
+            <p id="product-subnav-label" class="toolbar-label">阅读区域</p>
+            <p id="product-subnav-description" class="toolbar-caption">先从书架进入一段旅程，再切到阅读、图文或幕后视图。</p>
+          </div>
+          <div id="product-subnav-actions" class="segmented-control"></div>
+        </div>
+      </header>
+
+      <div id="shell-status-banner" class="status-banner is-hidden" role="status" aria-live="polite"></div>
+      <div id="shell-live-region" class="sr-only" aria-live="polite"></div>
+      <div id="shell-toast-stack" class="toast-stack" aria-live="polite" aria-atomic="false"></div>
+      <div class="sr-only" aria-hidden="true">
+        Story Feed
+      </div>
+      <div id="product-stage"></div>
+
+      <section id="shell-auth-stage" class="shell-auth-stage panel">
+        <div class="shell-auth-hero">
+          <div class="shell-auth-copy">
+            <div>
+              <p class="panel-label">统一登录</p>
+              <h2 id="shell-auth-headline">登录后，进入你的工作区。</h2>
+              <p id="shell-auth-copy" class="panel-copy">
+                新注册账号默认是普通用户。审阅权限由管理员在后台分配，拥有权限的账号登录后会自动看到可审阅内容。
+              </p>
+            </div>
+            <div class="shell-auth-notes">
+              <p>新账号默认进入阅读与创作。</p>
+              <p>审阅权限不在这里选择，由管理员后台分配。</p>
+              <p>同一个账号登录后，会自动展开它实际拥有的能力。</p>
             </div>
           </div>
 
-          <div class="toolbar-group toolbar-group--view">
-            <span class="toolbar-label">体验视角</span>
-            <div class="segmented-control">
-              <button id="view-experience" class="segment is-active">沉浸体验</button>
-              <button id="view-storybook" class="segment">图文画卷</button>
-              <button id="view-backstage" class="segment">幕后解析</button>
+          <div class="shell-auth-panel">
+            <label class="input-label" for="shell-auth-actor-id">账号 / 邮箱</label>
+            <input id="shell-auth-actor-id" class="field-input" type="text" placeholder="输入账号、邮箱或手机号" />
+            <label class="input-label" for="shell-auth-display-name">显示名称</label>
+            <input id="shell-auth-display-name" class="field-input" type="text" placeholder="注册时可填写，可留空" />
+            <label class="input-label" for="shell-auth-password">密码</label>
+            <input id="shell-auth-password" class="field-input" type="password" placeholder="输入密码" />
+            <div class="composer-actions">
+              <button id="shell-auth-register" class="ghost-action" type="button">注册并登录</button>
+              <button id="shell-auth-login" class="primary-action" type="button">登录</button>
+              <button id="shell-auth-logout" class="ghost-action" type="button">退出登录</button>
+            </div>
+            <p id="shell-auth-role-summary" class="field-hint">注册会默认创建普通用户账号；如果管理员后续赋予审阅权限，登录时会自动进入对应能力。</p>
+            <div id="shell-auth-status" class="list-stack empty-state">登录后，这里会说明你当前可以进入哪些区域。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="auth-route-stage" class="panel auth-route-stage is-hidden">
+        <div class="panel-head">
+          <p class="panel-label">邮箱账号</p>
+          <h2>邮箱登录与邮件验证</h2>
+        </div>
+        <div id="auth-route-content" class="auth-route-content"></div>
+      </section>
+
+      <section id="reader-landing" class="landing-shell">
+        <div class="landing-hero panel">
+          <div class="landing-copy">
+            <p class="panel-label">阅读首页</p>
+            <h2>先回到你的书架，再决定这次从哪条命运线切入。</h2>
+            <p class="panel-copy">
+              入口只保留三件事：继续上次旅程、浏览世界、从当前世界开始新旅程。读者不需要先看后台控制项，先进入故事就够了。
+            </p>
+            <div class="landing-context">
+              <span class="landing-context-label">当前上下文</span>
+              <p id="reader-landing-summary" class="landing-context-copy">正在整理你可继续的旅程、当前世界和 reader 身份。</p>
+            </div>
+            <div class="landing-actions">
+              <button id="reader-jump-sessions" class="primary-action" type="button">继续上次旅程</button>
+              <button id="reader-jump-worlds" class="ghost-action" type="button">浏览世界</button>
+              <button id="reader-jump-authored-works" class="ghost-action" type="button">我的作品</button>
+              <button id="reader-start-current-world" class="ghost-action" type="button">开始新旅程</button>
             </div>
           </div>
 
-          <div class="toolbar-group toolbar-group--worlds">
-            <div class="toolbar-row">
-              <div>
-                <p class="toolbar-label">选择世界</p>
-                <p class="toolbar-caption">挑一个命题和气味完全不同的世界。</p>
-              </div>
-            </div>
-            <div id="world-gallery" class="world-gallery"></div>
-          </div>
-
-          <div class="toolbar-group toolbar-group--sessions">
-            <div class="toolbar-row">
-              <div>
-                <p class="toolbar-label">继续旅程</p>
-                <p class="toolbar-caption">回到你上一次停下来的那一幕。</p>
-              </div>
-            </div>
-            <div id="session-library" class="session-library"></div>
-          </div>
-
-          <div class="toolbar-group toolbar-group--status">
-            <span class="toolbar-label">当前状态</span>
+          <div class="landing-status">
             <div class="status-grid">
-              <div class="status-chip">
-                <span>服务</span>
-                <strong id="api-status">检测中</strong>
-              </div>
               <div class="status-chip">
                 <span>回合</span>
                 <strong id="turn-status">-</strong>
@@ -76,10 +152,46 @@
                 <span>旅程</span>
                 <strong id="session-status">未创建</strong>
               </div>
+              <div class="status-chip">
+                <span>当前账号</span>
+                <strong id="shell-reader-id">游客</strong>
+              </div>
             </div>
           </div>
         </div>
-      </header>
+
+        <div class="landing-grid">
+          <section class="toolbar-group toolbar-group--worlds landing-panel">
+            <div class="toolbar-row">
+              <div>
+                <p class="toolbar-label">浏览世界</p>
+                <p class="toolbar-caption">先看命题、气味与准入层级，再决定是否进入。</p>
+              </div>
+            </div>
+            <div id="world-gallery" class="world-gallery"></div>
+          </section>
+
+          <section class="toolbar-group toolbar-group--sessions landing-panel">
+            <div class="toolbar-row">
+              <div>
+                <p class="toolbar-label">继续旅程</p>
+                <p class="toolbar-caption">优先回到你停下来的那一幕，而不是重新找入口。</p>
+              </div>
+            </div>
+            <div id="session-library" class="session-library"></div>
+          </section>
+
+          <section class="toolbar-group toolbar-group--authored landing-panel">
+            <div class="toolbar-row">
+              <div>
+                <p class="toolbar-label">我的作品</p>
+                <p class="toolbar-caption">把你自己创作出的章节像读书一样单独摊开看，不必回到编辑表单里找正文。</p>
+              </div>
+            </div>
+            <div id="reader-authored-work-library" class="session-library"></div>
+          </section>
+        </div>
+      </section>
 
       <section class="featured-world panel">
         <div class="featured-world-copy">
@@ -88,6 +200,10 @@
           <p id="featured-world-copy" class="panel-copy">
             你会在这里看到这个世界的主命题、情绪底色，以及这一轮旅程最适合怎样推进。
           </p>
+          <div class="featured-world-actions">
+            <button id="reader-featured-start" class="primary-action" type="button">从这个世界开始</button>
+            <button id="reader-return-landing" class="ghost-action" type="button">返回书架</button>
+          </div>
         </div>
         <div class="featured-world-meta">
           <div class="featured-world-chip">
@@ -99,6 +215,18 @@
             <strong id="featured-world-hook">-</strong>
           </div>
         </div>
+      </section>
+
+      <section id="reader-shell-v2" class="reader-shell-v2 is-hidden">
+        <div class="reader-shell-v2__hero panel">
+          <div class="reader-shell-v2__copy">
+            <p class="panel-label">Reader Shell v2</p>
+            <h2 id="reader-shell-v2-title">先进入故事，再决定往哪边偏。</h2>
+            <p id="reader-shell-v2-copy" class="panel-copy">新的 Reader shell 会把书架、章节、续读与解锁路径放到更清楚的一层，不把 Author / Ops 的语义压到阅读首页。</p>
+          </div>
+          <div id="reader-shell-v2-status" class="status-grid"></div>
+        </div>
+        <div id="reader-shell-v2-body" class="reader-shell-v2__body"></div>
       </section>
 
       <main id="reader-shell" class="workspace">
@@ -162,22 +290,41 @@
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">访问权益</p>
-              <h2>Membership & Wallet</h2>
+              <p class="panel-label">会员与权益</p>
+              <h2>解锁与访问状态</h2>
             </div>
-            <label class="input-label" for="reader-id-input">Reader ID</label>
-            <input id="reader-id-input" class="field-input" type="text" placeholder="reader_demo" />
+            <p id="reader-access-note" class="panel-copy">默认只展示当前访问状态；真正需要解锁时，会在阅读流程中直接提示。</p>
+            <div id="reader-auth-controls">
+              <label class="input-label" for="reader-auth-actor-id">邮箱</label>
+              <input id="reader-auth-actor-id" class="field-input" type="email" placeholder="请输入注册邮箱" />
+              <label class="input-label" for="reader-auth-display-name">显示名称</label>
+              <input id="reader-auth-display-name" class="field-input" type="text" placeholder="可选" />
+              <label class="input-label" for="reader-auth-password">密码</label>
+              <input id="reader-auth-password" class="field-input" type="password" placeholder="输入密码" />
+              <div class="composer-actions">
+                <button id="reader-auth-register" class="ghost-action" type="button">注册</button>
+                <button id="reader-auth-login" class="primary-action" type="button">登录</button>
+                <button id="reader-auth-logout" class="ghost-action" type="button">退出登录</button>
+              </div>
+              <div class="composer-actions">
+                <button id="reader-auth-request-verification" class="ghost-action" type="button">发送验证邮件</button>
+                <button id="reader-auth-request-password-reset" class="ghost-action" type="button">发送重置邮件</button>
+              </div>
+            </div>
+            <div id="reader-auth-status" class="list-stack empty-state">这里会显示当前账号信息与会员状态。</div>
+            <label class="input-label internal-only" for="reader-id-input">阅读身份 ID</label>
+            <input id="reader-id-input" class="field-input internal-only" type="text" placeholder="reader_demo" />
             <div class="state-grid">
               <div>
                 <span>当前权益</span>
-                <strong id="reader-entitlement-type">trial</strong>
+                <strong id="reader-entitlement-type">试读</strong>
               </div>
               <div>
                 <span>订阅状态</span>
-                <strong id="reader-subscription-status">inactive</strong>
+                <strong id="reader-subscription-status">未订阅</strong>
               </div>
               <div>
-                <span>Story Credits</span>
+                <span>故事点数</span>
                 <strong id="reader-credit-balance">-</strong>
               </div>
               <div>
@@ -186,44 +333,71 @@
               </div>
               <div>
                 <span>当前原因</span>
-                <strong id="reader-entitlement-reason">trial_chapter</strong>
+                <strong id="reader-entitlement-reason">试读章节</strong>
               </div>
             </div>
-            <label class="input-label" for="grant-entitlement-type">授予测试权益</label>
-            <select id="grant-entitlement-type" class="field-select">
-              <option value="story_credits">story_credits</option>
-              <option value="world_pass">world_pass</option>
-              <option value="play_pass">play_pass</option>
-              <option value="creator_pass">creator_pass</option>
-              <option value="studio_pass">studio_pass</option>
-            </select>
-            <label class="input-label" for="grant-entitlement-balance">Credits 数量</label>
-            <input id="grant-entitlement-balance" class="field-input" type="number" min="1" step="1" value="3" />
-            <div class="composer-actions">
-              <button id="reader-refresh-entitlements" class="ghost-action">刷新权益</button>
-              <button id="reader-grant-entitlement" class="primary-action">授予测试权益</button>
-              <button id="reader-start-checkout" class="ghost-action">开始 Web Checkout</button>
-              <button id="reader-retry-payment" class="ghost-action">Retry Payment</button>
-              <button id="reader-renew-subscription" class="ghost-action">Renew Subscription</button>
-              <button id="reader-cancel-subscription" class="ghost-action">Cancel At Period End</button>
+            <div id="reader-debug-tools" class="reader-debug-tools internal-only">
+              <label class="input-label" for="grant-entitlement-type">授予测试权益</label>
+              <select id="grant-entitlement-type" class="field-select">
+                <option value="story_credits">story_credits</option>
+                <option value="world_pass">world_pass</option>
+                <option value="play_pass">play_pass</option>
+                <option value="creator_pass">creator_pass</option>
+                <option value="studio_pass">studio_pass</option>
+              </select>
+              <label class="input-label" for="grant-entitlement-balance">点数数量</label>
+              <input id="grant-entitlement-balance" class="field-input" type="number" min="1" step="1" value="3" />
+              <div class="composer-actions">
+                <button id="reader-refresh-entitlements" class="ghost-action" type="button">刷新权益</button>
+                <button id="reader-grant-entitlement" class="primary-action" type="button">授予测试权益</button>
+                <button id="reader-start-checkout" class="ghost-action" type="button">发起支付调试</button>
+                <button id="reader-manage-subscription" class="ghost-action" type="button">打开订阅管理</button>
+                <button id="reader-retry-payment" class="ghost-action" type="button">重试扣款</button>
+                <button id="reader-renew-subscription" class="ghost-action" type="button">续费订阅</button>
+                <button id="reader-cancel-subscription" class="ghost-action" type="button">到期取消</button>
+              </div>
             </div>
-            <div id="reader-entitlement-list" class="list-stack empty-state">这里会显示当前 reader 的 entitlement 列表。</div>
-            <div id="reader-membership-offers" class="list-stack empty-state">这里会显示 Play / Creator / Studio Pass 的方案与 checkout 入口。</div>
-            <div id="reader-checkout-status" class="list-stack empty-state">这里会显示最近一次 checkout 创建结果。</div>
+            <div id="reader-entitlement-list" class="list-stack empty-state">这里会显示当前会员权益与剩余点数。</div>
+            <div id="reader-membership-offers" class="list-stack empty-state">这里会显示当前可选的会员方案与解锁入口。</div>
+            <div id="reader-checkout-status" class="list-stack empty-state">这里会显示最近一次支付状态。</div>
           </section>
         </aside>
 
         <section class="stage">
           <section id="experience-view" class="view-pane">
-          <section id="chapter-panel" class="panel result-panel">
+            <section id="chapter-panel" class="panel result-panel">
               <div class="panel-head">
-                <p class="panel-label">Story Feed</p>
+                <p class="panel-label">章节正文</p>
                 <h2 id="chosen-event-title">章节会按时间顺序落在这里</h2>
               </div>
+              <span class="sr-only">Story Feed</span>
               <p id="best-route" class="best-route">旧章会保留在上方，新章会继续往下接。</p>
               <div id="story-feed" class="story-feed empty-state">
                 载入 world 并执行一步后，这里会按时间顺序出现连续章节。
               </div>
+              <section id="reader-quality-feedback-panel" class="panel panel-subtle">
+                <div class="panel-head">
+                  <p class="panel-label">阅读反馈</p>
+                  <h3>这一章对你有用吗</h3>
+                </div>
+                <label class="input-label" for="reader-quality-feedback-reason">反馈原因</label>
+                <select id="reader-quality-feedback-reason" class="field-select">
+                  <option value="">可选：选择一个原因</option>
+                  <option value="incorrect">incorrect</option>
+                  <option value="incomplete">incomplete</option>
+                  <option value="irrelevant">irrelevant</option>
+                  <option value="unsafe">unsafe</option>
+                  <option value="bad_style">bad_style</option>
+                  <option value="unsupported_claim">unsupported_claim</option>
+                  <option value="not_useful">not_useful</option>
+                </select>
+                <label class="input-label" for="reader-quality-feedback-note">补充说明</label>
+                <textarea id="reader-quality-feedback-note" class="field-input" rows="3" placeholder="可选：补充一点主观感受或具体问题。"></textarea>
+                <div class="composer-actions">
+                  <button id="reader-quality-feedback-positive" class="ghost-action" type="button">👍 有帮助</button>
+                  <button id="reader-quality-feedback-negative" class="ghost-action" type="button">👎 没帮助</button>
+                </div>
+              </section>
               <div id="paywall-banner" class="paywall-banner is-hidden">
                 <p id="paywall-banner-copy">当前章节需要更高访问权限。</p>
                 <div class="composer-actions">
@@ -272,10 +446,11 @@
                 placeholder="例如：我想先试探她的态度，再决定是否顺从家族安排。"
               ></textarea>
               <div class="composer-actions">
-                <button id="preview-route" class="ghost-action" disabled>看看接下来</button>
-                <button id="step-session" class="primary-action" disabled>推进这一幕</button>
-                <button id="reset-output" class="ghost-action">重新整理</button>
+                <button id="preview-route" class="ghost-action" type="button" disabled>看看接下来</button>
+                <button id="step-session" class="primary-action" type="button" disabled>推进这一幕</button>
+                <button id="reset-output" class="ghost-action" type="button">重新整理</button>
               </div>
+              <p id="reader-composer-hint" class="field-hint">先从书架进入一个世界，系统才能真正预览命运分岔。</p>
             </section>
 
             <section id="route-preview-panel" class="panel preview-panel">
@@ -300,9 +475,16 @@
                   </p>
                 </div>
               </div>
-              <blockquote id="story-quote" class="story-quote">
-                当故事开始流动，这里会出现一句最能代表这一幕的引句。
-              </blockquote>
+              <section class="story-section">
+                <p class="panel-label">前情提要</p>
+                <p id="story-recap" class="story-recap">当你进入章节后，这里会先把上一章到这一章之间真正重要的变化说清楚。</p>
+              </section>
+              <section class="story-section">
+                <p class="panel-label">本章引句</p>
+                <blockquote id="story-quote" class="story-quote">
+                  当故事开始流动，这里会出现一句最能代表这一幕的引句。
+                </blockquote>
+              </section>
               <div class="story-meta">
                 <div>
                   <span>画面气息</span>
@@ -313,15 +495,24 @@
                   <strong id="story-motif">-</strong>
                 </div>
               </div>
-              <div id="story-beats" class="story-beats empty-state">
-                这里会显示这一幕最值得抓住的三个节拍。
-              </div>
-              <div id="story-details" class="story-details empty-state">
-                这里会显示画面中的气味、动作和情绪提示。
-              </div>
-              <article id="story-prose" class="rendered-scene">
-                这里会显示图文版本对应的 prose。
-              </article>
+              <section class="story-section">
+                <p class="panel-label">章节正文</p>
+                <article id="story-prose" class="rendered-scene">
+                  这里会显示图文版本对应的 prose。
+                </article>
+              </section>
+              <section class="story-section">
+                <p class="panel-label">关键节拍</p>
+                <div id="story-beats" class="story-beats empty-state">
+                  这里会显示这一幕最值得抓住的三个节拍。
+                </div>
+              </section>
+              <section class="story-section">
+                <p class="panel-label">情绪与画面标签</p>
+                <div id="story-details" class="story-details empty-state">
+                  这里会显示画面中的气味、动作和情绪提示。
+                </div>
+              </section>
             </section>
 
             <section class="panel story-sequence-panel">
@@ -339,8 +530,13 @@
         <aside id="backstage-view" class="rail rail-right is-hidden">
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">幕后解析</p>
-              <h2>命运候选</h2>
+              <div class="panel-head-row">
+                <div>
+                  <p class="panel-label">幕后解析</p>
+                  <h2>命运候选</h2>
+                </div>
+                <button id="reader-backstage-close" class="ghost-action backstage-close" type="button">返回阅读</button>
+              </div>
             </div>
             <p id="candidate-summary" class="panel-copy">
               执行一次 preview 或 step 后，这里会显示 raw candidates、legal candidates 和 score 排序结果。
@@ -370,15 +566,15 @@
         <section class="stage">
           <section class="panel stage-panel">
             <div class="panel-head">
-              <p class="panel-label">Author Studio</p>
-              <h2>选题材，写 brief，生成自己的世界草稿</h2>
+              <p class="panel-label">创作台</p>
+              <h2 id="author-stage-title">选题材，写 brief，生成自己的世界草稿</h2>
             </div>
-            <p class="panel-copy">
-              这里提供两条作者路径：你可以从当前世界复制 Draft，也可以直接选择题材、填写故事 brief，生成新的 world pack 草稿。
+            <p id="author-stage-copy" class="panel-copy">
+              这里提供两条创作路径：你可以从当前世界复制草稿，也可以直接选择题材、填写故事灵感，生成新的世界草稿。
             </p>
             <div id="author-summary-strip" class="commerce-strip">
               <div class="commerce-chip">
-                <span>当前 Draft</span>
+                <span>当前草稿</span>
                 <strong id="author-active-draft">-</strong>
               </div>
               <div class="commerce-chip">
@@ -390,219 +586,293 @@
                 <strong id="author-simulation-chapters">0</strong>
               </div>
               <div class="commerce-chip">
-                <span>当前 Tier</span>
+                <span>当前方案</span>
                 <strong id="author-tier">-</strong>
               </div>
               <div class="commerce-chip">
-                <span>Studio Credits</span>
+                <span>创作点数</span>
                 <strong id="author-studio-credits">-</strong>
               </div>
               <div class="commerce-chip">
-                <span>Brief Access</span>
+                <span>起稿权限</span>
                 <strong id="author-brief-access">-</strong>
               </div>
               <div class="commerce-chip">
-                <span>Simulate Access</span>
+                <span>诊断权限</span>
                 <strong id="author-simulate-access">-</strong>
               </div>
             </div>
-            <label class="input-label" for="author-account-id">Author Account ID</label>
-            <input id="author-account-id" class="field-input" type="text" value="web_author" />
-            <div class="composer-actions">
-              <button id="author-create-draft-from-brief" class="primary-action">根据 Brief 生成 Draft</button>
-              <button id="author-create-draft" class="ghost-action">从当前世界复制 Draft</button>
+            <div id="author-guided-focus" class="list-stack empty-state">这里会显示当前草稿的推荐下一步、阻塞和最合适的工作入口。</div>
+            <label class="input-label internal-only" for="author-account-id">创作账号 ID</label>
+            <input id="author-account-id" class="field-input internal-only" type="text" placeholder="登录后会自动带入账号 ID" />
+            <p class="field-hint">总览只回答三件事：当前在处理哪个草稿、卡在哪一步、下一步该去哪里。真正的起稿动作放到起稿区里。</p>
+            <div class="composer-actions author-stage-actions">
               <button id="author-refresh" class="ghost-action">刷新作者面板</button>
             </div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Workflow</p>
+              <p class="panel-label">创作主线</p>
               <h2>主路径引导</h2>
             </div>
-            <div id="author-workflow" class="list-stack empty-state">这里会显示 brief -> draft -> simulate -> revise -> submit 的当前阶段与建议动作。</div>
+            <div id="author-workflow" class="list-stack empty-state">这里会显示当前阶段、建议动作与下一步去哪里处理。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Auth Session</p>
-              <h2>作者登录 / Token 会话</h2>
+              <p class="panel-label">账号与登录</p>
+              <h2>创作账号</h2>
             </div>
-            <label class="input-label" for="author-auth-actor-id">Actor ID</label>
-            <input id="author-auth-actor-id" class="field-input" type="text" value="web_author" />
-            <label class="input-label" for="author-auth-role">Actor Role</label>
-            <select id="author-auth-role" class="field-select">
-              <option value="author">author</option>
-              <option value="reviewer">reviewer</option>
-            </select>
-            <label class="input-label" for="author-auth-display-name">Display Name</label>
-            <input id="author-auth-display-name" class="field-input" type="text" placeholder="可选" />
-            <label class="input-label" for="author-auth-password">Password</label>
-            <input id="author-auth-password" class="field-input" type="password" placeholder="输入密码" />
-            <div class="composer-actions">
-              <button id="author-auth-register" class="ghost-action">Register</button>
-              <button id="author-auth-login" class="primary-action">Login</button>
-              <button id="author-auth-logout" class="ghost-action">Logout</button>
+            <p class="panel-copy">先确认当前是谁在工作、账号是否可用，再继续后面的通知和协作设置。</p>
+            <div id="author-settings-summary" class="list-stack empty-state">这里会先显示登录状态、通知状态和协作状态摘要。</div>
+            <div id="author-auth-form">
+              <label class="input-label" for="author-auth-actor-id">账号 / 邮箱</label>
+              <input id="author-auth-actor-id" class="field-input" type="text" placeholder="请输入手机号或邮箱" />
+              <label class="input-label internal-only" for="author-auth-role">账号角色</label>
+              <select id="author-auth-role" class="field-select internal-only">
+                <option value="author">author</option>
+                <option value="reviewer">reviewer</option>
+              </select>
+              <label class="input-label" for="author-auth-display-name">显示名称</label>
+              <input id="author-auth-display-name" class="field-input" type="text" placeholder="可选" />
+              <label class="input-label" for="author-auth-password">密码</label>
+              <input id="author-auth-password" class="field-input" type="password" placeholder="输入密码" />
+              <div class="composer-actions">
+                <button id="author-auth-register" class="ghost-action">注册</button>
+                <button id="author-auth-login" class="primary-action">登录</button>
+                <button id="author-auth-logout" class="ghost-action">退出登录</button>
+              </div>
             </div>
-            <div id="author-auth-status" class="list-stack empty-state">这里会显示当前 bearer token 会话与身份信息。</div>
+            <div id="author-auth-status" class="list-stack empty-state">这里会显示当前账号信息与登录状态。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Notification Settings</p>
+              <p class="panel-label">通知设置</p>
               <h2>通知设置</h2>
             </div>
-            <label class="input-label" for="author-draft-watcher-id">Draft Watcher ID</label>
-            <input id="author-draft-watcher-id" class="field-input" type="text" placeholder="可选：添加或移除 draft watcher" />
-            <div class="composer-actions">
-              <button id="author-add-draft-watcher" class="ghost-action">Add Draft Watcher</button>
-              <button id="author-remove-draft-watcher" class="ghost-action">Remove Draft Watcher</button>
+            <p class="panel-copy">这里决定哪些消息会送到作者、通过什么渠道送、以及最终发到哪里。</p>
+            <label class="input-label internal-only" for="author-draft-watcher-id">关注人 ID</label>
+            <input id="author-draft-watcher-id" class="field-input internal-only" type="text" placeholder="可选：添加或移除关注人" />
+            <div class="composer-actions internal-only">
+              <button id="author-add-draft-watcher" class="ghost-action">添加关注人</button>
+              <button id="author-remove-draft-watcher" class="ghost-action">移除关注人</button>
             </div>
-            <label class="input-label" for="author-notification-pref-type">Notification Preference</label>
+            <label class="input-label" for="author-notification-pref-type">通知类型</label>
             <select id="author-notification-pref-type" class="field-select">
-              <option value="thread_assigned">thread_assigned</option>
-              <option value="thread_mentioned">thread_mentioned</option>
-              <option value="thread_updated">thread_updated</option>
-              <option value="approval_requested">approval_requested</option>
-              <option value="approval_decision">approval_decision</option>
+              <option value="thread_assigned">分配给我</option>
+              <option value="thread_mentioned">提到我</option>
+              <option value="thread_updated">线程更新</option>
+              <option value="approval_requested">收到审阅请求</option>
+              <option value="approval_decision">审阅结果</option>
             </select>
-            <label class="input-label" for="author-notification-pref-in-app">In-App Enabled</label>
+            <label class="input-label" for="author-notification-pref-in-app">站内通知</label>
             <input id="author-notification-pref-in-app" type="checkbox" checked />
-            <label class="input-label" for="author-notification-pref-async">Async Mirror Enabled</label>
+            <label class="input-label" for="author-notification-pref-async">异步提醒</label>
             <input id="author-notification-pref-async" type="checkbox" checked />
-            <label class="input-label" for="author-notification-pref-sink">External Channel</label>
+            <label class="input-label" for="author-notification-pref-sink">提醒渠道</label>
             <select id="author-notification-pref-sink" class="field-select">
-              <option value="default">default</option>
-              <option value="email">email</option>
-              <option value="slack">slack</option>
+              <option value="default">默认</option>
+              <option value="email">邮件</option>
+              <option value="slack">Slack</option>
             </select>
-            <label class="input-label" for="author-notification-pref-target">Delivery Target</label>
+            <label class="input-label" for="author-notification-pref-target">送达位置</label>
             <input id="author-notification-pref-target" class="field-input" type="text" placeholder="例如：user@example.com 或 #editorial-alerts" />
             <div class="composer-actions">
-              <button id="author-refresh-notification-preferences" class="ghost-action">Refresh Preferences</button>
-              <button id="author-save-notification-preference" class="ghost-action">Save Preference</button>
+              <button id="author-refresh-notification-preferences" class="ghost-action">刷新通知设置</button>
+              <button id="author-save-notification-preference" class="ghost-action">保存通知设置</button>
             </div>
-            <div id="author-notification-preferences" class="list-stack empty-state">这里会显示当前 actor 的 notification preferences。</div>
+            <div id="author-notification-preferences" class="list-stack empty-state">这里会显示当前账号的通知设置。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Create From Brief</p>
+              <p class="panel-label">从灵感起稿</p>
               <h2>题材与内容设定</h2>
             </div>
-            <label class="input-label" for="author-genre-preset">题材预设</label>
-            <select id="author-genre-preset" class="field-select"></select>
-            <label class="input-label" for="author-world-title">世界标题</label>
-            <input id="author-world-title" class="field-input" type="text" placeholder="例如：旧巷回潮" />
-            <label class="input-label" for="author-lead-name">主角名</label>
-            <input id="author-lead-name" class="field-input" type="text" placeholder="例如：江屹" />
-            <label class="input-label" for="author-counterpart-name">对手 / 关键关系名</label>
-            <input id="author-counterpart-name" class="field-input" type="text" placeholder="例如：周岚" />
-            <label class="input-label" for="author-supporting-name">辅助角色名（可选）</label>
-            <input id="author-supporting-name" class="field-input" type="text" placeholder="例如：老夫人 / 师兄 / 搭档" />
-            <label class="input-label" for="author-life-theme">核心命题</label>
-            <input id="author-life-theme" class="field-input" type="text" placeholder="例如：真话是否值得承担失去" />
-            <label class="input-label" for="author-core-premise">故事 brief</label>
-            <textarea id="author-core-premise" rows="5" placeholder="写下你想讲的题材、关系、冲突、基调。"></textarea>
-            <label class="input-label" for="author-locations">主要地点</label>
-            <textarea id="author-locations" rows="3" placeholder="每行一个地点，例如：旧巷&#10;便利店门口&#10;天桥下"></textarea>
+            <div class="author-workspace-hero">
+              <p class="author-guided-kicker">起稿面板</p>
+              <h3>先把今天要打磨的世界起出来</h3>
+              <p class="panel-copy">先填写世界、关系、命题和氛围。等草稿真正生成以后，再去创作台和问题诊断里补更深的内容与证据。</p>
+            </div>
+            <div class="author-form-grid">
+              <section class="author-form-group">
+                <p class="author-form-group-title">世界与关系</p>
+                <p class="author-form-group-copy">先把世界名字、题材和最关键的两个人物定下来。</p>
+                <label class="input-label" for="author-genre-preset">题材预设</label>
+                <select id="author-genre-preset" class="field-select"></select>
+                <label class="input-label" for="author-world-title">世界标题</label>
+                <input id="author-world-title" class="field-input" type="text" placeholder="例如：旧巷回潮" />
+                <label class="input-label" for="author-lead-name">主角名</label>
+                <input id="author-lead-name" class="field-input" type="text" placeholder="例如：江屹" />
+                <label class="input-label" for="author-counterpart-name">关键关系名</label>
+                <input id="author-counterpart-name" class="field-input" type="text" placeholder="例如：周岚" />
+                <label class="input-label" for="author-supporting-name">辅助角色名（可选）</label>
+                <input id="author-supporting-name" class="field-input" type="text" placeholder="例如：老夫人 / 师兄 / 搭档" />
+              </section>
+              <section class="author-form-group">
+                <p class="author-form-group-title">命题与冲突</p>
+                <p class="author-form-group-copy">这里写清楚这条故事线真正想拧紧的关系、代价和命题。</p>
+                <label class="input-label" for="author-life-theme">核心命题</label>
+                <input id="author-life-theme" class="field-input" type="text" placeholder="例如：真话是否值得承担失去" />
+                <label class="input-label" for="author-core-premise">故事 brief</label>
+                <textarea id="author-core-premise" rows="8" placeholder="写下你想讲的题材、关系、冲突、基调。"></textarea>
+              </section>
+              <section class="author-form-group">
+                <p class="author-form-group-title">氛围与地点</p>
+                <p class="author-form-group-copy">这些不一定要一次写满，但会让草稿起点更具体。</p>
+                <label class="input-label" for="author-locations">主要地点</label>
+                <textarea id="author-locations" rows="6" placeholder="每行一个地点，例如：旧巷&#10;便利店门口&#10;天桥下"></textarea>
+                <p class="field-hint">登录后会自动使用当前账号；没有登录时会先使用默认创作身份。</p>
+              </section>
+            </div>
+            <div class="composer-actions author-sticky-actions">
+              <span class="sr-only">根据 Brief 生成 Draft</span>
+              <button id="author-create-draft-from-brief" class="primary-action">根据灵感生成草稿</button>
+              <button id="author-create-draft" class="ghost-action">从当前世界复制草稿</button>
+            </div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Drafts</p>
+              <p class="panel-label">草稿列表</p>
               <h2>作者草稿列表</h2>
             </div>
-            <div id="author-draft-list" class="list-stack empty-state">还没有 draft。</div>
+            <div id="author-draft-list" class="list-stack empty-state">还没有草稿。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Draft Detail</p>
+              <p class="panel-label">草稿摘要</p>
               <h2>当前草稿详情</h2>
             </div>
-            <div id="author-draft-detail" class="list-stack empty-state">选择一个 draft 后，这里会显示 world / manifest / diff / simulation diagnosis。</div>
+            <div id="author-draft-detail" class="list-stack empty-state">选择一个草稿后，这里会显示当前定位、健康状态、最近修改和诊断摘要。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Validation</p>
+              <p class="panel-label">校验诊断</p>
               <h2>校验结果</h2>
             </div>
-            <div id="author-validation-report" class="list-stack empty-state">选择一个 draft 后，这里会显示 validation report。</div>
+            <div id="author-validation-report" class="list-stack empty-state">选择一个草稿后，这里会显示校验结果与下一步建议。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Simulation</p>
+              <p class="panel-label">问题诊断</p>
               <h2>模拟报告</h2>
             </div>
-            <div id="author-simulation-report" class="list-stack empty-state">运行 simulation 后，这里会显示 issue heatmap、chapter breakdown 与 weakest chapter drill-down。</div>
+            <p class="panel-copy">先锁定最急的问题章节，再决定是回创作台改素材、直接评论，还是继续看章节对照与送审证据。</p>
+            <div id="author-steering-composer" class="author-steering-composer">
+              <div id="author-steering-status" class="list-stack empty-state">这里会先告诉你下一次 steering 会打到哪一章、影响哪些角色，以及当前记忆补丁状态。</div>
+              <div class="author-steering-grid">
+                <div class="author-steering-field author-steering-field--wide">
+                  <label class="input-label" for="author-steering-intent">本轮剧情引导</label>
+                  <textarea id="author-steering-intent" rows="4" placeholder="例如：让主角先顺着局势退半步，但把真正的代价压到下一次见面时爆出来。"></textarea>
+                </div>
+                <div class="author-steering-field">
+                  <label class="input-label" for="author-steering-type">引导类型</label>
+                  <select id="author-steering-type" class="field-select">
+                    <option value="mild_steer">轻推引导</option>
+                    <option value="memory_steer">记忆补丁</option>
+                    <option value="arc_steer">弧线偏移</option>
+                  </select>
+                </div>
+                <div class="author-steering-field">
+                  <label class="input-label" for="author-steering-arc">影响弧线</label>
+                  <select id="author-steering-arc" class="field-select">
+                    <option value="">自动跟随当前弧线</option>
+                  </select>
+                </div>
+                <div class="author-steering-field">
+                  <label class="input-label" for="author-steering-characters">影响角色</label>
+                  <select id="author-steering-characters" class="field-select" multiple size="4"></select>
+                </div>
+                <div class="author-steering-field">
+                  <label class="input-label" for="author-steering-memory-patch">记忆补丁（可选）</label>
+                  <textarea id="author-steering-memory-patch" rows="4" placeholder="例如：角色突然想起旧誓里的某个细节，因此不敢把真话一次说完。"></textarea>
+                </div>
+              </div>
+              <p class="field-hint">如果不填写触发章节，系统会默认把这次引导落到上次模拟完成章节之后的下一章，并在需要时自动扩一章 simulation 预算。</p>
+              <div class="composer-actions">
+                <button id="author-run-steered-simulation" class="primary-action">带着引导重跑 Simulation</button>
+                <button id="author-clear-steering" class="ghost-action">清空引导</button>
+              </div>
+            </div>
+            <div id="author-simulate-summary" class="list-stack empty-state">这里会先显示最新判断、结果新鲜度、问题队列和最短修稿入口。</div>
+            <div id="author-simulation-report" class="list-stack empty-state">运行诊断后，这里会显示问题分布、章节拆解与重点问题章节。</div>
+            <div id="author-creative-cockpit" class="list-stack empty-state">运行 simulation 后，这里会显示人物关系网、steering 时间线、章节热图和长线结构快照。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Asset Diff</p>
+              <p class="panel-label">最近修改</p>
               <h2>最近一次修改摘要</h2>
             </div>
-            <div id="author-asset-diff" class="list-stack empty-state">保存角色、场景或能力配置后，这里会显示结构化 diff 与 revision compare。</div>
+            <div id="author-review-summary" class="list-stack empty-state">这里会先显示当前修改是否已经具备送审证据。</div>
+            <div id="author-asset-diff" class="list-stack empty-state">保存人物、场景或风格配置后，这里会显示最近一次修改摘要。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Compare</p>
-              <h2>Revision / Chapter Compare</h2>
+              <p class="panel-label">章节对照</p>
+              <h2>版本 / 章节对照</h2>
             </div>
-            <div id="author-compare" class="list-stack empty-state">这里会显示 revision compare 与 before-after chapter compare。</div>
+            <div id="author-compare" class="list-stack empty-state">这里会显示修改前后对照，以及章节前后变化。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Version History</p>
+              <p class="panel-label">版本轨迹</p>
               <h2>草稿版本轨迹</h2>
             </div>
-            <div id="author-version-history" class="list-stack empty-state">这里会显示最近几次 revision 与对应的修改来源。</div>
+            <div id="author-version-history" class="list-stack empty-state">这里会显示最近几次版本变化与修改来源。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Collaboration</p>
-              <h2>评论 / 审批</h2>
+              <p class="panel-label">评论与审阅</p>
+              <h2>评论 / 审阅</h2>
             </div>
-            <div id="author-collaboration" class="list-stack empty-state">这里会显示 anchored comments、blocking threads 与审批状态。</div>
-            <label class="input-label" for="author-inbox-reviewer-id">Reviewer Inbox</label>
-            <input id="author-inbox-reviewer-id" class="field-input" type="text" value="ops_author_reviewer" placeholder="reviewer / editor / approver id" />
-            <label class="input-label" for="author-inbox-status-filter">Inbox Status Filter</label>
-            <select id="author-inbox-status-filter" class="field-select">
-              <option value="all">all</option>
-              <option value="unread">unread</option>
-              <option value="active">active</option>
-            </select>
-            <label class="input-label" for="author-inbox-world-version-filter">Draft Filter</label>
-            <input id="author-inbox-world-version-filter" class="field-input" type="text" placeholder="可选：world_version_id" />
-            <label class="input-label" for="author-inbox-notification-type-filter">Notification Type</label>
-            <select id="author-inbox-notification-type-filter" class="field-select">
-              <option value="">all</option>
-              <option value="thread_assigned">thread_assigned</option>
-              <option value="thread_mentioned">thread_mentioned</option>
-              <option value="thread_updated">thread_updated</option>
-              <option value="approval_requested">approval_requested</option>
-              <option value="approval_decision">approval_decision</option>
-            </select>
-            <label class="input-label" for="author-inbox-blocking-only">Blocking Only</label>
-            <input id="author-inbox-blocking-only" type="checkbox" />
-            <label class="input-label" for="author-inbox-search">Inbox Search</label>
-            <input id="author-inbox-search" class="field-input" type="text" placeholder="搜索标题 / body / actor / draft / anchor" />
-            <div class="composer-actions">
-              <button id="author-refresh-reviewer-inbox" class="ghost-action">刷新 Reviewer Inbox</button>
-              <button id="author-search-reviewer-inbox" class="ghost-action">Search Inbox</button>
-              <button id="author-load-more-reviewer-inbox" class="ghost-action">Load More</button>
-              <button id="author-bulk-read-visible" class="ghost-action">Mark Visible Read</button>
-              <button id="author-bulk-archive-visible" class="ghost-action">Archive Visible</button>
+            <p class="panel-copy">这里处理审阅收件箱、线程协作与送审动作，是回看反馈和解除阻塞的主入口。</p>
+            <div id="author-collaboration" class="list-stack empty-state">这里会显示评论线程、待处理问题与审阅状态。</div>
+            <p id="author-reviewer-gate-note" class="field-hint reviewer-gate-note">拥有审阅者权限的账号登录后，这里会展开可审阅内容与 reviewer inbox。</p>
+            <div id="author-reviewer-workbench" class="reviewer-only">
+              <label class="input-label" for="author-inbox-reviewer-id">审阅人收件箱</label>
+              <input id="author-inbox-reviewer-id" class="field-input" type="text" placeholder="审阅人 / 编辑 / 审批人 ID" />
+              <label class="input-label" for="author-inbox-status-filter">收件箱状态</label>
+              <select id="author-inbox-status-filter" class="field-select">
+                <option value="all">全部</option>
+                <option value="unread">未读</option>
+                <option value="active">处理中</option>
+              </select>
+              <label class="input-label internal-only" for="author-inbox-world-version-filter">草稿版本筛选</label>
+              <input id="author-inbox-world-version-filter" class="field-input internal-only" type="text" placeholder="可选：草稿版本 ID" />
+              <label class="input-label" for="author-inbox-notification-type-filter">通知类型</label>
+              <select id="author-inbox-notification-type-filter" class="field-select">
+                <option value="">全部</option>
+                <option value="thread_assigned">分配给我</option>
+                <option value="thread_mentioned">提到我</option>
+                <option value="thread_updated">线程更新</option>
+                <option value="approval_requested">收到审阅请求</option>
+                <option value="approval_decision">审阅结果</option>
+              </select>
+              <label class="input-label" for="author-inbox-blocking-only">只看阻塞项</label>
+              <input id="author-inbox-blocking-only" type="checkbox" />
+              <label class="input-label" for="author-inbox-search">收件箱搜索</label>
+              <input id="author-inbox-search" class="field-input" type="text" placeholder="搜索标题、内容、人物或草稿" />
+              <div class="composer-actions">
+                <button id="author-refresh-reviewer-inbox" class="ghost-action">刷新收件箱</button>
+                <button id="author-search-reviewer-inbox" class="ghost-action">搜索收件箱</button>
+                <button id="author-load-more-reviewer-inbox" class="ghost-action">加载更多</button>
+                <button id="author-bulk-read-visible" class="ghost-action">标记可见项已读</button>
+                <button id="author-bulk-archive-visible" class="ghost-action">归档可见项</button>
+              </div>
+              <div id="author-reviewer-inbox" class="list-stack empty-state">这里会显示审阅收件箱、通知与待处理送审事项。</div>
             </div>
-            <div id="author-reviewer-inbox" class="list-stack empty-state">这里会显示 reviewer inbox、notifications 与待处理 approval。</div>
-            <label class="input-label" for="author-comment-anchor-type">Anchor Type</label>
-            <select id="author-comment-anchor-type" class="field-select">
+            <label class="input-label internal-only" for="author-comment-anchor-type">评论锚点类型</label>
+            <select id="author-comment-anchor-type" class="field-select internal-only">
               <option value="draft">draft</option>
               <option value="character">character</option>
               <option value="scene">scene</option>
@@ -610,25 +880,27 @@
               <option value="simulation">simulation</option>
               <option value="workflow">workflow</option>
             </select>
-            <label class="input-label" for="author-comment-anchor-key">Anchor Key</label>
-            <input id="author-comment-anchor-key" class="field-input" type="text" placeholder="例如：lead / scene_false_peace / simulation:chapter_1" />
-            <label class="input-label" for="author-comment-severity">Severity</label>
-            <select id="author-comment-severity" class="field-select">
-              <option value="normal">normal</option>
-              <option value="high">high</option>
-              <option value="blocker">blocker</option>
+            <label class="input-label internal-only" for="author-comment-anchor-key">评论锚点键</label>
+            <input id="author-comment-anchor-key" class="field-input internal-only" type="text" placeholder="例如：lead / scene_false_peace / simulation:chapter_1" />
+            <label class="input-label internal-only" for="author-comment-severity">问题严重度</label>
+            <select id="author-comment-severity" class="field-select internal-only">
+              <option value="normal">普通</option>
+              <option value="high">较高</option>
+              <option value="blocker">阻塞</option>
             </select>
-            <label class="input-label" for="author-comment-assignee">Assignee ID</label>
-            <input id="author-comment-assignee" class="field-input" type="text" placeholder="可选" />
-            <label class="input-label" for="author-comment-body">Comment</label>
+            <label class="input-label internal-only" for="author-comment-assignee">处理人 ID</label>
+            <input id="author-comment-assignee" class="field-input internal-only" type="text" placeholder="可选" />
+            <label class="input-label" for="author-comment-body">评论内容</label>
             <textarea id="author-comment-body" rows="4" placeholder="输入评论内容，可用 @ops_editor 这样的 mention"></textarea>
-            <label class="input-label" for="author-approval-reviewer">Reviewer ID</label>
-            <input id="author-approval-reviewer" class="field-input" type="text" value="ops_author_reviewer" />
-            <label class="input-label" for="author-approval-reason">Approval Reason</label>
+            <label class="input-label" for="author-approval-reviewer">审阅人</label>
+            <input id="author-approval-reviewer" class="field-input" type="text" placeholder="填写审阅人账号" />
+            <label class="input-label" for="author-approval-reason">送审说明</label>
             <textarea id="author-approval-reason" rows="3" placeholder="输入审批说明"></textarea>
             <div class="composer-actions">
               <button id="author-create-comment-thread" class="ghost-action">创建评论线程</button>
-              <button id="author-request-approval" class="ghost-action">请求审批</button>
+              <button id="author-request-approval" class="ghost-action">发起送审</button>
+            </div>
+            <div class="composer-actions reviewer-only">
               <button id="author-approve-draft" class="ghost-action">批准</button>
               <button id="author-request-changes" class="ghost-action">要求修改</button>
             </div>
@@ -636,56 +908,275 @@
 
           <section class="panel">
             <div class="panel-head">
+              <p class="panel-label">创作台</p>
+              <h2>作品稿编辑器 / 创作配置 / 修稿桥</h2>
+            </div>
+            <div id="author-draft-section-nav" class="segmented-control author-local-nav"></div>
+            <div id="author-draft-section-summary" class="list-stack empty-state">这里会显示当前作品稿、章节编辑器和创作配置层摘要。</div>
+            <div data-author-draft-section="assets">
+            <div class="panel-head">
               <p class="panel-label">Character Cards</p>
               <h2>角色卡编辑</h2>
             </div>
+            <div id="author-character-summary" class="list-stack empty-state">选择角色后，这里会先显示当前角色摘要。</div>
             <label class="input-label" for="author-character-select">选择角色</label>
             <select id="author-character-select" class="field-select"></select>
-            <label class="input-label" for="author-character-name">显示名</label>
+            <label class="input-label" for="author-character-name">显示名 <span class="author-tech-label">display_name</span></label>
             <input id="author-character-name" class="field-input" type="text" placeholder="角色显示名" />
-            <label class="input-label" for="author-character-role">角色定位</label>
+            <label class="input-label" for="author-character-role">角色定位 <span class="author-tech-label">role</span></label>
             <input id="author-character-role" class="field-input" type="text" placeholder="lead / counterpart / supporting" />
-            <label class="input-label" for="author-character-life-theme">life_theme</label>
+            <label class="input-label" for="author-character-life-theme">角色命题 <span class="author-tech-label">life_theme</span></label>
             <input id="author-character-life-theme" class="field-input" type="text" placeholder="此角色的核心命题" />
-            <label class="input-label" for="author-character-core-wound">core_wound</label>
+            <label class="input-label" for="author-character-core-wound">核心创伤 <span class="author-tech-label">core_wound</span></label>
             <input id="author-character-core-wound" class="field-input" type="text" placeholder="核心创伤" />
-            <label class="input-label" for="author-character-public-self">public_self</label>
+            <label class="input-label" for="author-character-public-self">表面自我叙述 <span class="author-tech-label">public_self</span></label>
             <input id="author-character-public-self" class="field-input" type="text" placeholder="角色表面的自我叙述" />
-            <label class="input-label" for="author-character-shadow-desire">shadow_desire</label>
+            <label class="input-label" for="author-character-shadow-desire">隐秘欲望 <span class="author-tech-label">shadow_desire</span></label>
             <input id="author-character-shadow-desire" class="field-input" type="text" placeholder="角色不肯承认的真实欲望" />
-            <label class="input-label" for="author-character-vows">vows</label>
+            <label class="input-label" for="author-character-vows">誓约清单 <span class="author-tech-label">vows</span></label>
             <textarea id="author-character-vows" rows="3" placeholder="每行一条 vow"></textarea>
             <div class="composer-actions">
               <button id="author-save-character" class="primary-action">保存角色卡</button>
             </div>
+            </div>
           </section>
 
-          <section class="panel">
+          <section class="panel" data-author-draft-section="assets">
             <div class="panel-head">
-              <p class="panel-label">Scene Blueprints</p>
+              <p class="panel-label">场景蓝图</p>
               <h2>场景蓝图编辑</h2>
             </div>
+            <div id="author-scene-summary" class="list-stack empty-state">选择场景后，这里会先显示当前场景摘要。</div>
             <label class="input-label" for="author-scene-select">选择场景</label>
             <select id="author-scene-select" class="field-select"></select>
-            <label class="input-label" for="author-scene-id">scene_id</label>
+            <label class="input-label" for="author-scene-id">场景 ID <span class="author-tech-label">scene_id</span></label>
             <input id="author-scene-id" class="field-input" type="text" placeholder="scene_id" />
-            <label class="input-label" for="author-scene-function">scene_function</label>
+            <label class="input-label" for="author-scene-function">场景职责 <span class="author-tech-label">scene_function</span></label>
             <input id="author-scene-function" class="field-input" type="text" placeholder="false_peace / truth_trial / ..." />
-            <label class="input-label" for="author-scene-required-roles">required_roles</label>
+            <label class="input-label" for="author-scene-required-roles">必要角色 <span class="author-tech-label">required_roles</span></label>
             <textarea id="author-scene-required-roles" rows="3" placeholder="每行一个 role"></textarea>
-            <label class="input-label" for="author-scene-beats">beats_template</label>
+            <label class="input-label" for="author-scene-beats">场景 beats <span class="author-tech-label">beats_template</span></label>
             <textarea id="author-scene-beats" rows="4" placeholder="每行一个 beat"></textarea>
             <div class="composer-actions">
               <button id="author-save-scene" class="primary-action">保存场景蓝图</button>
             </div>
           </section>
 
+          <section class="panel" data-author-draft-section="longform">
+            <div class="panel-head">
+              <p class="panel-label">长篇规划</p>
+              <h2>系列 / 分卷 / 弧线编辑</h2>
+            </div>
+            <div id="author-longform-summary" class="list-stack empty-state">这里会先显示当前规划对象、计划来源和建议下一步。</div>
+            <div id="author-longform-status" class="list-stack empty-state">这里会显示当前 draft 的长篇规划状态和计划来源。</div>
+            <label class="input-label" for="author-series-title">系列标题</label>
+            <input id="author-series-title" class="field-input" type="text" placeholder="长篇系列标题" />
+            <label class="input-label" for="author-series-theme">主题陈述</label>
+            <input id="author-series-theme" class="field-input" type="text" placeholder="长篇核心命题" />
+            <div class="field-grid">
+              <label class="input-label" for="author-series-total-volumes">计划分卷数</label>
+              <input id="author-series-total-volumes" class="field-input" type="number" min="1" step="1" />
+              <label class="input-label" for="author-series-total-chapters">计划章节数</label>
+              <input id="author-series-total-chapters" class="field-input" type="number" min="1" step="1" />
+            <label class="input-label" for="author-series-target-words">目标字数</label>
+            <input id="author-series-target-words" class="field-input" type="number" min="1000" step="1000" />
+            </div>
+            <label class="input-label internal-only" for="author-storyline-contract">故事结构配置</label>
+            <textarea id="author-storyline-contract" class="internal-only" rows="5" placeholder="这里会显示当前长篇的结构配置。"></textarea>
+            <label class="input-label internal-only" for="author-character-memory-profiles">人物记忆配置</label>
+            <textarea id="author-character-memory-profiles" class="internal-only" rows="6" placeholder="这里会显示当前人物记忆配置。"></textarea>
+            <label class="input-label internal-only" for="author-steering-guardrails">约束规则配置</label>
+            <textarea id="author-steering-guardrails" class="internal-only" rows="4" placeholder="这里会显示约束规则配置。"></textarea>
+            <label class="input-label" for="author-volume-select">选择卷</label>
+            <select id="author-volume-select" class="field-select"></select>
+            <label class="input-label" for="author-volume-title">分卷标题</label>
+            <input id="author-volume-title" class="field-input" type="text" placeholder="卷标题" />
+            <label class="input-label" for="author-volume-goal">分卷目标</label>
+            <textarea id="author-volume-goal" rows="3" placeholder="当前卷要推进的主线和关系变化"></textarea>
+            <label class="input-label" for="author-volume-target-chapters">分卷目标章节数</label>
+            <input id="author-volume-target-chapters" class="field-input" type="number" min="1" step="1" />
+            <label class="input-label" for="author-volume-climax">高潮定义</label>
+            <textarea id="author-volume-climax" rows="3" placeholder="这一卷的高潮应该改变什么"></textarea>
+            <label class="input-label" for="author-volume-end-state">结尾状态</label>
+            <textarea id="author-volume-end-state" rows="3" placeholder="这一卷结束后，人物和世界会停在哪里"></textarea>
+            <label class="input-label" for="author-arc-select">选择弧线</label>
+            <select id="author-arc-select" class="field-select"></select>
+            <label class="input-label" for="author-arc-title">弧线标题</label>
+            <input id="author-arc-title" class="field-input" type="text" placeholder="弧线标题" />
+            <label class="input-label" for="author-arc-goal">弧线目标</label>
+            <textarea id="author-arc-goal" rows="3" placeholder="当前弧线的目标"></textarea>
+            <label class="input-label" for="author-arc-conflict">弧线冲突</label>
+            <textarea id="author-arc-conflict" rows="3" placeholder="当前弧线的冲突"></textarea>
+            <div class="field-grid">
+              <label class="input-label" for="author-arc-target-chapters">弧线目标章节数</label>
+              <input id="author-arc-target-chapters" class="field-input" type="number" min="1" step="1" />
+              <label class="input-label" for="author-arc-reveal-budget">Reveal Budget</label>
+              <input id="author-arc-reveal-budget" class="field-input" type="number" min="0" step="1" />
+            </div>
+            <label class="input-label" for="author-arc-payoff-targets">Payoff Targets</label>
+            <textarea id="author-arc-payoff-targets" rows="3" placeholder="每行一个 payoff target"></textarea>
+            <label class="input-label" for="author-arc-completion-conditions">Completion Conditions</label>
+            <textarea id="author-arc-completion-conditions" rows="3" placeholder="每行一个 completion condition"></textarea>
+            <p class="panel-label">拖拽重排弧线</p>
+            <div id="author-arc-board" class="list-stack empty-state">这里会显示按分卷组织的弧线看板。</div>
+            <label class="input-label" for="author-task-select">选择章节任务</label>
+            <select id="author-task-select" class="field-select"></select>
+            <p class="panel-label">拖拽重排章节任务</p>
+            <div id="author-task-board" class="list-stack empty-state">这里会显示当前弧线下可拖拽排序的章节任务。</div>
+            <label class="input-label internal-only" for="author-task-id">任务 ID</label>
+            <input id="author-task-id" class="field-input internal-only" type="text" readonly placeholder="chapter_task_id" />
+            <label class="input-label" for="author-task-duty">任务职责</label>
+            <select id="author-task-duty" class="field-select">
+              <option value="advance_plot">推进主线</option>
+              <option value="advance_relationship">推进关系</option>
+              <option value="resolve_promise">回收承诺</option>
+              <option value="expand_world">扩展世界</option>
+              <option value="pace_breath">节奏缓冲</option>
+              <option value="deliver_climax">交付高潮</option>
+            </select>
+            <label class="input-label" for="author-task-objective">任务目标</label>
+            <textarea id="author-task-objective" rows="3" placeholder="这一章的职责和推进目标"></textarea>
+            <div class="field-grid">
+              <label class="input-label" for="author-task-target-words">目标字数</label>
+              <input id="author-task-target-words" class="field-input" type="number" min="500" step="100" />
+              <label class="input-label" for="author-task-reveal-budget">Reveal Budget</label>
+              <input id="author-task-reveal-budget" class="field-input" type="number" min="0" step="1" />
+            </div>
+            <label class="input-label" for="author-task-promise-actions">承诺处理动作</label>
+            <textarea id="author-task-promise-actions" rows="3" placeholder="每行一个承诺处理动作"></textarea>
+            <label class="input-label" for="author-task-promise-targets">承诺目标</label>
+            <textarea id="author-task-promise-targets" rows="3" placeholder="每行一个承诺目标，用来表示这章计划推进或回收什么。"></textarea>
+            <div class="composer-actions">
+              <button id="author-task-split-targets" class="ghost-action">整理目标</button>
+              <button id="author-task-merge-observed" class="ghost-action">合并已观察到的承诺</button>
+            </div>
+            <label class="inline-check"><input id="author-task-allow-terminal" type="checkbox" /> 允许 terminal</label>
+            <label class="input-label" for="author-arc-task-preview">章节任务预览</label>
+            <textarea id="author-arc-task-preview" rows="6" readonly placeholder="这里会显示当前弧线的章节任务顺序。"></textarea>
+            <div class="composer-actions">
+              <button id="author-bootstrap-longform" class="ghost-action">生成长篇规划</button>
+              <button id="author-save-longform" class="primary-action">保存长篇规划</button>
+            </div>
+          </section>
+
+          <section class="panel" data-author-draft-section="repair">
+            <div class="panel-head">
+              <p class="panel-label">承诺账本</p>
+              <h2>承诺账本</h2>
+            </div>
+            <label class="input-label" for="author-promise-select">选择承诺</label>
+            <select id="author-promise-select" class="field-select"></select>
+            <label class="input-label" for="author-promise-state">承诺状态</label>
+            <select id="author-promise-state" class="field-select">
+              <option value="">未标注</option>
+              <option value="watch">持续关注</option>
+              <option value="defer">暂缓处理</option>
+              <option value="plan_payoff">计划回收</option>
+              <option value="resolved_intentional">已刻意收束</option>
+              <option value="escalate">升级处理</option>
+            </select>
+            <label class="input-label" for="author-promise-notes">承诺备注</label>
+            <textarea id="author-promise-notes" rows="3" placeholder="记录这条 promise 的处理判断，例如延后到下一 arc、标记为刻意悬置等。"></textarea>
+            <div class="composer-actions">
+              <button id="author-save-promise-state" class="primary-action">保存承诺状态</button>
+              <button id="author-jump-promise-chapter" class="ghost-action">跳到相关章节</button>
+              <button id="author-comment-promise" class="ghost-action">评论这条承诺</button>
+            </div>
+            <div id="author-promise-ledger" class="list-stack empty-state">这里会显示当前诊断里的未收回承诺、最近回收承诺与逾期状态。</div>
+          </section>
+
+          <section class="panel" data-author-draft-section="longform">
+            <div class="panel-head">
+              <p class="panel-label">承诺映射</p>
+              <h2>系列 / 分卷 / 弧线承诺映射</h2>
+            </div>
+            <div id="author-promise-mapping" class="list-stack empty-state">这里会显示当前选择的分卷 / 弧线对应到了哪些承诺，以及它们在诊断里出现在哪些章节。</div>
+          </section>
+
+          <section class="panel" data-author-draft-section="repair">
+            <div class="panel-head">
+              <p class="panel-label">修稿桥</p>
+              <h2>章节任务与问题章节联动</h2>
+            </div>
+            <label class="input-label" for="author-task-bulk-state">批量应用连续性状态</label>
+            <select id="author-task-bulk-state" class="field-select">
+              <option value="">未标注</option>
+              <option value="watch">持续关注</option>
+              <option value="intentional">刻意保留</option>
+              <option value="accepted_tradeoff">接受折中</option>
+              <option value="needs_rewrite">需要重写</option>
+              <option value="escalate">升级处理</option>
+            </select>
+            <label class="input-label" for="author-task-bulk-issues">批量应用问题范围</label>
+            <textarea id="author-task-bulk-issues" rows="2" placeholder="每行一个 issue code，例如：Q06&#10;Q07"></textarea>
+            <label class="input-label" for="author-task-bulk-notes">批量应用说明</label>
+            <textarea id="author-task-bulk-notes" rows="3" placeholder="给当前 task 链接到的章节统一应用说明。"></textarea>
+            <div class="composer-actions">
+              <button id="author-task-bulk-apply" class="primary-action">批量应用到相关章节</button>
+              <button id="author-task-apply-rewrite" class="ghost-action">将对照建议带入改写</button>
+            </div>
+            <p class="panel-label">计划与实际承诺偏移</p>
+            <p class="panel-label">偏移修复建议</p>
+            <div id="author-task-simulation-linking" class="list-stack empty-state">这里会显示当前章节任务关联到了哪些问题章节、问题类型和承诺。</div>
+          </section>
+
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Style / Pacing / Hook</p>
+              <p class="panel-label">改写预览</p>
+              <h2>对照建议改写预览</h2>
+            </div>
+            <div class="composer-actions">
+              <button id="author-export-rewrite-patch" class="ghost-action">导出改写预览</button>
+            </div>
+            <div id="author-rewrite-patch-preview" class="list-stack empty-state">这里会显示当前任务表单值与改写建议之间的预览。</div>
+          </section>
+
+          <section class="panel" data-author-draft-section="repair">
+            <div class="panel-head">
+              <p class="panel-label">连续性对照</p>
+              <h2>连续性差异</h2>
+            </div>
+            <label class="input-label" for="author-continuity-chapter-select">选择章节</label>
+            <select id="author-continuity-chapter-select" class="field-select"></select>
+            <label class="input-label" for="author-continuity-override-state">Continuity Override</label>
+            <select id="author-continuity-override-state" class="field-select">
+              <option value="">未标注</option>
+              <option value="watch">持续关注</option>
+              <option value="intentional">刻意保留</option>
+              <option value="accepted_tradeoff">接受折中</option>
+              <option value="needs_rewrite">需要重写</option>
+              <option value="escalate">升级处理</option>
+            </select>
+            <label class="input-label" for="author-continuity-issue-scope">Issue Scope</label>
+            <textarea id="author-continuity-issue-scope" rows="2" placeholder="每行一个 issue code，例如：Q06&#10;Q07"></textarea>
+            <label class="input-label" for="author-continuity-override-notes">Continuity Notes</label>
+            <textarea id="author-continuity-override-notes" rows="3" placeholder="记录为什么这条漂移是刻意的，或为什么需要重写。"></textarea>
+            <div class="composer-actions">
+              <button id="author-save-continuity-override" class="primary-action">保存 Continuity Override</button>
+              <button id="author-jump-compare-chapter" class="ghost-action">跳到章节对照</button>
+              <button id="author-comment-continuity" class="ghost-action">评论当前章节</button>
+            </div>
+            <div id="author-continuity-diff" class="list-stack empty-state">这里会显示 continuity drift、causal break 与 before-after chapter compare。</div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <p class="panel-label">诊断检查点</p>
+              <h2>诊断差异检查点</h2>
+            </div>
+            <div class="composer-actions">
+              <button id="author-run-checkpoint-resimulate" class="ghost-action">按建议重新诊断</button>
+            </div>
+            <div id="author-simulation-diff-checkpoint" class="list-stack empty-state">这里会显示当前 rewrite revision 是否已经有对应 simulation diff checkpoint。</div>
+          </section>
+
+          <section class="panel" data-author-draft-section="style">
+            <div class="panel-head">
+              <p class="panel-label">风格 / 节奏 / 钩子</p>
               <h2>风格 / 节奏 / Hook 控制面板</h2>
             </div>
-            <label class="input-label" for="author-style-lexicon">Style Lexicon</label>
+            <div id="author-style-summary" class="list-stack empty-state">这里会先显示当前风格词、节奏窗口和 Hook 状态。</div>
+            <label class="input-label" for="author-style-lexicon">风格词库</label>
             <textarea id="author-style-lexicon" rows="4" placeholder="每行一个 tone token，例如：旧账&#10;巷口&#10;回声"></textarea>
             <label class="input-label" for="author-theme-labels">Theme / Tag Labels</label>
             <textarea id="author-theme-labels" rows="4" placeholder="每行一个映射，例如：truth: 真相与揭露"></textarea>
@@ -705,29 +1196,259 @@
               <label class="inline-check"><input id="author-pacing-require-turn-taking" type="checkbox" checked /> 强制 turn taking</label>
               <label class="inline-check"><input id="author-pacing-require-counter-reaction" type="checkbox" checked /> 强制 counter reaction</label>
             </div>
-            <label class="input-label" for="author-scene-hooks">Scene Hooks</label>
+            <label class="input-label" for="author-scene-hooks">场景钩子</label>
             <textarea id="author-scene-hooks" rows="5" placeholder="每行一个映射，例如：truth_trial: 等这场话停下来时，真正要追上来的往往是那句没说尽的话。"></textarea>
             <div class="composer-actions">
               <button id="author-save-style-controls" class="primary-action">保存风格 / 节奏 / Hook</button>
             </div>
           </section>
 
-          <section class="panel">
+          <section class="panel" data-author-draft-section="style">
             <div class="panel-head">
-              <p class="panel-label">Capability Assets</p>
-              <h2>Voice / Action / Sensory</h2>
+              <p class="panel-label">高级配置</p>
+              <h2>对白 / 动作 / 感官</h2>
             </div>
-            <label class="input-label" for="author-voice-editor">Dialogue / Voice Profiles</label>
-            <textarea id="author-voice-editor" rows="6" placeholder="这里会显示当前 draft 的 dialogue / voice capability JSON。"></textarea>
-            <label class="input-label" for="author-action-editor">Emotion Action Policy</label>
-            <textarea id="author-action-editor" rows="6" placeholder="这里会显示当前 draft 的 action policy JSON。"></textarea>
-            <label class="input-label" for="author-sensory-editor">Sensory Grounding</label>
-            <textarea id="author-sensory-editor" rows="6" placeholder="这里会显示当前 draft 的 sensory grounding JSON。"></textarea>
-            <label class="input-label" for="author-scene-editor">Scene Realization</label>
-            <textarea id="author-scene-editor" rows="6" placeholder="这里会显示当前 draft 的 scene realization JSON。"></textarea>
-            <div class="composer-actions">
+            <label class="input-label internal-only" for="author-voice-editor">对白与声音配置</label>
+            <textarea id="author-voice-editor" class="internal-only" rows="6" placeholder="这里会显示当前草稿的对白与声音配置。"></textarea>
+            <label class="input-label internal-only" for="author-action-editor">情绪动作配置</label>
+            <textarea id="author-action-editor" class="internal-only" rows="6" placeholder="这里会显示当前草稿的动作配置。"></textarea>
+            <label class="input-label internal-only" for="author-sensory-editor">感官描写配置</label>
+            <textarea id="author-sensory-editor" class="internal-only" rows="6" placeholder="这里会显示当前草稿的感官配置。"></textarea>
+            <label class="input-label internal-only" for="author-scene-editor">场景实现配置</label>
+            <textarea id="author-scene-editor" class="internal-only" rows="6" placeholder="这里会显示当前草稿的场景实现配置。"></textarea>
+            <div class="composer-actions internal-only">
               <button id="author-save-capabilities" class="primary-action">保存能力配置</button>
             </div>
+          </section>
+
+          <section id="agent-studio-shell" class="panel agent-studio-panel">
+            <div id="agent-studio-start" class="agent-studio-start">
+              <div class="agent-studio-start-copy">
+                <p class="panel-label">Agent Studio</p>
+                <h2>把故事目标定下来，再进入共同导演工作台</h2>
+                <p>先确认作品方向、长度和读者体验，Studio 会创建本地作品并生成第一章。</p>
+              </div>
+              <div class="agent-studio-start-form">
+                <label class="input-label" for="agent-studio-title">小说标题</label>
+                <input id="agent-studio-title" class="field-input" type="text" placeholder="例如：雾港回潮" />
+                <div class="agent-studio-field-grid">
+                  <label class="input-label" for="agent-studio-genre">类型</label>
+                  <select id="agent-studio-genre" class="field-select">
+                    <option value="urban_mystery">悬疑</option>
+                    <option value="xianxia">仙侠</option>
+                    <option value="court_romance">宫廷</option>
+                    <option value="romance">情感</option>
+                    <option value="custom">自定义</option>
+                  </select>
+                  <label class="input-label" for="agent-studio-length">长度目标</label>
+                  <select id="agent-studio-length" class="field-select">
+                    <option value="short">短篇</option>
+                    <option value="50">50 章</option>
+                    <option value="500">500 章</option>
+                  </select>
+                </div>
+                <label class="input-label" for="agent-studio-reader-goal">读者体验目标</label>
+                <select id="agent-studio-reader-goal" class="field-select">
+                  <option value="慢热悬疑">慢热悬疑</option>
+                  <option value="强情绪冲突">强情绪冲突</option>
+                  <option value="高密度反转">高密度反转</option>
+                  <option value="群像成长">群像成长</option>
+                </select>
+                <label class="input-label" for="agent-studio-cover">封面</label>
+                <input id="agent-studio-cover" class="field-input" type="file" accept="image/*" />
+                <label class="inline-check"><input id="agent-studio-remix" type="checkbox" /> 允许二创</label>
+                <div class="composer-actions">
+                  <button id="agent-studio-start-button" class="primary-action" type="button">进入 Studio</button>
+                  <button id="agent-studio-advanced-button" class="ghost-action" type="button">高级作者工具</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="agent-studio-workbench" class="agent-studio-workbench is-hidden">
+              <aside class="agent-studio-rail">
+                <div class="agent-studio-work-heading">
+                  <p class="panel-label">作品导航</p>
+                  <h2 id="agent-studio-work-title">未命名作品</h2>
+                  <span id="agent-studio-work-meta">0 章 · 主线</span>
+                </div>
+                <div id="agent-studio-chapters" class="agent-studio-chapter-list empty-state">还没有章节。</div>
+                <div class="agent-studio-rail-section">
+                  <p class="panel-label">路线地图</p>
+                  <div id="agent-studio-branches" class="agent-studio-branch-map empty-state">还没有分支路线。</div>
+                </div>
+                <div class="composer-actions agent-studio-export-actions">
+                  <button id="agent-studio-validate" class="ghost-action" type="button">校验</button>
+                  <button id="agent-studio-preview" class="ghost-action" type="button">预览</button>
+                  <button id="agent-studio-export" class="primary-action" type="button">导出 .nosbook</button>
+                </div>
+              </aside>
+
+              <main class="agent-studio-reader">
+                <div class="agent-studio-reader-toolbar">
+                  <button id="agent-studio-chapter-prev" class="ghost-action" type="button">上一章</button>
+                  <span id="agent-studio-reader-progress">尚未开始</span>
+                  <button id="agent-studio-chapter-next" class="ghost-action" type="button">下一章</button>
+                </div>
+                <article class="agent-studio-page">
+                  <h2 id="agent-studio-reader-title">等待第一章</h2>
+                  <div id="agent-studio-reader-body" class="agent-studio-reader-body">
+                    <p>设定故事目标后，第一章会出现在这里。</p>
+                  </div>
+                </article>
+                <div id="agent-studio-reader-feedback" class="agent-studio-feedback">
+                  <strong>等待章节生成</strong>
+                  <span>先填写创作启动页。</span>
+                  <span>准备好后开始生成第一章。</span>
+                </div>
+                <section class="agent-studio-choice-section">
+                  <p class="panel-label">下一步选择</p>
+                  <div id="agent-studio-choice-cards" class="agent-studio-choice-grid empty-state">本章暂时没有下一步选择。</div>
+                </section>
+              </main>
+
+              <aside id="agent-studio-director" class="agent-studio-director">
+                <div id="agent-studio-generation-status" class="agent-studio-generation-status is-hidden"></div>
+                <label class="input-label" for="agent-studio-director-intent">导演意图</label>
+                <textarea id="agent-studio-director-intent" rows="6" placeholder="例如：让主角相信反派一次，但不要揭晓真相。"></textarea>
+                <div class="agent-studio-quickbar">
+                  <button type="button" data-agent-studio-intent="增加反转">增加反转</button>
+                  <button type="button" data-agent-studio-intent="增加细节">增加细节</button>
+                  <button type="button" data-agent-studio-intent="增加对白">增加对白</button>
+                  <button type="button" data-agent-studio-intent="放慢节奏">放慢节奏</button>
+                  <button type="button" data-agent-studio-intent="推进关系">推进关系</button>
+                  <button type="button" data-agent-studio-intent="制造误会">制造误会</button>
+                  <button type="button" data-agent-studio-intent="加强悬疑">加强悬疑</button>
+                  <button type="button" data-agent-studio-intent="不要收束">不要收束</button>
+                </div>
+                <div class="composer-actions">
+                  <button id="agent-studio-generate" class="primary-action" type="button">续写下一章</button>
+                  <button id="agent-studio-create-branch" class="ghost-action" type="button">开启新路线</button>
+                </div>
+                <div class="agent-studio-side-section">
+                  <p class="panel-label">质量状态</p>
+                  <div id="agent-studio-quality" class="agent-studio-quality">
+                    <div class="agent-studio-quality-item"><span>重复感</span><strong>良好</strong></div>
+                    <div class="agent-studio-quality-item"><span>场景细节</span><strong>充足</strong></div>
+                    <div class="agent-studio-quality-item"><span>节奏</span><strong>稳定</strong></div>
+                    <div class="agent-studio-quality-item"><span>结尾风险</span><strong>正常</strong></div>
+                  </div>
+                </div>
+                <div class="agent-studio-side-section">
+                  <label class="input-label" for="agent-studio-route-select">导出主线</label>
+                  <select id="agent-studio-route-select" class="field-select"></select>
+                </div>
+              </aside>
+            </div>
+          </section>
+        </section>
+      </section>
+
+      <section id="customer-shell" class="workspace is-hidden platform-shell">
+        <section class="stage">
+          <section class="panel">
+            <div class="panel-head">
+              <p class="panel-label">Campaign Activation</p>
+              <h2>新建 / 修改 / 提交 campaign</h2>
+            </div>
+            <input id="customer-campaign-id" class="field-input is-hidden" type="text" />
+            <label class="input-label" for="customer-campaign-title">Campaign 标题</label>
+            <input id="customer-campaign-title" class="field-input" type="text" placeholder="例如：Spring creator outreach" />
+            <label class="input-label" for="customer-campaign-target-icp">目标 ICP / Vertical</label>
+            <input id="customer-campaign-target-icp" class="field-input" type="text" placeholder="例如：indie game studios / fintech growth" />
+            <label class="input-label" for="customer-campaign-cta">CTA</label>
+            <input id="customer-campaign-cta" class="field-input" type="text" placeholder="例如：book demo / request pilot / apply now" />
+            <label class="input-label" for="customer-campaign-disclosure">Disclosure 文案</label>
+            <textarea id="customer-campaign-disclosure" class="field-input" rows="3" placeholder="填写对外披露说明。"></textarea>
+            <label class="input-label" for="customer-campaign-channels">渠道</label>
+            <textarea id="customer-campaign-channels" class="field-input" rows="2" placeholder="使用逗号分隔，例如：email,linkedin,partner_intro"></textarea>
+            <label class="input-label" for="customer-campaign-partners">Partner 引用</label>
+            <textarea id="customer-campaign-partners" class="field-input" rows="2" placeholder="可选，使用逗号分隔。"></textarea>
+            <label class="input-label" for="customer-campaign-proof-points">Proof bundle</label>
+            <textarea id="customer-campaign-proof-points" class="field-input" rows="3" placeholder="逐行填写 proof points。"></textarea>
+            <label class="input-label" for="customer-campaign-proof-urls">Proof URLs</label>
+            <textarea id="customer-campaign-proof-urls" class="field-input" rows="2" placeholder="逐行填写来源链接。"></textarea>
+            <label class="input-label" for="customer-campaign-artifact-refs">Artifact refs</label>
+            <textarea id="customer-campaign-artifact-refs" class="field-input" rows="2" placeholder="逐行填写 artifact 引用。"></textarea>
+            <div class="composer-actions">
+              <button id="customer-campaign-save" class="ghost-action" type="button">保存 Draft</button>
+              <button id="customer-campaign-submit" class="primary-action" type="button">提交送审</button>
+            </div>
+            <div id="customer-campaign-editor" class="list-stack empty-state">这里会显示当前 campaign 表单状态和最近一次送审结果。</div>
+            <div id="customer-campaign-list" class="list-stack empty-state">这里会显示当前账户的 campaigns 和 activation 状态。</div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <p class="panel-label">客户工作台</p>
+              <h2>账户 / 质量 / 结算 / 转化汇总</h2>
+            </div>
+            <div class="composer-actions">
+              <button id="customer-refresh" class="primary-action" type="button">刷新客户账户</button>
+              <button id="customer-export-json" class="ghost-action" type="button">导出 JSON</button>
+              <button id="customer-export-csv" class="ghost-action" type="button">导出 CSV</button>
+              <button id="customer-export-pdf" class="ghost-action" type="button">导出 PDF</button>
+              <button id="customer-export-invoice-csv" class="ghost-action" type="button">导出 Invoice CSV</button>
+            </div>
+            <div id="customer-campaign-summary" class="list-stack empty-state">这里会显示当前账户的 campaign 摘要与可用容量。</div>
+            <div id="customer-account-summary" class="list-stack empty-state">登录 customer / reviewer / ops / admin 后，这里会显示客户账户生命周期摘要。</div>
+            <div id="customer-plan-summary" class="list-stack empty-state">这里会显示当前套餐、价格和限额配置。</div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <p class="panel-label">结算与限额</p>
+              <h2>billing profile / limit posture</h2>
+            </div>
+            <div id="customer-billing-summary" class="list-stack empty-state">这里会显示 billing profile、invoice email 和税务状态。</div>
+            <div id="customer-limit-summary" class="list-stack empty-state">这里会显示 seat / workspace / campaign 当前占用与阈值。</div>
+            <div id="customer-export-summary" class="list-stack empty-state">这里会显示导出状态和当前可用报告类型。</div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <p class="panel-label">质量与依据性</p>
+              <h2>质量 summary / groundedness summary</h2>
+            </div>
+            <div id="customer-partner-performance" class="list-stack empty-state">这里会显示渠道 / partner performance 和 allowlisted channel 摘要。</div>
+            <div id="customer-quality-summary" class="list-stack empty-state">这里会显示通过 canonical 质量数据汇总的客户可见质量摘要。</div>
+            <div id="customer-groundedness-summary" class="list-stack empty-state">这里会显示 groundedness pass rate、失败数和 unsupported claims 摘要。</div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <p class="panel-label">回执与转化</p>
+              <h2>receipt / handoff / conversion</h2>
+            </div>
+            <div id="customer-receipt-summary" class="list-stack empty-state">这里会显示最近回执、provider 分布和 incident 摘要。</div>
+            <div id="customer-handoff-summary" class="list-stack empty-state">这里会显示 validated presented / handoff / conversion 的数量与金额。</div>
+            <div id="customer-latest-traces" class="list-stack empty-state">这里会显示最近几条客户可见质量 trace 摘要。</div>
+            <p id="customer-workspace-note" class="panel-copy">这个工作台会继续承接 campaign 激活和更完整的客户报告，但当前版本已经可用于账户、质量、groundedness、回执和 invoice preview 的对外交付。</p>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <p class="panel-label">Dispute / Support</p>
+              <h2>发起争议与支持工单</h2>
+            </div>
+            <label class="input-label" for="customer-dispute-billable-event-id">Billable Event ID</label>
+            <input id="customer-dispute-billable-event-id" class="field-input" type="text" placeholder="填写 billable_event_id" />
+            <label class="input-label" for="customer-dispute-reason">Dispute Reason</label>
+            <input id="customer-dispute-reason" class="field-input" type="text" placeholder="例如：incorrect / disputed_delivery" />
+            <label class="input-label" for="customer-dispute-amount">Requested Amount USD</label>
+            <input id="customer-dispute-amount" class="field-input" type="number" min="0" step="0.01" value="0" />
+            <label class="input-label" for="customer-dispute-note">Dispute Note</label>
+            <textarea id="customer-dispute-note" class="field-input" rows="2" placeholder="说明争议原因。"></textarea>
+            <div class="composer-actions">
+              <button id="customer-dispute-submit" class="ghost-action" type="button">提交 Dispute</button>
+            </div>
+            <div id="customer-dispute-summary" class="list-stack empty-state">这里会显示当前 dispute 摘要。</div>
+            <div id="customer-dispute-list" class="list-stack empty-state">这里会显示当前账户的 disputes。</div>
+            <label class="input-label" for="customer-support-subject">Support Subject</label>
+            <input id="customer-support-subject" class="field-input" type="text" placeholder="填写 support case 标题" />
+            <label class="input-label" for="customer-support-description">Support Description</label>
+            <textarea id="customer-support-description" class="field-input" rows="3" placeholder="说明遇到的问题。"></textarea>
+            <label class="input-label" for="customer-support-priority">Support Priority</label>
+            <input id="customer-support-priority" class="field-input" type="text" value="medium" />
+            <div class="composer-actions">
+              <button id="customer-support-submit" class="ghost-action" type="button">提交 Support Case</button>
+            </div>
+            <div id="customer-support-summary" class="list-stack empty-state">这里会显示 support case 摘要。</div>
+            <div id="customer-support-list" class="list-stack empty-state">这里会显示当前账户的 support cases。</div>
           </section>
         </section>
       </section>
@@ -736,11 +1457,11 @@
         <section class="stage">
           <section class="panel stage-panel">
             <div class="panel-head">
-              <p class="panel-label">Ops Console</p>
-              <h2>审核、发布、回滚与计费观察</h2>
+              <p class="panel-label">运营台</p>
+              <h2>分诊、审阅、发布与治理统一运营面</h2>
             </div>
             <p class="panel-copy">
-              这里提供最小运营主路径：查看 review queue、发布世界版本、回滚版本，并观察 metering。
+              这里按统一审阅项组织运营工作流，让内容发布、治理、告警和支持问题落到同一套操作节奏里。
             </p>
             <div id="ops-summary-strip" class="commerce-strip">
               <div class="commerce-chip">
@@ -763,63 +1484,65 @@
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Ops Control Plane</p>
+              <p class="panel-label">运营控制台</p>
               <h2>统一导航 / 升级路径</h2>
             </div>
             <div class="field-grid">
-              <label class="input-label" for="ops-nav-account-id">Account ID</label>
-              <input id="ops-nav-account-id" class="field-input" type="text" placeholder="可选" />
-              <label class="input-label" for="ops-nav-world-id">World ID</label>
-              <input id="ops-nav-world-id" class="field-input" type="text" placeholder="可选" />
-              <label class="input-label" for="ops-nav-case-id">Case ID</label>
-              <input id="ops-nav-case-id" class="field-input" type="text" placeholder="可选" />
-              <label class="input-label" for="ops-nav-alert-id">Alert ID</label>
-              <input id="ops-nav-alert-id" class="field-input" type="text" placeholder="可选" />
+              <label class="input-label" for="ops-nav-account-id">账户编号</label>
+              <input id="ops-nav-account-id" class="field-input" type="text" placeholder="按需输入要排查的账户编号" />
+              <label class="input-label" for="ops-nav-world-id">世界编号</label>
+              <input id="ops-nav-world-id" class="field-input" type="text" placeholder="按需输入目标世界编号" />
+              <label class="input-label" for="ops-nav-case-id">个案编号</label>
+              <input id="ops-nav-case-id" class="field-input" type="text" placeholder="按需输入治理个案编号" />
+              <label class="input-label" for="ops-nav-alert-id">告警编号</label>
+              <input id="ops-nav-alert-id" class="field-input" type="text" placeholder="按需输入告警编号" />
             </div>
             <div class="composer-actions">
-              <button id="ops-sync-navigation" class="primary-action">Sync Context</button>
-              <button id="ops-follow-recommendation" class="ghost-action">Follow Recommendation</button>
+              <button id="ops-sync-navigation" class="primary-action">同步上下文</button>
+              <button id="ops-follow-recommendation" class="ghost-action">按建议进入</button>
             </div>
-            <div id="ops-navigation-summary" class="list-stack empty-state">这里会显示统一 context、升级状态与推荐路径。</div>
-            <div id="ops-navigation-targets" class="list-stack empty-state">这里会显示 linked targets 与导航入口。</div>
-            <div id="ops-navigation-actions" class="list-stack empty-state">这里会显示跨面板 follow-up actions。</div>
+            <div id="ops-navigation-summary" class="list-stack empty-state">这里会显示统一上下文、升级状态与推荐路径。</div>
+            <div id="ops-navigation-targets" class="list-stack empty-state">这里会显示关联对象与导航入口。</div>
+            <div id="ops-navigation-actions" class="list-stack empty-state">这里会显示跨面板后续动作。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Review Queue</p>
-              <h2>待审核版本</h2>
+              <p class="panel-label">统一审阅台</p>
+              <h2>跨域审阅项</h2>
             </div>
-            <div id="ops-review-queue" class="list-stack empty-state">暂时没有待审核版本。</div>
+            <div id="ops-review-queue" class="list-stack empty-state">暂时没有统一审阅项。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">World Status</p>
-              <h2>世界版本状态</h2>
+              <p class="panel-label">审阅详情</p>
+              <h2>当前审阅项与跨域分诊</h2>
             </div>
-            <div id="ops-world-status" class="list-stack empty-state">选择或刷新后，这里会显示 world version 状态。</div>
+            <div id="ops-world-status" class="list-stack empty-state">选择一个统一审阅项后，这里会显示详情、动作与分诊摘要。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Content Release Workspace</p>
-              <h2>发布 / Checklist / 回滚统一处置页</h2>
+              <p class="panel-label">内容发布台</p>
+              <span class="sr-only">发布 / Checklist / 回滚统一处置页</span>
+              <h2>发布 / 清单 / 回滚统一处置页</h2>
             </div>
-            <label class="input-label" for="ops-release-world-id">World ID</label>
-            <input id="ops-release-world-id" class="field-input" type="text" placeholder="点击下方 world status 卡片可自动带入" />
+            <label class="input-label" for="ops-release-world-id">世界编号</label>
+            <input id="ops-release-world-id" class="field-input" type="text" placeholder="点击下方世界状态卡片可自动带入" />
             <div class="composer-actions">
-              <button id="ops-refresh-release-workspace" class="primary-action">Refresh Release Workspace</button>
+              <span class="sr-only">Refresh Release Workspace</span>
+              <button id="ops-refresh-release-workspace" class="primary-action">刷新发布台</button>
             </div>
-            <div id="ops-release-workspace-summary" class="list-stack empty-state">这里会显示当前 world 的 release summary。</div>
-            <div id="ops-release-workspace-actions" class="list-stack empty-state">这里会显示当前 world 的 quick actions。</div>
-            <div id="ops-release-workspace-timeline" class="list-stack empty-state">这里会显示当前 world 的 operator timeline。</div>
-            <div id="ops-release-workspace-details" class="list-stack empty-state">这里会显示 publish blockers、version matrix 与 rollback workspace。</div>
+            <div id="ops-release-workspace-summary" class="list-stack empty-state">这里会显示当前世界的发布摘要。</div>
+            <div id="ops-release-workspace-actions" class="list-stack empty-state">这里会显示当前世界的快捷动作。</div>
+            <div id="ops-release-workspace-timeline" class="list-stack empty-state">这里会显示当前世界的运营时间线。</div>
+            <div id="ops-release-workspace-details" class="list-stack empty-state">这里会显示发布阻塞项、版本矩阵与回滚工作台。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Metering</p>
+              <p class="panel-label">计量记录</p>
               <h2>计费与使用记录</h2>
             </div>
             <div id="ops-meter-list" class="list-stack empty-state">继续阅读发生后，这里会出现 meter 记录。</div>
@@ -827,617 +1550,631 @@
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Monetization</p>
+              <p class="panel-label">会员与计费</p>
               <h2>会员 / 钱包 / 订阅审计</h2>
             </div>
-            <label class="input-label" for="ops-account-id">Account ID</label>
-            <input id="ops-account-id" class="field-input" type="text" value="reader_demo" />
-            <label class="input-label" for="ops-wallet-type">Wallet Type</label>
+            <label class="input-label" for="ops-account-id">账户编号</label>
+            <input id="ops-account-id" class="field-input" type="text" placeholder="按需输入要处理的账户编号" />
+            <label class="input-label" for="ops-wallet-type">钱包类型</label>
             <select id="ops-wallet-type" class="field-select">
-              <option value="story_credits">story_credits</option>
-              <option value="studio_credits">studio_credits</option>
+              <option value="story_credits">故事点数钱包</option>
+              <option value="studio_credits">创作点数钱包</option>
             </select>
-            <label class="input-label" for="ops-tier-id">Tier</label>
+            <label class="input-label" for="ops-tier-id">会员档位</label>
             <select id="ops-tier-id" class="field-select">
-              <option value="play_pass">play_pass</option>
-              <option value="creator_pass">creator_pass</option>
-              <option value="studio_pass">studio_pass</option>
+              <option value="play_pass">阅读通行证</option>
+              <option value="creator_pass">创作通行证</option>
+              <option value="studio_pass">工作室通行证</option>
             </select>
-            <label class="input-label" for="ops-wallet-amount">Amount</label>
+            <label class="input-label" for="ops-wallet-amount">点数数量</label>
             <input id="ops-wallet-amount" class="field-input" type="number" min="1" step="1" value="10" />
-            <label class="input-label" for="ops-subscription-status">Subscription Status</label>
+            <label class="input-label" for="ops-subscription-status">订阅状态</label>
             <select id="ops-subscription-status" class="field-select">
-              <option value="trialing">trialing</option>
-              <option value="active" selected>active</option>
-              <option value="past_due">past_due</option>
-              <option value="paused">paused</option>
-              <option value="canceled">canceled</option>
-              <option value="expired">expired</option>
+              <option value="trialing">试用中</option>
+              <option value="active" selected>生效中</option>
+              <option value="past_due">待补款</option>
+              <option value="paused">已暂停</option>
+              <option value="canceled">已取消</option>
+              <option value="expired">已过期</option>
             </select>
-            <label class="input-label" for="ops-entitlement-id">Entitlement ID</label>
-            <input id="ops-entitlement-id" class="field-input" type="text" placeholder="wallet_story_xxx / entitlement_xxx" />
-            <label class="input-label" for="ops-entitlement-reason">Revoke Reason</label>
-            <input id="ops-entitlement-reason" class="field-input" type="text" value="manual_entitlement_revoke" />
-            <label class="input-label" for="ops-billing-event-id">Billing Event ID</label>
-            <input id="ops-billing-event-id" class="field-input" type="text" placeholder="bevent_xxx" />
+            <label class="input-label" for="ops-entitlement-id">权益编号</label>
+            <input id="ops-entitlement-id" class="field-input" type="text" placeholder="输入要撤销或排查的权益编号" />
+            <label class="input-label" for="ops-entitlement-reason">撤销原因</label>
+            <input id="ops-entitlement-reason" class="field-input" type="text" value="人工撤销权益" />
+            <label class="input-label" for="ops-billing-event-id">账单事件 ID</label>
+            <input id="ops-billing-event-id" class="field-input" type="text" placeholder="输入需要重放的账单事件编号" />
             <div class="composer-actions">
               <button id="ops-grant-subscription" class="primary-action">授予会员</button>
               <button id="ops-change-subscription-state" class="ghost-action">更新订阅状态</button>
               <button id="ops-grant-wallet" class="ghost-action">充值钱包</button>
               <button id="ops-debit-wallet" class="ghost-action">扣减钱包</button>
               <button id="ops-revoke-entitlement" class="ghost-action">撤销权益</button>
-              <button id="ops-reconcile-subscription" class="ghost-action">Reconcile Subscription</button>
-              <button id="ops-retry-subscription-payment" class="ghost-action">Retry Subscription</button>
-              <button id="ops-replay-billing-event" class="ghost-action">Replay Billing Event</button>
+              <button id="ops-reconcile-subscription" class="ghost-action">对账订阅状态</button>
+              <button id="ops-retry-subscription-payment" class="ghost-action">重试订阅扣款</button>
+              <button id="ops-replay-billing-event" class="ghost-action">重放账单事件</button>
             </div>
-            <div id="ops-subscription-audit" class="list-stack empty-state">这里会显示当前 account 的 subscription 与 wallets。</div>
-            <div id="ops-subscription-timeline" class="list-stack empty-state">这里会显示当前 account 的 monetization 事件时间线。</div>
+            <div id="ops-subscription-audit" class="list-stack empty-state">这里会显示当前账户的订阅和钱包情况。</div>
+            <div id="ops-subscription-timeline" class="list-stack empty-state">这里会显示当前账户的计费事件时间线。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Account Workspace</p>
+              <p class="panel-label">账户工作台</p>
               <h2>账户详情 / 权益 / 订阅 / 钱包统一排查页</h2>
             </div>
-            <div id="ops-account-workspace-summary" class="list-stack empty-state">这里会显示当前 account 的 operator workspace summary。</div>
-            <div id="ops-account-workspace-actions" class="list-stack empty-state">这里会显示当前 account 的 quick actions 与推荐处置顺序。</div>
-            <div id="ops-account-workspace-timeline" class="list-stack empty-state">这里会显示 account 级 operator timeline。</div>
-            <div id="ops-account-detail" class="list-stack empty-state">这里会显示当前 account 的订阅、钱包、gating 与最近 activity。</div>
-            <div id="ops-account-activity" class="list-stack empty-state">这里会显示当前 account 的最近 sessions / drafts / meters。</div>
+            <div id="ops-account-workspace-summary" class="list-stack empty-state">这里会显示当前账户的运营摘要。</div>
+            <div id="ops-account-workspace-actions" class="list-stack empty-state">这里会显示当前账户的快捷动作与推荐处置顺序。</div>
+            <div id="ops-account-workspace-timeline" class="list-stack empty-state">这里会显示账户级运营时间线。</div>
+            <div id="ops-account-detail" class="list-stack empty-state">这里会显示当前账户的订阅、钱包、权限与最近活动。</div>
+            <div id="ops-account-activity" class="list-stack empty-state">这里会显示当前账户最近的会话、草稿和计量记录。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Support Tooling</p>
+              <p class="panel-label">客服工具</p>
               <h2>客服问题定位</h2>
             </div>
-            <div id="ops-support-summary" class="list-stack empty-state">这里会显示当前 account 的 support summary 与推荐动作。</div>
-            <div id="ops-support-issues" class="list-stack empty-state">这里会显示当前 account 的 issue lookup 结果。</div>
+            <div id="ops-support-summary" class="list-stack empty-state">这里会显示当前账户的客服摘要与推荐动作。</div>
+            <div id="ops-support-issues" class="list-stack empty-state">这里会显示当前账户的客服问题定位结果。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Alert Center</p>
+              <p class="panel-label">告警中心</p>
               <h2>主动告警与标准处置</h2>
             </div>
-            <label class="input-label" for="ops-alert-account-id">Alert Account ID</label>
-            <input id="ops-alert-account-id" class="field-input" type="text" placeholder="留空查看全局 alerts；默认可跟随上面的 Account ID" />
+            <label class="input-label" for="ops-alert-account-id">告警所属账户</label>
+            <input id="ops-alert-account-id" class="field-input" type="text" placeholder="留空查看全局告警；默认可沿用上方账户编号" />
             <div class="field-grid">
-              <label class="input-label" for="ops-alert-status-filter">Status Filter</label>
+              <label class="input-label" for="ops-alert-status-filter">状态筛选</label>
               <select id="ops-alert-status-filter" class="field-select">
-                <option value="actionable">actionable</option>
-                <option value="open">open</option>
-                <option value="all">all</option>
+                <option value="actionable">待处理</option>
+                <option value="open">打开中</option>
+                <option value="all">全部</option>
               </select>
-              <label class="input-label" for="ops-alert-severity-filter">Severity</label>
+              <label class="input-label" for="ops-alert-severity-filter">严重度</label>
               <select id="ops-alert-severity-filter" class="field-select">
-                <option value="">all</option>
-                <option value="critical">critical</option>
-                <option value="high">high</option>
-                <option value="medium">medium</option>
-                <option value="low">low</option>
-                <option value="info">info</option>
+                <option value="">全部</option>
+                <option value="critical">紧急</option>
+                <option value="high">高</option>
+                <option value="medium">中</option>
+                <option value="low">低</option>
+                <option value="info">提示</option>
               </select>
-              <label class="input-label" for="ops-alert-note">Alert Note</label>
-              <input id="ops-alert-note" class="field-input" type="text" placeholder="ack / resolve 备注" />
+              <label class="input-label" for="ops-alert-note">处理备注</label>
+              <input id="ops-alert-note" class="field-input" type="text" placeholder="填写确认或处理完成时的备注" />
             </div>
             <div class="composer-actions">
-              <button id="ops-refresh-alerts" class="primary-action">Refresh Alerts</button>
-              <button id="ops-acknowledge-alert" class="ghost-action">Acknowledge Alert</button>
-              <button id="ops-resolve-alert" class="ghost-action">Resolve Alert</button>
-              <button id="ops-open-alert-investigation" class="ghost-action">Open Investigation</button>
+              <button id="ops-refresh-alerts" class="primary-action">刷新告警</button>
+              <button id="ops-acknowledge-alert" class="ghost-action">确认告警</button>
+              <button id="ops-resolve-alert" class="ghost-action">处理完成</button>
+              <button id="ops-open-alert-investigation" class="ghost-action">打开排查路径</button>
             </div>
-            <div id="ops-alert-summary" class="list-stack empty-state">这里会显示当前 alert feed 的统计摘要。</div>
-            <div id="ops-alert-feed" class="list-stack empty-state">这里会显示主动告警 feed。</div>
-            <div id="ops-alert-detail" class="list-stack empty-state">这里会显示选中 alert 的标准处置 bundle、runbook 和 investigation ref。</div>
+            <div id="ops-alert-summary" class="list-stack empty-state">这里会显示当前告警流的统计摘要。</div>
+            <div id="ops-alert-feed" class="list-stack empty-state">这里会显示主动告警列表。</div>
+            <div id="ops-alert-detail" class="list-stack empty-state">这里会显示选中告警的标准处置包、运行手册和排查引用。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Rights / Moderation / Abuse</p>
-              <h2>治理 Case 流</h2>
+              <p class="panel-label">权益 / 治理 / 滥用</p>
+              <span class="sr-only">治理 Case 流</span>
+              <h2>治理个案流</h2>
             </div>
-            <label class="input-label" for="ops-governance-case-id">Case ID</label>
-            <input id="ops-governance-case-id" class="field-input" type="text" placeholder="govcase_xxx" />
-            <label class="input-label" for="ops-governance-case-type">Case Type</label>
+            <label class="input-label" for="ops-governance-case-id">个案编号</label>
+            <input id="ops-governance-case-id" class="field-input" type="text" placeholder="输入要查看或更新的治理个案编号" />
+            <label class="input-label" for="ops-governance-case-type">个案类型</label>
             <select id="ops-governance-case-type" class="field-select">
-              <option value="rights">rights</option>
-              <option value="moderation">moderation</option>
-              <option value="abuse">abuse</option>
+              <option value="rights">权益</option>
+              <option value="moderation">治理</option>
+              <option value="abuse">滥用</option>
             </select>
-            <label class="input-label" for="ops-governance-target-type">Target Type</label>
+            <label class="input-label" for="ops-governance-target-type">目标类型</label>
             <select id="ops-governance-target-type" class="field-select">
-              <option value="account">account</option>
-              <option value="world_version">world_version</option>
-              <option value="session">session</option>
-              <option value="entitlement">entitlement</option>
+              <option value="account">账户</option>
+              <option value="world_version">世界版本</option>
+              <option value="session">会话</option>
+              <option value="entitlement">权益</option>
             </select>
-            <label class="input-label" for="ops-governance-target-id">Target ID</label>
-            <input id="ops-governance-target-id" class="field-input" type="text" placeholder="account / world_version / session / entitlement id" />
+            <label class="input-label" for="ops-governance-target-id">目标编号</label>
+            <input id="ops-governance-target-id" class="field-input" type="text" placeholder="输入账户、世界版本、会话或权益编号" />
             <div class="field-grid">
-              <label class="input-label" for="ops-governance-severity">Severity</label>
+              <label class="input-label" for="ops-governance-severity">严重度</label>
               <select id="ops-governance-severity" class="field-select">
-                <option value="low">low</option>
-                <option value="medium" selected>medium</option>
-                <option value="high">high</option>
-                <option value="critical">critical</option>
+                <option value="low">低</option>
+                <option value="medium" selected>中</option>
+                <option value="high">高</option>
+                <option value="critical">紧急</option>
               </select>
-              <label class="input-label" for="ops-governance-status">Status</label>
+              <label class="input-label" for="ops-governance-status">状态</label>
               <select id="ops-governance-status" class="field-select">
-                <option value="open" selected>open</option>
-                <option value="in_review">in_review</option>
-                <option value="escalated">escalated</option>
-                <option value="resolved">resolved</option>
-                <option value="dismissed">dismissed</option>
+                <option value="open" selected>待处理</option>
+                <option value="in_review">审核中</option>
+                <option value="escalated">已升级</option>
+                <option value="resolved">已解决</option>
+                <option value="dismissed">已关闭</option>
               </select>
-              <label class="input-label" for="ops-governance-reviewer-id">Reviewer ID</label>
+              <label class="input-label" for="ops-governance-reviewer-id">审阅人账号</label>
               <input id="ops-governance-reviewer-id" class="field-input" type="text" value="ops_web" />
-              <label class="input-label" for="ops-governance-owner-id">Owner ID</label>
-              <input id="ops-governance-owner-id" class="field-input" type="text" placeholder="负责跟进此 case 的 reviewer" />
+              <label class="input-label" for="ops-governance-owner-id">负责人账号</label>
+              <input id="ops-governance-owner-id" class="field-input" type="text" placeholder="输入负责跟进此个案的账号" />
             </div>
-            <label class="input-label" for="ops-governance-summary-input">Summary</label>
-            <input id="ops-governance-summary-input" class="field-input" type="text" placeholder="简述 rights / moderation / abuse case" />
-            <label class="input-label" for="ops-governance-notes">Notes / Resolution</label>
-            <textarea id="ops-governance-notes" class="field-input" rows="4" placeholder="记录 case 背景、处理建议或 resolution notes。"></textarea>
-            <label class="input-label" for="ops-governance-due-at">Due At</label>
-            <input id="ops-governance-due-at" class="field-input" type="text" placeholder="2026-04-30T00:00:00+00:00" />
-            <label class="input-label" for="ops-governance-policy-labels">Policy Labels</label>
-            <input id="ops-governance-policy-labels" class="field-input" type="text" placeholder="例如：billing_rights, content_safety" />
-            <label class="input-label" for="ops-governance-disposition">Disposition</label>
-            <input id="ops-governance-disposition" class="field-input" type="text" placeholder="例如：customer_remedy_applied / restriction_confirmed" />
-            <label class="input-label" for="ops-governance-evidence-title">Evidence Title</label>
-            <input id="ops-governance-evidence-title" class="field-input" type="text" placeholder="例如：support transcript / runtime receipt" />
-            <label class="input-label" for="ops-governance-evidence-preview">Evidence Preview</label>
-            <textarea id="ops-governance-evidence-preview" class="field-input" rows="3" placeholder="记录 evidence 摘要、链接线索或人工判断。"></textarea>
-            <label class="input-label" for="ops-governance-restriction-type">Restriction Type</label>
+            <label class="input-label" for="ops-governance-summary-input">摘要</label>
+            <input id="ops-governance-summary-input" class="field-input" type="text" placeholder="简要说明此次权益、治理或滥用个案" />
+            <label class="input-label" for="ops-governance-notes">处理说明</label>
+            <textarea id="ops-governance-notes" class="field-input" rows="4" placeholder="记录个案背景、处理建议或最终处理说明。"></textarea>
+            <label class="input-label" for="ops-governance-due-at">截止时间</label>
+            <input id="ops-governance-due-at" class="field-input" type="text" placeholder="输入截止时间，例如 2026-04-30 00:00" />
+            <label class="input-label" for="ops-governance-policy-labels">策略标签</label>
+            <input id="ops-governance-policy-labels" class="field-input" type="text" placeholder="例如：账单权益，内容安全" />
+            <label class="input-label" for="ops-governance-disposition">处置结论</label>
+            <input id="ops-governance-disposition" class="field-input" type="text" placeholder="例如：已补偿用户，限制确认生效" />
+            <label class="input-label" for="ops-governance-evidence-title">证据标题</label>
+            <input id="ops-governance-evidence-title" class="field-input" type="text" placeholder="例如：客服对话记录，运行回执" />
+            <label class="input-label" for="ops-governance-evidence-preview">证据摘要</label>
+            <textarea id="ops-governance-evidence-preview" class="field-input" rows="3" placeholder="记录证据摘要、线索来源或人工判断。"></textarea>
+            <label class="input-label" for="ops-governance-restriction-type">限制类型</label>
             <select id="ops-governance-restriction-type" class="field-select">
-              <option value="account_hold">account_hold</option>
-              <option value="reader_access_block">reader_access_block</option>
-              <option value="author_access_block">author_access_block</option>
-              <option value="checkout_block">checkout_block</option>
+              <option value="account_hold">账户冻结</option>
+              <option value="reader_access_block">阅读限制</option>
+              <option value="author_access_block">创作限制</option>
+              <option value="checkout_block">支付限制</option>
             </select>
-            <label class="input-label" for="ops-governance-restriction-expires-at">Restriction Expires At</label>
-            <input id="ops-governance-restriction-expires-at" class="field-input" type="text" placeholder="2026-04-30T00:00:00+00:00" />
+            <label class="input-label" for="ops-governance-restriction-expires-at">限制失效时间</label>
+            <input id="ops-governance-restriction-expires-at" class="field-input" type="text" placeholder="输入限制失效时间，例如 2026-04-30 00:00" />
             <div class="composer-actions">
-              <button id="ops-create-governance-case" class="primary-action">创建 Case</button>
-              <button id="ops-assign-governance-case" class="ghost-action">Assign Case</button>
-              <button id="ops-add-governance-evidence" class="ghost-action">Add Evidence</button>
-              <button id="ops-update-governance-case" class="ghost-action">更新 Case 状态</button>
-              <button id="ops-apply-governance-restriction" class="ghost-action">施加 Restriction</button>
-              <button id="ops-release-governance-restriction" class="ghost-action">释放 Restriction</button>
+              <button id="ops-create-governance-case" class="primary-action">创建个案</button>
+              <button id="ops-assign-governance-case" class="ghost-action">分派个案</button>
+              <button id="ops-add-governance-evidence" class="ghost-action">添加证据</button>
+              <button id="ops-update-governance-case" class="ghost-action">更新个案状态</button>
+              <button id="ops-apply-governance-restriction" class="ghost-action">施加限制</button>
+              <button id="ops-release-governance-restriction" class="ghost-action">解除限制</button>
               <button id="ops-export-governance-audit" class="ghost-action">刷新治理导出</button>
             </div>
-            <div id="ops-governance-summary" class="list-stack empty-state">这里会显示当前 account 的 rights / moderation / abuse case 摘要。</div>
-            <div id="ops-governance-cases" class="list-stack empty-state">这里会显示当前 account 关联的治理 cases。</div>
-            <div id="ops-governance-detail" class="list-stack empty-state">这里会显示选中 governance case 的 drill-down。</div>
+            <div id="ops-governance-summary" class="list-stack empty-state">这里会显示当前账户的权益、治理与滥用个案摘要。</div>
+            <div id="ops-governance-cases" class="list-stack empty-state">这里会显示当前账户关联的治理个案列表。</div>
+            <div id="ops-governance-detail" class="list-stack empty-state">这里会显示选中治理个案的深度详情。</div>
             <div id="ops-governance-export" class="list-stack empty-state">这里会显示治理审计导出摘要。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Full Audit Trail</p>
+              <p class="panel-label">完整审计轨迹</p>
               <h2>完整审计轨迹</h2>
             </div>
-            <div id="ops-account-audit-summary" class="list-stack empty-state">这里会显示当前 account 的审计分类、来源与最近动作摘要。</div>
-            <div id="ops-account-audit-trail" class="list-stack empty-state">这里会显示当前 account 的完整 audit trail，包括 Reader / Author / Ops / meter 事件。</div>
+            <div id="ops-account-audit-summary" class="list-stack empty-state">这里会显示当前账户的审计分类、来源与最近动作摘要。</div>
+            <div id="ops-account-audit-trail" class="list-stack empty-state">这里会显示当前账户的完整审计轨迹，包括阅读、创作、运营与计量事件。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Unified Investigation</p>
+              <p class="panel-label">统一排查</p>
               <h2>统一排查路径</h2>
             </div>
-            <label class="input-label" for="ops-investigation-account-id">Account ID</label>
-            <input id="ops-investigation-account-id" class="field-input" type="text" value="reader_demo" />
-            <label class="input-label" for="ops-investigation-world-version-id">World Version ID</label>
-            <input id="ops-investigation-world-version-id" class="field-input" type="text" placeholder="可选" />
-            <label class="input-label" for="ops-investigation-case-id">Case ID</label>
-            <input id="ops-investigation-case-id" class="field-input" type="text" placeholder="可选" />
+            <label class="input-label" for="ops-investigation-account-id">账户编号</label>
+            <input id="ops-investigation-account-id" class="field-input" type="text" placeholder="按需输入要排查的账户编号" />
+            <label class="input-label" for="ops-investigation-world-version-id">世界版本编号</label>
+            <input id="ops-investigation-world-version-id" class="field-input" type="text" placeholder="按需输入要聚焦的世界版本编号" />
+            <label class="input-label" for="ops-investigation-case-id">个案编号</label>
+            <input id="ops-investigation-case-id" class="field-input" type="text" placeholder="按需输入关联治理个案编号" />
             <div class="composer-actions">
-              <button id="ops-run-investigation" class="primary-action">Run Investigation</button>
-              <button id="ops-export-investigation-trace" class="ghost-action">Export Investigation Trace</button>
+              <button id="ops-run-investigation" class="primary-action">开始排查</button>
+              <button id="ops-export-investigation-trace" class="ghost-action">导出排查轨迹</button>
             </div>
-            <div id="ops-investigation-summary" class="list-stack empty-state">这里会显示 investigation summary 与推荐排查路径。</div>
-            <div id="ops-investigation-timeline" class="list-stack empty-state">这里会显示统一 trace timeline。</div>
-            <div id="ops-investigation-evidence" class="list-stack empty-state">这里会显示 evidence index。</div>
+            <div id="ops-investigation-summary" class="list-stack empty-state">这里会显示排查摘要与推荐排查路径。</div>
+            <div id="ops-investigation-timeline" class="list-stack empty-state">这里会显示统一排查时间线。</div>
+            <div id="ops-investigation-evidence" class="list-stack empty-state">这里会显示证据索引。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">NarrativeEval</p>
+              <p class="panel-label">叙事评测</p>
               <h2>质量指标</h2>
             </div>
-            <div id="ops-eval-metrics" class="list-stack empty-state">这里会显示 pass / rewrite / block、top issues 与质量趋势。</div>
+            <div id="ops-eval-metrics" class="list-stack empty-state">这里会显示通过、重写、阻塞、核心问题与质量趋势。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Learned Dashboard</p>
-              <h2>Learned Layer 总览</h2>
+              <p class="panel-label">学习层总览</p>
+              <h2>学习层总览</h2>
             </div>
-            <div id="ops-learned-dashboard" class="list-stack empty-state">这里会显示 evaluator / reranker 的统一 learned summary。</div>
+            <div id="ops-learned-dashboard" class="list-stack empty-state">这里会显示评估器和重排器的统一学习层摘要。</div>
             <section class="panel panel-subtle">
               <div class="panel-head">
-                <p class="panel-label">Learned Impact</p>
-                <h3>继续读 / 付费代理指标相关性</h3>
+                <p class="panel-label">学习层影响</p>
+                <h3>继续阅读 / 付费代理指标相关性</h3>
               </div>
-              <div id="ops-learned-impact" class="list-stack empty-state">这里会显示 evaluator / reranker 的 learned impact summary、retention proxy 与 monetization proxy。</div>
+              <div id="ops-learned-impact" class="list-stack empty-state">这里会显示评估器和重排器的学习层影响摘要、留存代理与付费代理。</div>
             </section>
             <section class="panel panel-subtle">
               <div class="panel-head">
-                <p class="panel-label">Learned Cadence</p>
+                <p class="panel-label">学习层节奏</p>
                 <h3>训练 / 验证 / 晋升节奏</h3>
               </div>
-              <div id="ops-learned-cadence" class="list-stack empty-state">这里会显示 evaluator / reranker 当前处于 collect data、train、validate、promotion 还是 activate 阶段。</div>
+              <div id="ops-learned-cadence" class="list-stack empty-state">这里会显示评估器和重排器当前处于补数据、训练、验证、晋升还是全量启用阶段。</div>
             </section>
             <section class="panel panel-subtle">
               <div class="panel-head">
-                <p class="panel-label">Assisted Gate Experiment</p>
-                <h3>shadow -> assisted gate 受控实验</h3>
+                <p class="panel-label">辅助门控实验</p>
+                <h3>影子模式到辅助门控的受控实验</h3>
               </div>
-              <div id="ops-learned-assisted-gate" class="list-stack empty-state">这里会显示 assisted gate experiment 的 config、guardrails、recent decisions 与 rollback 条件。</div>
-              <label class="input-label" for="ops-assisted-gate-reviewer-id">Reviewer ID</label>
+              <div id="ops-learned-assisted-gate" class="list-stack empty-state">这里会显示辅助门控实验的配置、护栏、最近决策与回滚条件。</div>
+              <label class="input-label" for="ops-assisted-gate-reviewer-id">审阅人账号</label>
               <input id="ops-assisted-gate-reviewer-id" class="field-input" type="text" value="ops_web" />
-              <label class="input-label" for="ops-assisted-gate-reason">Reason</label>
-              <textarea id="ops-assisted-gate-reason" class="field-input" rows="3" placeholder="说明为什么启用或关闭 assisted gate experiment。"></textarea>
-              <label class="input-label" for="ops-assisted-gate-bucket">Bucket Percentage</label>
+              <label class="input-label" for="ops-assisted-gate-reason">操作说明</label>
+              <textarea id="ops-assisted-gate-reason" class="field-input" rows="3" placeholder="说明为什么启用、调整或关闭辅助门控实验。"></textarea>
+              <label class="input-label" for="ops-assisted-gate-bucket">灰度比例</label>
               <input id="ops-assisted-gate-bucket" class="field-input" type="number" min="0" max="100" value="10" />
-              <label class="input-label" for="ops-assisted-gate-confidence">Confidence Threshold</label>
+              <label class="input-label" for="ops-assisted-gate-confidence">置信阈值</label>
               <input id="ops-assisted-gate-confidence" class="field-input" type="number" min="0" max="1" step="0.05" value="0.90" />
-              <label class="input-label" for="ops-assisted-gate-world-allowlist">World Allowlist</label>
-              <textarea id="ops-assisted-gate-world-allowlist" class="field-input" rows="2" placeholder="urban_mystery_lotus_lane, jade_court_romance"></textarea>
+              <label class="input-label" for="ops-assisted-gate-world-allowlist">世界白名单</label>
+              <textarea id="ops-assisted-gate-world-allowlist" class="field-input" rows="2" placeholder="填写允许进入实验的世界编号，使用逗号分隔"></textarea>
               <div class="composer-actions">
-                <button id="ops-set-assisted-shadow" class="ghost-action">Save Shadow Only</button>
-                <button id="ops-set-assisted-active" class="primary-action">Enable Assisted Gate</button>
-                <button id="ops-disable-assisted-gate" class="ghost-action">Disable Experiment</button>
+                <button id="ops-set-assisted-shadow" class="ghost-action">保存为影子模式</button>
+                <button id="ops-set-assisted-active" class="primary-action">启用辅助门控</button>
+                <button id="ops-disable-assisted-gate" class="ghost-action">关闭实验</button>
               </div>
             </section>
             <section class="panel panel-subtle">
               <div class="panel-head">
-                <p class="panel-label">Assisted Rerank Experiment</p>
-                <h3>shadow -> assisted rerank 受控实验</h3>
+                <p class="panel-label">辅助重排实验</p>
+                <h3>影子模式到辅助重排的受控实验</h3>
               </div>
-              <div id="ops-learned-assisted-rerank" class="list-stack empty-state">这里会显示 assisted rerank experiment 的 config、guardrails、recent decisions 与 rollback 条件。</div>
-              <label class="input-label" for="ops-assisted-rerank-reviewer-id">Reviewer ID</label>
+              <div id="ops-learned-assisted-rerank" class="list-stack empty-state">这里会显示辅助重排实验的配置、护栏、最近决策与回滚条件。</div>
+              <label class="input-label" for="ops-assisted-rerank-reviewer-id">审阅人账号</label>
               <input id="ops-assisted-rerank-reviewer-id" class="field-input" type="text" value="ops_web" />
-              <label class="input-label" for="ops-assisted-rerank-reason">Reason</label>
-              <textarea id="ops-assisted-rerank-reason" class="field-input" rows="3" placeholder="说明为什么启用或关闭 assisted rerank experiment。"></textarea>
-              <label class="input-label" for="ops-assisted-rerank-bucket">Bucket Percentage</label>
+              <label class="input-label" for="ops-assisted-rerank-reason">操作说明</label>
+              <textarea id="ops-assisted-rerank-reason" class="field-input" rows="3" placeholder="说明为什么启用、调整或关闭辅助重排实验。"></textarea>
+              <label class="input-label" for="ops-assisted-rerank-bucket">灰度比例</label>
               <input id="ops-assisted-rerank-bucket" class="field-input" type="number" min="0" max="100" value="10" />
-              <label class="input-label" for="ops-assisted-rerank-confidence">Confidence Threshold</label>
+              <label class="input-label" for="ops-assisted-rerank-confidence">置信阈值</label>
               <input id="ops-assisted-rerank-confidence" class="field-input" type="number" min="0" max="1" step="0.05" value="0.65" />
-              <label class="input-label" for="ops-assisted-rerank-candidate-window">Candidate Window</label>
+              <label class="input-label" for="ops-assisted-rerank-candidate-window">候选窗口</label>
               <input id="ops-assisted-rerank-candidate-window" class="field-input" type="number" min="2" max="6" value="3" />
-              <label class="input-label" for="ops-assisted-rerank-max-score-gap">Max Score Gap</label>
+              <label class="input-label" for="ops-assisted-rerank-max-score-gap">最大分差</label>
               <input id="ops-assisted-rerank-max-score-gap" class="field-input" type="number" min="0" max="1" step="0.01" value="0.08" />
-              <label class="input-label" for="ops-assisted-rerank-world-allowlist">World Allowlist</label>
-              <textarea id="ops-assisted-rerank-world-allowlist" class="field-input" rows="2" placeholder="urban_mystery_lotus_lane, jade_court_romance"></textarea>
+              <label class="input-label" for="ops-assisted-rerank-world-allowlist">世界白名单</label>
+              <textarea id="ops-assisted-rerank-world-allowlist" class="field-input" rows="2" placeholder="填写允许进入实验的世界编号，使用逗号分隔"></textarea>
               <div class="composer-actions">
-                <button id="ops-set-assisted-rerank-shadow" class="ghost-action">Save Shadow Only</button>
-                <button id="ops-set-assisted-rerank-active" class="primary-action">Enable Assisted Rerank</button>
-                <button id="ops-disable-assisted-rerank" class="ghost-action">Disable Experiment</button>
+                <button id="ops-set-assisted-rerank-shadow" class="ghost-action">保存为影子模式</button>
+                <button id="ops-set-assisted-rerank-active" class="primary-action">启用辅助重排</button>
+                <button id="ops-disable-assisted-rerank" class="ghost-action">关闭实验</button>
               </div>
             </section>
             <section class="panel panel-subtle">
               <div class="panel-head">
-                <p class="panel-label">Training Automation</p>
-                <h3>训练自动化与 Evidence Pack</h3>
+                <p class="panel-label">训练自动化</p>
+                <h3>训练自动化与证据包</h3>
               </div>
               <div class="composer-actions">
-                <button id="ops-run-evaluator-training" class="ghost-action">Run Evaluator</button>
-                <button id="ops-run-reranker-training" class="ghost-action">Run Reranker</button>
-                <button id="ops-run-both-training" class="primary-action">Run Both</button>
+                <button id="ops-run-evaluator-training" class="ghost-action">训练评估器</button>
+                <button id="ops-run-reranker-training" class="ghost-action">训练重排器</button>
+                <button id="ops-run-both-training" class="primary-action">全部训练</button>
               </div>
-              <div id="ops-learned-training" class="list-stack empty-state">这里会显示最近一次 learned training automation 结果。</div>
-              <div id="ops-learned-evidence" class="list-stack empty-state">这里会显示 evaluator / reranker 的 promotion evidence pack 摘要。</div>
+              <div id="ops-learned-training" class="list-stack empty-state">这里会显示最近一次学习层训练自动化结果。</div>
+              <div id="ops-learned-evidence" class="list-stack empty-state">这里会显示评估器和重排器的发布证据包摘要。</div>
             </section>
             <section class="panel panel-subtle">
               <div class="panel-head">
-                <p class="panel-label">Shadow Candidate Compare</p>
-                <h3>哪条 Learned 线更值得先推进</h3>
+                <p class="panel-label">影子候选对比</p>
+                <h3>哪条学习层候选线更值得先推进</h3>
               </div>
-              <div id="ops-learned-compare" class="list-stack empty-state">这里会显示 evaluator / reranker 的 shadow candidate compare。</div>
+              <div id="ops-learned-compare" class="list-stack empty-state">这里会显示评估器和重排器的影子候选对比。</div>
             </section>
             <section class="panel panel-subtle">
               <div class="panel-head">
-                <p class="panel-label">Safe Rollout</p>
-                <h3>Learned 组件灰度与回滚</h3>
+                <p class="panel-label">安全灰度</p>
+                <h3>学习层组件灰度与回滚</h3>
               </div>
-              <div id="ops-learned-rollout" class="list-stack empty-state">这里会显示 learned rollout summary、safe candidates 与 rollback watchlist。</div>
+              <div id="ops-learned-rollout" class="list-stack empty-state">这里会显示学习层灰度摘要、可安全发布候选与回滚观察名单。</div>
             </section>
             <section class="panel panel-subtle">
               <div class="panel-head">
-                <p class="panel-label">Evaluator Promotion Gate</p>
-                <h3>Evaluator 是否已可推荐进入下一阶段</h3>
+                <p class="panel-label">评估器发布门</p>
+                <h3>评估器是否已可推荐进入下一阶段</h3>
               </div>
-              <div id="ops-learned-promotion" class="list-stack empty-state">这里会显示 evaluator 的 promotion recommendation、blockers、advisories 与 checklist。</div>
-              <label class="input-label" for="ops-promotion-reviewer-id">Reviewer ID</label>
+              <div id="ops-learned-promotion" class="list-stack empty-state">这里会显示评估器的发布建议、阻塞项、提示项与检查清单。</div>
+              <label class="input-label" for="ops-promotion-reviewer-id">审阅人账号</label>
               <input id="ops-promotion-reviewer-id" class="field-input" type="text" value="ops_web" />
-              <label class="input-label" for="ops-promotion-reason">Reason</label>
-              <textarea id="ops-promotion-reason" class="field-input" rows="3" placeholder="说明为什么批准或撤销 evaluator promotion。"></textarea>
+              <label class="input-label" for="ops-promotion-reason">审批说明</label>
+              <textarea id="ops-promotion-reason" class="field-input" rows="3" placeholder="说明为什么批准或撤销评估器发布。"></textarea>
               <div class="composer-actions">
-                <button id="ops-approve-promotion" class="primary-action">Approve Evaluator</button>
-                <button id="ops-revoke-promotion" class="ghost-action">Revoke Evaluator</button>
+                <button id="ops-approve-promotion" class="primary-action">批准评估器发布</button>
+                <button id="ops-revoke-promotion" class="ghost-action">撤销评估器发布</button>
               </div>
             </section>
             <section class="panel panel-subtle">
               <div class="panel-head">
-                <p class="panel-label">Reranker Promotion Gate</p>
-                <h3>Reranker 是否已可推荐进入下一阶段</h3>
+                <p class="panel-label">重排器发布门</p>
+                <h3>重排器是否已可推荐进入下一阶段</h3>
               </div>
-              <div id="ops-learned-reranker-promotion" class="list-stack empty-state">这里会显示 reranker 的 promotion recommendation、blockers、advisories 与 checklist。</div>
-              <label class="input-label" for="ops-reranker-promotion-reviewer-id">Reviewer ID</label>
+              <div id="ops-learned-reranker-promotion" class="list-stack empty-state">这里会显示重排器的发布建议、阻塞项、提示项与检查清单。</div>
+              <label class="input-label" for="ops-reranker-promotion-reviewer-id">审阅人账号</label>
               <input id="ops-reranker-promotion-reviewer-id" class="field-input" type="text" value="ops_web" />
-              <label class="input-label" for="ops-reranker-promotion-reason">Reason</label>
-              <textarea id="ops-reranker-promotion-reason" class="field-input" rows="3" placeholder="说明为什么批准或撤销 reranker promotion。"></textarea>
+              <label class="input-label" for="ops-reranker-promotion-reason">审批说明</label>
+              <textarea id="ops-reranker-promotion-reason" class="field-input" rows="3" placeholder="说明为什么批准或撤销重排器发布。"></textarea>
               <div class="composer-actions">
-                <button id="ops-approve-reranker-promotion" class="primary-action">Approve Reranker</button>
-                <button id="ops-revoke-reranker-promotion" class="ghost-action">Revoke Reranker</button>
+                <button id="ops-approve-reranker-promotion" class="primary-action">批准重排器发布</button>
+                <button id="ops-revoke-reranker-promotion" class="ghost-action">撤销重排器发布</button>
               </div>
             </section>
             <div class="split-grid">
               <section class="panel panel-subtle">
                 <div class="panel-head">
-                  <p class="panel-label">Weak Worlds</p>
-                  <h3>按 World 看薄弱点</h3>
+                  <p class="panel-label">薄弱世界</p>
+                  <h3>按世界看薄弱点</h3>
                 </div>
-                <div id="ops-learned-worlds" class="list-stack empty-state">这里会显示需要优先看的 worlds。</div>
+                <div id="ops-learned-worlds" class="list-stack empty-state">这里会显示需要优先关注的薄弱世界。</div>
               </section>
               <section class="panel panel-subtle">
                 <div class="panel-head">
-                  <p class="panel-label">Weak Issues</p>
-                  <h3>按 Issue 看薄弱点</h3>
+                  <p class="panel-label">薄弱问题</p>
+                  <h3>按问题看薄弱点</h3>
                 </div>
-                <div id="ops-learned-issues" class="list-stack empty-state">这里会显示需要优先看的 issue codes。</div>
+                <div id="ops-learned-issues" class="list-stack empty-state">这里会显示需要优先关注的问题代码。</div>
               </section>
             </div>
             <section class="panel panel-subtle">
               <div class="panel-head">
-                <p class="panel-label">Detail</p>
-                <h3>Learned Drill-down</h3>
+                <p class="panel-label">详情钻取</p>
+                <h3>学习层深度钻取</h3>
               </div>
-              <div id="ops-learned-detail" class="list-stack empty-state">点击一个 world 或 issue 后，这里会显示 detail。</div>
+              <div id="ops-learned-detail" class="list-stack empty-state">点击一个世界或问题后，这里会显示对应的深度详情。</div>
             </section>
             <section class="panel panel-subtle">
               <div class="panel-head">
-                <p class="panel-label">Learned Data Ops</p>
+                <p class="panel-label">学习数据运营</p>
                 <h3>补数据的下一步动作</h3>
               </div>
-              <div id="ops-learned-data-ops" class="list-stack empty-state">这里会显示 review backlog、pair coverage backlog 和 action queue。</div>
+              <div id="ops-learned-data-ops" class="list-stack empty-state">这里会显示审核待办、配对覆盖待办与行动队列。</div>
               <section class="panel panel-subtle">
                 <div class="panel-head">
-                  <p class="panel-label">Human Review Coverage</p>
-                  <h3>Human Review Coverage &amp; Quality</h3>
+                  <p class="panel-label">人工审阅覆盖</p>
+                  <h3>人工审阅覆盖与质量</h3>
                 </div>
-                <div id="ops-learned-review-quality" class="list-stack empty-state">这里会显示 human review coverage、reviewer diversity、样本质量告警与高覆盖补样 backlog。</div>
+                <div id="ops-learned-review-quality" class="list-stack empty-state">这里会显示人工审阅覆盖、审阅人分布、样本质量告警与高覆盖补样待办。</div>
               </section>
               <div class="split-grid">
                 <section class="panel panel-subtle">
                   <div class="panel-head">
-                    <p class="panel-label">Review Backlog</p>
+                    <p class="panel-label">审核待办</p>
                     <h3>优先补的人审样本</h3>
                   </div>
                   <div id="ops-review-sample-backlog" class="list-stack empty-state">这里会显示优先需要人工补样本的章节。</div>
                 </section>
                 <section class="panel panel-subtle">
                   <div class="panel-head">
-                    <p class="panel-label">Pair Coverage Backlog</p>
-                    <h3>优先补的 Pair Coverage</h3>
+                    <p class="panel-label">配对覆盖待补样</p>
+                    <h3>优先补的配对覆盖</h3>
                   </div>
-                  <div id="ops-pair-coverage-backlog" class="list-stack empty-state">这里会显示需要更多 revision / review 才能长出 inferred pairs 的位置。</div>
+                  <div id="ops-pair-coverage-backlog" class="list-stack empty-state">这里会显示需要更多版本对比与人工审阅才能形成有效偏好对的位置。</div>
                 </section>
               </div>
             <section class="panel panel-subtle">
               <div class="panel-head">
-                <p class="panel-label">Quick Capture Review</p>
-                <h3>快速补一条 Human Review</h3>
+                <p class="panel-label">快速补录审阅</p>
+                <h3>快速补一条人工审阅</h3>
                 </div>
-                <div id="ops-review-capture-context" class="list-stack empty-state">点击 Review Backlog 里的章节后，这里会自动填充上下文。</div>
-                <label class="input-label" for="ops-reviewer-id">Reviewer ID</label>
+                <div id="ops-review-capture-context" class="list-stack empty-state">点击审核待办里的章节后，这里会自动填充上下文。</div>
+                <label class="input-label" for="ops-reviewer-id">审阅人账号</label>
                 <input id="ops-reviewer-id" class="field-input" type="text" value="ops_web" />
-                <label class="input-label" for="ops-review-score">Score Overall</label>
+                <label class="input-label" for="ops-review-score">综合评分</label>
                 <input id="ops-review-score" class="field-input" type="number" min="0" max="1" step="0.01" value="0.65" />
-                <label class="input-label" for="ops-review-issue-codes">Issue Codes</label>
-                <input id="ops-review-issue-codes" class="field-input" type="text" placeholder="Q04,Q05" />
-                <label class="input-label" for="ops-review-notes">Freeform Notes</label>
+                <label class="input-label" for="ops-review-issue-codes">问题代码</label>
+                <input id="ops-review-issue-codes" class="field-input" type="text" placeholder="例如：Q04,Q05" />
+                <label class="input-label" for="ops-review-notes">自由备注</label>
                 <textarea id="ops-review-notes" class="field-input" rows="4" placeholder="补充人审备注。"></textarea>
                 <div class="state-grid">
-                  <label><input id="ops-review-would-continue" type="checkbox" checked /> would_continue</label>
-                  <label><input id="ops-review-would-pay" type="checkbox" /> would_pay</label>
+                  <label><input id="ops-review-would-continue" type="checkbox" checked /> 是否愿意继续阅读</label>
+                  <label><input id="ops-review-would-pay" type="checkbox" /> 是否愿意付费</label>
                 </div>
                 <div class="composer-actions">
-                  <button id="ops-submit-review-capture" class="primary-action">提交 Human Review</button>
+                  <button id="ops-submit-review-capture" class="primary-action">提交人工审阅</button>
                 </div>
               </section>
               <section class="panel panel-subtle">
                 <div class="panel-head">
-                  <p class="panel-label">Preference Capture</p>
-                  <h3>快速补一条 Pairwise Preference</h3>
+                  <p class="panel-label">偏好采集</p>
+                  <h3>快速补一条成对偏好</h3>
                 </div>
-                <label class="input-label" for="ops-preference-left-revision-id">Left Revision ID</label>
-                <input id="ops-preference-left-revision-id" class="field-input" type="text" placeholder="rev_before" />
-                <label class="input-label" for="ops-preference-right-revision-id">Right Revision ID</label>
-                <input id="ops-preference-right-revision-id" class="field-input" type="text" placeholder="rev_after" />
-                <label class="input-label" for="ops-preference-preferred-revision-id">Preferred Revision ID</label>
-                <input id="ops-preference-preferred-revision-id" class="field-input" type="text" placeholder="更偏好的 revision" />
-                <label class="input-label" for="ops-preference-strength">Preference Strength</label>
+                <label class="input-label" for="ops-preference-left-revision-id">左侧版本编号</label>
+                <input id="ops-preference-left-revision-id" class="field-input" type="text" placeholder="输入左侧版本编号" />
+                <label class="input-label" for="ops-preference-right-revision-id">右侧版本编号</label>
+                <input id="ops-preference-right-revision-id" class="field-input" type="text" placeholder="输入右侧版本编号" />
+                <label class="input-label" for="ops-preference-preferred-revision-id">偏好版本编号</label>
+                <input id="ops-preference-preferred-revision-id" class="field-input" type="text" placeholder="输入更偏好的版本编号" />
+                <label class="input-label" for="ops-preference-strength">偏好强度</label>
                 <select id="ops-preference-strength" class="field-select">
-                  <option value="medium">medium</option>
-                  <option value="strong">strong</option>
-                  <option value="weak">weak</option>
+                  <option value="medium">中等</option>
+                  <option value="strong">强</option>
+                  <option value="weak">弱</option>
                 </select>
-                <label class="input-label" for="ops-preference-notes">Preference Notes</label>
+                <label class="input-label" for="ops-preference-notes">偏好说明</label>
                 <textarea id="ops-preference-notes" class="field-input" rows="3" placeholder="说明为什么更偏好某个 revision。"></textarea>
                 <div class="composer-actions">
-                  <button id="ops-submit-preference-capture" class="ghost-action">提交 Preference</button>
+                  <button id="ops-submit-preference-capture" class="ghost-action">提交偏好</button>
                 </div>
-                <div id="ops-preference-samples" class="list-stack empty-state">这里会显示最近采集的 preference samples。</div>
+                <div id="ops-preference-samples" class="list-stack empty-state">这里会显示最近采集的偏好样本。</div>
               </section>
               <section class="panel panel-subtle">
                 <div class="panel-head">
-                  <p class="panel-label">Ranking Capture</p>
-                  <h3>快速补一条 Revision Ranking</h3>
+                  <p class="panel-label">排序采集</p>
+                  <h3>快速补一条版本排序</h3>
                 </div>
-                <label class="input-label" for="ops-ranking-revision-ids">Ranked Revision IDs</label>
-                <input id="ops-ranking-revision-ids" class="field-input" type="text" placeholder="rev_best,rev_mid,rev_worst" />
-                <label class="input-label" for="ops-ranking-notes">Ranking Notes</label>
+                <label class="input-label" for="ops-ranking-revision-ids">排序后的版本编号</label>
+                <input id="ops-ranking-revision-ids" class="field-input" type="text" placeholder="输入排序后的版本编号，使用逗号分隔" />
+                <label class="input-label" for="ops-ranking-notes">排序说明</label>
                 <textarea id="ops-ranking-notes" class="field-input" rows="3" placeholder="说明这个排序背后的偏好判断。"></textarea>
                 <div class="composer-actions">
-                  <button id="ops-submit-ranking-capture" class="ghost-action">提交 Ranking</button>
+                  <button id="ops-submit-ranking-capture" class="ghost-action">提交排序</button>
                 </div>
-                <div id="ops-ranking-samples" class="list-stack empty-state">这里会显示最近采集的 ranking samples。</div>
+                <div id="ops-ranking-samples" class="list-stack empty-state">这里会显示最近采集的排序样本。</div>
               </section>
               <section class="panel panel-subtle">
                 <div class="panel-head">
-                  <p class="panel-label">Last Action Impact</p>
+                  <p class="panel-label">最近动作影响</p>
                   <h3>刚刚这次补数据带来了什么变化</h3>
                 </div>
-                <div id="ops-last-action-impact" class="list-stack empty-state">提交一条 Human Review 后，这里会显示对 backlog / compare / next action 的即时影响。</div>
+                <div id="ops-last-action-impact" class="list-stack empty-state">提交一条人工审阅后，这里会显示对审核待办、章节对照和下一步动作的即时影响。</div>
               </section>
             </section>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Cross-Pack Benchmark</p>
-              <h2>Kernel Capability 趋势</h2>
+              <p class="panel-label">跨包基准</p>
+              <h2>内核能力趋势</h2>
             </div>
-            <div id="ops-cross-pack-quality" class="list-stack empty-state">这里会显示 cross-pack pass rate、top failing packs 与 metric delta。</div>
+            <label class="input-label" for="ops-cross-pack-strategy-bundle-id">策略包验证</label>
+            <input id="ops-cross-pack-strategy-bundle-id" class="field-input" type="text" placeholder="可选：输入 strategy_bundle_id，例如 q03_q04_scene_dialogue_cadence_task_coupling" />
+            <label class="input-label" for="ops-cross-pack-weakest-limit">Weakest Packs 数量</label>
+            <input id="ops-cross-pack-weakest-limit" class="field-input" type="number" min="1" max="10" value="3" />
+            <label class="input-label" for="ops-cross-pack-validate-strategy-bundle">
+              <input id="ops-cross-pack-validate-strategy-bundle" type="checkbox" />
+              显式运行策略包批量验证
+            </label>
+            <div class="composer-actions">
+              <button id="ops-refresh-cross-pack-quality" class="ghost-action">刷新策略包验证</button>
+            </div>
+            <div id="ops-cross-pack-quality" class="list-stack empty-state">这里会显示跨包通过率、薄弱世界与核心指标变化。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Review History</p>
+              <p class="panel-label">审核历史</p>
               <h2>审核与发布历史</h2>
             </div>
-            <div id="ops-review-history" class="list-stack empty-state">这里会显示 world version 的审核、发布和回滚记录。</div>
+            <div id="ops-review-history" class="list-stack empty-state">这里会显示世界版本的审核、发布和回滚记录。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Quality Trend</p>
+              <p class="panel-label">质量趋势</p>
               <h2>版本级质量趋势</h2>
             </div>
-            <div id="ops-quality-trend" class="list-stack empty-state">这里会显示每个 world version 的 pass / rewrite / block 与 cross-pack 走势。</div>
+            <div id="ops-quality-trend" class="list-stack empty-state">这里会显示每个世界版本的通过、重写、阻塞与跨包走势。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Schema Lifecycle</p>
-              <h2>Postgres / Migration 状态</h2>
+              <p class="panel-label">结构生命周期</p>
+              <h2>数据库结构 / 迁移状态</h2>
             </div>
-            <div id="ops-schema-lifecycle" class="list-stack empty-state">这里会显示当前数据库 backend、migration pending 状态和 schema drift 摘要。</div>
-            <p class="panel-copy">Data Integrity / Repair</p>
-            <label class="input-label" for="ops-data-integrity-actions">Safe Repair Actions</label>
-            <textarea id="ops-data-integrity-actions" class="field-input" rows="2" placeholder="reconcile_session_chapter_pointers, prune_orphan_route_choices">reconcile_session_chapter_pointers, prune_orphan_route_choices</textarea>
+            <div id="ops-schema-lifecycle" class="list-stack empty-state">这里会显示当前数据库后端、待执行迁移状态和结构漂移摘要。</div>
+            <p class="panel-copy">数据一致性 / 修复</p>
+            <label class="input-label" for="ops-data-integrity-actions">安全修复动作</label>
+            <textarea id="ops-data-integrity-actions" class="field-input" rows="2" placeholder="填写允许执行的修复动作，使用逗号分隔">reconcile_session_chapter_pointers, prune_orphan_route_choices</textarea>
             <div class="composer-actions">
-              <button id="ops-run-data-integrity-dry-run" class="ghost-action">Run Integrity Dry-run</button>
-              <button id="ops-apply-data-integrity-repair" class="primary-action">Apply Safe Repair</button>
+              <button id="ops-run-data-integrity-dry-run" class="ghost-action">执行一致性演练</button>
+              <button id="ops-apply-data-integrity-repair" class="primary-action">应用安全修复</button>
             </div>
-            <div id="ops-data-integrity" class="list-stack empty-state">这里会显示热点索引覆盖、session drift、orphan route choices 与 repair backlog。</div>
+            <div id="ops-data-integrity" class="list-stack empty-state">这里会显示热点索引覆盖、会话漂移、孤儿分支选择与修复待办。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Runbook</p>
-              <h2>Deployment / Backup / Incident</h2>
+              <p class="panel-label">运行手册</p>
+              <h2>发布 / 备份 / 事故处置</h2>
             </div>
-            <label class="input-label" for="ops-backup-label">Backup Label</label>
-            <input id="ops-backup-label" class="field-input" type="text" placeholder="pre_release / nightly / manual" />
-            <label class="input-label" for="ops-restore-path">Restore Backup Path</label>
-            <input id="ops-restore-path" class="field-input" type="text" placeholder="/abs/path/to/backup.sqlite3 or manifest.json" />
-            <label class="input-label" for="ops-restore-request-id">Restore Request ID</label>
-            <input id="ops-restore-request-id" class="field-input" type="text" placeholder="restore_request_xxx" />
-            <label class="input-label" for="ops-restore-requester-id">Restore Requester ID</label>
+            <label class="input-label" for="ops-backup-label">备份标签</label>
+            <input id="ops-backup-label" class="field-input" type="text" placeholder="例如：发版前备份、夜间备份、人工备份" />
+            <label class="input-label" for="ops-restore-path">恢复备份路径</label>
+            <input id="ops-restore-path" class="field-input" type="text" placeholder="输入要恢复的备份路径或清单路径" />
+            <label class="input-label" for="ops-restore-request-id">恢复申请编号</label>
+            <input id="ops-restore-request-id" class="field-input" type="text" placeholder="输入要批准、撤销或执行的恢复申请编号" />
+            <label class="input-label" for="ops-restore-requester-id">申请人账号</label>
             <input id="ops-restore-requester-id" class="field-input" type="text" value="ops_web" />
-            <label class="input-label" for="ops-restore-approver-id">Restore Approver ID</label>
+            <label class="input-label" for="ops-restore-approver-id">批准人账号</label>
             <input id="ops-restore-approver-id" class="field-input" type="text" value="ops_approver" />
-            <label class="input-label" for="ops-restore-reason">Restore Reason</label>
-            <textarea id="ops-restore-reason" class="field-input" rows="3" placeholder="说明 restore request / approval / revoke / execute 的原因。"></textarea>
+            <label class="input-label" for="ops-restore-reason">恢复原因</label>
+            <textarea id="ops-restore-reason" class="field-input" rows="3" placeholder="说明申请恢复、批准、撤销或执行恢复的原因。"></textarea>
             <div class="composer-actions">
-              <button id="ops-create-runtime-backup" class="primary-action">Create Backup</button>
-              <button id="ops-restore-runtime-backup" class="ghost-action">Restore Backup</button>
-              <button id="ops-run-recovery-drill" class="ghost-action">Run Recovery Drill</button>
+              <button id="ops-create-runtime-backup" class="primary-action">创建备份</button>
+              <button id="ops-restore-runtime-backup" class="ghost-action">直接恢复备份</button>
+              <button id="ops-run-recovery-drill" class="ghost-action">执行恢复演练</button>
             </div>
             <div class="composer-actions">
-              <button id="ops-request-runtime-restore" class="ghost-action">Request Restore</button>
-              <button id="ops-approve-runtime-restore" class="ghost-action">Approve Restore</button>
-              <button id="ops-revoke-runtime-restore" class="ghost-action">Revoke Restore</button>
-              <button id="ops-execute-runtime-restore" class="primary-action">Execute Approved Restore</button>
+              <button id="ops-request-runtime-restore" class="ghost-action">发起恢复申请</button>
+              <button id="ops-approve-runtime-restore" class="ghost-action">批准恢复申请</button>
+              <button id="ops-revoke-runtime-restore" class="ghost-action">撤销恢复申请</button>
+              <button id="ops-execute-runtime-restore" class="primary-action">执行已批准恢复</button>
             </div>
-            <div id="ops-deployment-health-gate" class="list-stack empty-state">这里会显示 Deployment Health Gate 和总体放行状态。</div>
-            <div id="ops-preflight-verification" class="list-stack empty-state">这里会显示 preflight verification bundle 与推荐验证命令。</div>
-            <div id="ops-deployment-runbook" class="list-stack empty-state">这里会显示 deployment runbook 与最近 backups。</div>
-            <div id="ops-incident-playbook" class="list-stack empty-state">这里会显示 incident playbook 与建议恢复步骤。</div>
+            <div id="ops-deployment-health-gate" class="list-stack empty-state">这里会显示发布健康门和总体放行状态。</div>
+            <div id="ops-preflight-verification" class="list-stack empty-state">这里会显示发布前校验包与推荐验证命令。</div>
+            <div id="ops-deployment-runbook" class="list-stack empty-state">这里会显示发布运行手册与最近备份。</div>
+            <div id="ops-incident-playbook" class="list-stack empty-state">这里会显示事故处置手册与建议恢复步骤。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Async Jobs</p>
-              <h2>Long-running workflow queue</h2>
+              <p class="panel-label">异步任务</p>
+              <h2>长任务工作流队列</h2>
             </div>
-            <label class="input-label" for="ops-async-job-id">Async Job ID</label>
-            <input id="ops-async-job-id" class="field-input" type="text" placeholder="job_xxx" />
-            <label class="input-label" for="ops-async-job-note">Async Job Note</label>
-            <textarea id="ops-async-job-note" class="field-input" rows="3" placeholder="ack note / shift handoff note"></textarea>
-            <label class="input-label" for="ops-notification-receipt-id">Notification Receipt / Retry ID</label>
-            <input id="ops-notification-receipt-id" class="field-input" type="text" placeholder="event_id or notify_retry_xxx" />
+            <label class="input-label" for="ops-async-job-id">异步任务编号</label>
+            <input id="ops-async-job-id" class="field-input" type="text" placeholder="输入要确认、恢复或重试的任务编号" />
+            <label class="input-label" for="ops-async-job-note">任务备注</label>
+            <textarea id="ops-async-job-note" class="field-input" rows="3" placeholder="填写确认备注或交接说明"></textarea>
+            <label class="input-label" for="ops-notification-receipt-id">通知回执 / 重试编号</label>
+            <input id="ops-notification-receipt-id" class="field-input" type="text" placeholder="输入通知回执编号或重试编号" />
             <div class="composer-actions">
-              <button id="ops-export-handoff-bundle" class="ghost-action">Export Handoff Bundle</button>
-              <button id="ops-acknowledge-async-job" class="ghost-action">Acknowledge Job</button>
-              <button id="ops-ship-remote-artifacts" class="ghost-action">Ship Remote Artifacts</button>
-              <button id="ops-escalate-handoff-sla" class="ghost-action">Escalate Handoff SLA</button>
-              <button id="ops-enqueue-notification-retry" class="ghost-action">Queue Notification Retry</button>
-              <button id="ops-process-notification-retry" class="ghost-action">Process Notification Retry</button>
-              <button id="ops-retry-async-job" class="ghost-action">Retry Failed Job</button>
-              <button id="ops-resume-async-job" class="ghost-action">Resume Job</button>
-              <button id="ops-recover-async-jobs" class="primary-action">Recover Stale Jobs</button>
-              <button id="ops-enforce-async-retention" class="ghost-action">Enforce Retention</button>
-              <button id="ops-run-cold-start-drill" class="ghost-action">Run Cold-start Drill</button>
+              <button id="ops-export-handoff-bundle" class="ghost-action">导出交接包</button>
+              <button id="ops-acknowledge-async-job" class="ghost-action">确认任务交接</button>
+              <button id="ops-ship-remote-artifacts" class="ghost-action">推送远端产物</button>
+              <button id="ops-escalate-handoff-sla" class="ghost-action">升级交接超时</button>
+              <button id="ops-enqueue-notification-retry" class="ghost-action">加入通知重试队列</button>
+              <button id="ops-process-notification-retry" class="ghost-action">执行通知重试</button>
+              <button id="ops-retry-async-job" class="ghost-action">重试失败任务</button>
+              <button id="ops-resume-async-job" class="ghost-action">恢复暂停任务</button>
+              <button id="ops-recover-async-jobs" class="primary-action">恢复异常任务</button>
+              <button id="ops-enforce-async-retention" class="ghost-action">执行保留策略</button>
+              <button id="ops-run-cold-start-drill" class="ghost-action">执行冷启动演练</button>
             </div>
-            <div id="ops-async-job-summary" class="list-stack empty-state">这里会显示 long-running jobs 的队列摘要。</div>
-            <div id="ops-async-job-boot-reconcile" class="list-stack empty-state">这里会显示 boot-time async reconciler 的处理结果。</div>
-            <div id="ops-async-job-incidents" class="list-stack empty-state">这里会显示 failed / queued / stale running jobs 的 incident recovery 摘要。</div>
-            <div id="ops-async-job-artifact-retention" class="list-stack empty-state">这里会显示 async job artifact retention 与保留状态。</div>
-            <div id="ops-async-job-operator-history" class="list-stack empty-state">这里会显示 operator run history。</div>
-            <div id="ops-async-job-handoff-bundle" class="list-stack empty-state">这里会显示 async job handoff bundle 与 acknowledgement 摘要。</div>
-            <div id="ops-async-job-adapter-validation" class="list-stack empty-state">这里会显示 async adapter config validation。</div>
-            <div id="ops-async-job-adapter-health-probe" class="list-stack empty-state">这里会显示 async adapter health probe。</div>
-            <div id="ops-async-job-notification-receipts" class="list-stack empty-state">这里会显示 notification delivery receipts。</div>
-            <div id="ops-async-job-notification-retry-queue" class="list-stack empty-state">这里会显示 notification retry queue。</div>
-            <div id="ops-async-job-dead-letter-queue" class="list-stack empty-state">这里会显示 Notification Dead-letter Queue。</div>
-            <div id="ops-async-job-retry-outcome-dashboard" class="list-stack empty-state">这里会显示 Retry Outcome Dashboard。</div>
-            <div id="ops-async-jobs" class="list-stack empty-state">这里会显示 learned training / runtime backup 的异步工作流状态。</div>
+            <div id="ops-async-job-summary" class="list-stack empty-state">这里会显示长任务队列摘要。</div>
+            <div id="ops-async-job-boot-reconcile" class="list-stack empty-state">这里会显示启动时异步对账器的处理结果。</div>
+            <div id="ops-async-job-incidents" class="list-stack empty-state">这里会显示失败、排队中和长时间运行任务的事故恢复摘要。</div>
+            <div id="ops-async-job-artifact-retention" class="list-stack empty-state">这里会显示异步任务产物保留与保留状态。</div>
+            <div id="ops-async-job-operator-history" class="list-stack empty-state">这里会显示运营操作历史。</div>
+            <div id="ops-async-job-handoff-bundle" class="list-stack empty-state">这里会显示异步任务交接包与确认摘要。</div>
+            <div id="ops-async-job-adapter-validation" class="list-stack empty-state">这里会显示异步适配器配置校验结果。</div>
+            <div id="ops-async-job-adapter-health-probe" class="list-stack empty-state">这里会显示异步适配器健康探测结果。</div>
+            <div id="ops-async-job-notification-receipts" class="list-stack empty-state">这里会显示通知送达回执。</div>
+            <div id="ops-async-job-notification-retry-queue" class="list-stack empty-state">这里会显示通知重试队列。</div>
+            <div id="ops-async-job-dead-letter-queue" class="list-stack empty-state">这里会显示通知死信队列。</div>
+            <div id="ops-async-job-retry-outcome-dashboard" class="list-stack empty-state">这里会显示重试结果看板。</div>
+            <div id="ops-async-jobs" class="list-stack empty-state">这里会显示学习层训练和运行时备份相关的异步工作流状态。</div>
           </section>
 
           <section class="panel">
             <div class="panel-head">
-              <p class="panel-label">Observability</p>
-              <h2>Runtime Receipts / Incident Snapshot</h2>
+              <p class="panel-label">运行观测</p>
+              <h2>运行回执 / 事故快照</h2>
             </div>
-            <div id="ops-runtime-incident-snapshot" class="list-stack empty-state">这里会显示 runtime incident snapshot、provider fallback、budget block 与 cache hit 概况。</div>
-            <div id="ops-runtime-receipts" class="list-stack empty-state">这里会显示最近的 runtime receipts。</div>
-            <div id="ops-provider-routing" class="list-stack empty-state">这里会显示 Provider Routing Policy，以及 candidate / renderer 当前的 routing policy。</div>
-            <div id="ops-provider-rollout" class="list-stack empty-state">这里会显示 candidate / renderer 的 canary / active / rollback 控制。</div>
-            <label class="input-label" for="ops-provider-rollout-reviewer-id">Reviewer ID</label>
+            <div id="ops-runtime-incident-snapshot" class="list-stack empty-state">这里会显示运行时事故快照、通道回退、预算拦截与缓存命中概况。</div>
+            <div id="ops-runtime-receipts" class="list-stack empty-state">这里会显示最近的运行回执。</div>
+            <div id="ops-provider-routing" class="list-stack empty-state">这里会显示通道路由策略，以及候选链路和渲染链路的当前路由配置。</div>
+            <div id="ops-provider-rollout" class="list-stack empty-state">这里会显示候选链路和渲染链路的灰度、全量启用与回滚控制。</div>
+            <label class="input-label" for="ops-provider-rollout-reviewer-id">审阅人账号</label>
             <input id="ops-provider-rollout-reviewer-id" class="field-input" type="text" value="ops_web" />
-            <label class="input-label" for="ops-provider-rollout-reason">Reason</label>
-            <textarea id="ops-provider-rollout-reason" class="field-input" rows="3" placeholder="说明为什么开启 canary、全量激活或回滚 provider rollout。"></textarea>
-            <label class="input-label" for="ops-provider-rollout-bucket">Canary Bucket Percentage</label>
+            <label class="input-label" for="ops-provider-rollout-reason">操作说明</label>
+            <textarea id="ops-provider-rollout-reason" class="field-input" rows="3" placeholder="说明为什么开启灰度、全量启用或回滚通道发布。"></textarea>
+            <label class="input-label" for="ops-provider-rollout-bucket">灰度分桶比例</label>
             <input id="ops-provider-rollout-bucket" class="field-input" type="number" min="0" max="100" value="10" />
-            <label class="input-label" for="ops-provider-rollout-world-allowlist">World Allowlist</label>
-            <textarea id="ops-provider-rollout-world-allowlist" class="field-input" rows="2" placeholder="urban_mystery_lotus_lane, jade_court_romance"></textarea>
+            <label class="input-label" for="ops-provider-rollout-world-allowlist">世界白名单</label>
+            <textarea id="ops-provider-rollout-world-allowlist" class="field-input" rows="2" placeholder="填写允许进入灰度的世界编号，使用逗号分隔"></textarea>
             <div class="composer-actions">
-              <button id="ops-provider-candidate-canary" class="ghost-action">Candidate Canary</button>
-              <button id="ops-provider-candidate-activate" class="primary-action">Candidate Active</button>
-              <button id="ops-provider-candidate-rollback" class="ghost-action">Candidate Rollback</button>
+              <button id="ops-provider-candidate-canary" class="ghost-action">候选链路灰度</button>
+              <button id="ops-provider-candidate-activate" class="primary-action">候选链路全量启用</button>
+              <button id="ops-provider-candidate-rollback" class="ghost-action">候选链路回滚</button>
             </div>
             <div class="composer-actions">
-              <button id="ops-provider-renderer-canary" class="ghost-action">Renderer Canary</button>
-              <button id="ops-provider-renderer-activate" class="primary-action">Renderer Active</button>
-              <button id="ops-provider-renderer-rollback" class="ghost-action">Renderer Rollback</button>
+              <button id="ops-provider-renderer-canary" class="ghost-action">渲染链路灰度</button>
+              <button id="ops-provider-renderer-activate" class="primary-action">渲染链路全量启用</button>
+              <button id="ops-provider-renderer-rollback" class="ghost-action">渲染链路回滚</button>
             </div>
-            <div id="ops-provider-runtime-metrics" class="list-stack empty-state">这里会显示 Provider Runtime Metrics 与 cost trend dashboard。</div>
+            <div id="ops-provider-runtime-metrics" class="list-stack empty-state">这里会显示通道运行指标与成本趋势看板。</div>
+            <div id="ops-story-bootstrap-world-summary" class="list-stack empty-state">这里会显示 Story bootstrap 首轮质量门碰撞摘要。</div>
+            <div id="ops-story-bootstrap-world-detail" class="list-stack empty-state">这里会显示选中 world 的 Story bootstrap 重试明细。</div>
           </section>
         </section>
       </section>
@@ -1457,9 +2194,33 @@
       </article>
     </template>
 
-    <script src="/assets/ops_refresh.js" defer></script>
-    <script src="/assets/ops_actions.js" defer></script>
-    <script src="/assets/ops_render_sections.js" defer></script>
-    <script src="/assets/app.js" defer></script>
+    <script src="/assets/dom_shared.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/shell_dom.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/reader_dom.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/author_dom.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/agent_studio_dom.js?v=20260510-agent-studio-v1" defer></script>
+    <script src="/assets/customer_dom.js?v=20260414-commercial-pr1" defer></script>
+    <script src="/assets/ops_dom.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/state_runtime.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/ui_shared.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/reader_accessors.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/author_accessors.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/ops_accessors.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/ops_shared.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/ops_refresh.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/ops_actions.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/ops_render_sections.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/ops_runtime.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/reader.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/reader_shell_v2_dom.js?v=20260417-reader-shell-v2" defer></script>
+    <script src="/assets/reader_shell_v2.js?v=20260417-reader-shell-v2" defer></script>
+    <script src="/assets/author_workspace.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/agent_studio.js?v=20260510-agent-studio-v1" defer></script>
+    <script src="/assets/customer_workspace.js?v=20260414-commercial-pr1" defer></script>
+    <script src="/assets/route_sync_runtime.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/workspace_layout_runtime.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/shell_status_runtime.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/shell_bootstrap_runtime.js?v=20260412-deeplink-fix1" defer></script>
+    <script src="/assets/shell_runtime.js?v=20260412-deeplink-fix1" defer></script>
   </body>
 </html>

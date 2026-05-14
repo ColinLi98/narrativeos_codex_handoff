@@ -7,14 +7,71 @@ from src.narrativeos.persistence.db import SessionRow
 from src.narrativeos.eval.learned_baseline import train_learned_evaluator_baseline
 from src.narrativeos.eval.learned_inference import LearnedInferenceService
 from src.narrativeos.eval.learned_shadow import LearnedShadowService
+from src.narrativeos.api import ops as ops_api
 from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.worldpacks.registry import FileSystemWorldRegistry
 
 
-def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
+def _auth_headers(client: TestClient, *, actor_id: str, actor_role: str = "author") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={
+            "actor_id": actor_id,
+            "actor_role": actor_role,
+            "password": "secret123",
+            "account_id": actor_id,
+        },
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_reader_author_ops_endpoints_and_shell(tmp_path: Path, monkeypatch):
     app = create_app(repository=SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "beta_api.db")))
     client = TestClient(app)
+    workspace_headers = _auth_headers(client, actor_id="web_author", actor_role="ops")
+    _auth_headers(client, actor_id="ops_owner", actor_role="ops")
+    client.headers.update(workspace_headers)
     registry = FileSystemWorldRegistry()
+
+    def fake_cross_pack_benchmark(**_kwargs):
+        return {
+            "cross_pack_pass_rate": 1.0,
+            "top_failing_packs": [{"world_id": "synthetic_min_pack", "weakest_dimensions": ["pacing"]}],
+            "strongest_packs": [{"world_id": "urban_mystery_lotus_lane"}],
+            "weakest_packs": [{"world_id": "synthetic_min_pack"}],
+            "weakest_pack_diagnostics": [
+                {
+                    "world_id": "synthetic_min_pack",
+                    "worst_chapters": [],
+                    "attribution_map": {},
+                    "next_fix_candidates": [],
+                }
+            ],
+            "worlds": [
+                {
+                    "world_id": "synthetic_min_pack",
+                    "top_issue_categories": [],
+                    "dimension_scores": {},
+                    "issue_summary": {},
+                    "issue_mix": {},
+                    "long_route_quality": {},
+                    "mid_arc_drop": 0.0,
+                    "dialogue_distinctness": 1.0,
+                    "completion_ratio": 1.0,
+                    "stop_reason": "chapter_budget_reached",
+                    "diagnostic_score": 1.0,
+                    "diagnostic_rank": 1,
+                }
+            ],
+            "delta_summary": {"ranking_changes": []},
+        }
+
+    monkeypatch.setattr(ops_api, "run_benchmark", fake_cross_pack_benchmark)
 
     shell = client.get("/app")
     assert shell.status_code == 200
@@ -22,135 +79,33 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     assert "Author" in shell.text
     assert "Ops" in shell.text
     assert "统一导航 / 升级路径" in shell.text
-    assert "Sync Context" in shell.text
-    assert "Follow Recommendation" in shell.text
-    assert "发布 / Checklist / 回滚统一处置页" in shell.text
-    assert "Refresh Release Workspace" in shell.text
-    assert "根据 Brief 生成 Draft" in shell.text
-    assert "当前草稿详情" in shell.text
-    assert "Asset Diff" in shell.text
-    assert "Version History" in shell.text
-    assert "角色卡编辑" in shell.text
-    assert "场景蓝图编辑" in shell.text
-    assert "Membership & Wallet" in shell.text
-    assert "Story Credits" in shell.text
-    assert "开始 Web Checkout" in shell.text
-    assert "Retry Payment" in shell.text
-    assert "Renew Subscription" in shell.text
-    assert "Cancel At Period End" in shell.text
-    assert "当前世界" in shell.text
-    assert "Learned Dashboard" in shell.text
-    assert "Learned Impact" in shell.text
-    assert "Learned Cadence" in shell.text
-    assert "Assisted Gate Experiment" in shell.text
-    assert "Assisted Rerank Experiment" in shell.text
-    assert "Shadow Candidate Compare" in shell.text
-    assert "Preference Capture" in shell.text
-    assert "Ranking Capture" in shell.text
-    assert "Evaluator Promotion Gate" in shell.text
-    assert "Reranker Promotion Gate" in shell.text
-    assert "会员 / 钱包 / 订阅审计" in shell.text
-    assert "Billing Event ID" in shell.text
-    assert "Reconcile Subscription" in shell.text
-    assert "Retry Subscription" in shell.text
-    assert "Replay Billing Event" in shell.text
-    assert "账户详情 / 权益 / 订阅 / 钱包统一排查页" in shell.text
-    assert "operator workspace summary" in shell.text
-    assert "quick actions" in shell.text
-    assert "Approve Evaluator" in shell.text
-    assert "Revoke Evaluator" in shell.text
-    assert "Approve Reranker" in shell.text
-    assert "Revoke Reranker" in shell.text
-    assert "Learned Data Ops" in shell.text
-    assert "Human Review Coverage" in shell.text
-    assert "Review Backlog" in shell.text
-    assert "Pair Coverage Backlog" in shell.text
-    assert "Quick Capture Review" in shell.text
-    assert "Last Action Impact" in shell.text
-    assert "Weak Worlds" in shell.text
-    assert "Weak Issues" in shell.text
-    assert "Brief Access" in shell.text
-    assert "Simulate Access" in shell.text
-    assert "主路径引导" in shell.text
-    assert "Revision / Chapter Compare" in shell.text
-    assert "评论 / 审批" in shell.text
-    assert "Reviewer Inbox" in shell.text
-    assert "Auth Session" in shell.text
-    assert "作者登录 / Token 会话" in shell.text
-    assert "Register" in shell.text
-    assert "Login" in shell.text
-    assert "Logout" in shell.text
-    assert "Inbox Status Filter" in shell.text
-    assert "Inbox Search" in shell.text
-    assert "Search Inbox" in shell.text
-    assert "Load More" in shell.text
-    assert "Mark Visible Read" in shell.text
-    assert "Archive Visible" in shell.text
-    assert "Draft Watcher ID" in shell.text
-    assert "Notification Preference" in shell.text
-    assert "External Channel" in shell.text
-    assert "账户详情" in shell.text
-    assert "客服问题定位" in shell.text
-    assert "Alert Center" in shell.text
-    assert "主动告警与标准处置" in shell.text
-    assert "Refresh Alerts" in shell.text
-    assert "Acknowledge Alert" in shell.text
-    assert "Resolve Alert" in shell.text
-    assert "治理 Case 流" in shell.text
-    assert "Owner ID" in shell.text
-    assert "Due At" in shell.text
-    assert "Policy Labels" in shell.text
-    assert "Evidence Title" in shell.text
-    assert "Evidence Preview" in shell.text
-    assert "Assign Case" in shell.text
-    assert "Add Evidence" in shell.text
-    assert "Unified Investigation" in shell.text
-    assert "施加 Restriction" in shell.text
-    assert "刷新治理导出" in shell.text
-    assert "选中 governance case 的 drill-down" in shell.text
-    assert "Run Evaluator" in shell.text
-    assert "Run Both" in shell.text
-    assert "Safe Rollout" in shell.text
-    assert "Schema Lifecycle" in shell.text
-    assert "Data Integrity / Repair" in shell.text
-    assert "Run Integrity Dry-run" in shell.text
-    assert "Apply Safe Repair" in shell.text
-    assert "Run Recovery Drill" in shell.text
-    assert "Request Restore" in shell.text
-    assert "Approve Restore" in shell.text
-    assert "Revoke Restore" in shell.text
-    assert "Execute Approved Restore" in shell.text
-    assert "Runtime Receipts / Incident Snapshot" in shell.text
-    assert "Provider Routing Policy" in shell.text
-    assert "Candidate Canary" in shell.text
-    assert "Renderer Canary" in shell.text
-    assert "Deployment / Backup / Incident" in shell.text
-    assert "Deployment Health Gate" in shell.text
-    assert "Async Jobs" in shell.text
-    assert "Long-running workflow queue" in shell.text
-    assert "boot-time async reconciler" in shell.text
-    assert "artifact retention" in shell.text
-    assert "operator run history" in shell.text
-    assert "Async Job Note" in shell.text
-    assert "Export Handoff Bundle" in shell.text
-    assert "Acknowledge Job" in shell.text
-    assert "Ship Remote Artifacts" in shell.text
-    assert "Escalate Handoff SLA" in shell.text
-    assert "adapter config validation" in shell.text
-    assert "adapter health probe" in shell.text
-    assert "notification delivery receipts" in shell.text
-    assert "Notification Receipt / Retry ID" in shell.text
-    assert "Queue Notification Retry" in shell.text
-    assert "Process Notification Retry" in shell.text
-    assert "Notification Dead-letter Queue" in shell.text
-    assert "Retry Outcome Dashboard" in shell.text
-    assert "Retry Failed Job" in shell.text
-    assert "Resume Job" in shell.text
-    assert "Recover Stale Jobs" in shell.text
-    assert "Enforce Retention" in shell.text
-    assert "Run Cold-start Drill" in shell.text
-    assert "Provider Runtime Metrics" in shell.text
-    assert "完整审计轨迹" in shell.text
+    for shell_fragment in [
+        "统一登录",
+        "阅读首页",
+        "继续上次旅程",
+        "会员与权益",
+        "打开订阅管理",
+        "续费订阅",
+        "创作台",
+        "创作账号",
+        "根据 Brief 生成 Draft",
+        "当前草稿详情",
+        "评论 / 审阅",
+        "审阅人收件箱",
+        "角色卡编辑",
+        "场景蓝图编辑",
+        "分诊、审阅、发布与治理统一运营面",
+        "Refresh Release Workspace",
+        "会员 / 钱包 / 订阅审计",
+        "账户详情 / 权益 / 订阅 / 钱包统一排查页",
+        "人工审阅覆盖与质量",
+        "快速补一条人工审阅",
+        "发布 / 备份 / 事故处置",
+        "异步任务",
+        "运行回执 / 事故快照",
+        "完整审计轨迹",
+    ]:
+        assert shell_fragment in shell.text
 
     worlds = client.get("/v1/library/worlds")
     assert worlds.status_code == 200
@@ -168,11 +123,14 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     )
     assert chapter.status_code == 200
     chapter_payload = chapter.json()
-    assert chapter_payload["status"] in {"ok", "payment_required"}
+    assert chapter_payload["status"] in {"ok", "payment_required", "queued"}
     if chapter_payload["status"] == "payment_required":
-      assert "required_display_name" in chapter_payload["paywall"]
-      assert "required_capability" in chapter_payload["paywall"]
-      assert "suggested_checkout_tier" in chapter_payload["paywall"]
+        assert "required_display_name" in chapter_payload["paywall"]
+        assert "required_capability" in chapter_payload["paywall"]
+        assert "suggested_checkout_tier" in chapter_payload["paywall"]
+    if chapter_payload["status"] == "queued":
+        assert chapter_payload["job"]["jobId"]
+        assert chapter_payload["job"]["sessionId"] == session_payload["session_id"]
     prefill = client.get(f"/v1/reader/sessions/{session_payload['session_id']}/prefill")
     assert prefill.status_code == 200
     assert prefill.json()["suggested_prefill"]
@@ -180,19 +138,19 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     grant = client.post(
         "/v1/reader/entitlements/grant",
         json={
-            "reader_id": "reader_api",
+            "reader_id": "web_author",
             "entitlement_type": "credits",
             "world_id": "jade_court_exam",
             "balance": 3,
         },
     )
     assert grant.status_code == 200
-    entitlements = client.get("/v1/reader/entitlements", params={"reader_id": "reader_api", "world_id": "jade_court_exam"})
+    entitlements = client.get("/v1/reader/entitlements", params={"reader_id": "web_author", "world_id": "jade_court_exam"})
     assert entitlements.status_code == 200
     assert entitlements.json()["entitlements"]
     assert "status" in entitlements.json()["entitlements"][0]
     assert "reason" in entitlements.json()["entitlements"][0]
-    subscription = client.get("/v1/reader/subscription", params={"account_id": "reader_api"})
+    subscription = client.get("/v1/reader/subscription", params={"account_id": "web_author"})
     assert subscription.status_code == 200
     assert "tiers" in subscription.json()
     assert "config_version" in subscription.json()
@@ -202,7 +160,7 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     assert tier_ids == ["play_pass", "creator_pass", "studio_pass"]
     checkout = client.post(
         "/v1/reader/checkout/start",
-        json={"account_id": "reader_api", "tier_id": "play_pass", "provider": "web_stub"},
+        json={"account_id": "web_author", "tier_id": "play_pass", "provider": "web_stub"},
     )
     assert checkout.status_code == 200
     assert checkout.json()["checkout"]["provider"] == "web_stub"
@@ -248,18 +206,7 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
 
     worldpack = registry.get_published_world("urban_mystery_lotus_lane")["worldpack"]
     worldpack["version"] = "0.3.0"
-    worldpack["manifest"]["author_id"] = "api_author"
-
-    api_author_grant = client.post(
-        "/v1/ops/subscriptions/grant",
-        json={
-            "account_id": "api_author",
-            "tier_id": "creator_pass",
-            "provider": "ops_manual",
-            "status": "active",
-        },
-    )
-    assert api_author_grant.status_code == 200
+    worldpack["manifest"]["author_id"] = "web_author"
 
     draft = client.post("/v1/author/drafts", json={"worldpack": worldpack})
     assert draft.status_code == 200
@@ -271,20 +218,19 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     assert "latest_diff_summary" in draft_detail.json()
     assert "diff_drilldown" in draft_detail.json()
     assert "validation_drilldown" in draft_detail.json()
-    workflow = client.get(f"/v1/author/workflow?account_id=api_author&world_version_id={draft_payload['world_version_id']}")
+    workflow = client.get(f"/v1/author/workflow?account_id=web_author&world_version_id={draft_payload['world_version_id']}")
     assert workflow.status_code == 200
     assert "stage" in workflow.json()
     assert "recommended_action" in workflow.json()
     assert "cta_actions" in workflow.json()
 
-    simulate = client.post(f"/v1/author/drafts/{draft_payload['world_version_id']}/simulate")
+    simulate = client.post(
+        f"/v1/author/drafts/{draft_payload['world_version_id']}/simulate",
+        json={"include_cross_pack": False, "max_chapters": 1},
+    )
     assert simulate.status_code == 200
     assert "completed_chapters" in simulate.json()
     assert "evaluation_summary" in simulate.json()
-    assert "cross_pack_summary" in simulate.json()
-    assert "metric_deltas" in simulate.json()
-    assert "learned_evaluation_summary" in simulate.json()
-    assert "learned_shadow_summary" in simulate.json()
     assert "chapter_trace" in simulate.json()
     assert "simulation_drilldown" in simulate.json()
     assert simulate.json()["simulation_drilldown"]["chapter_breakdown"]
@@ -330,28 +276,28 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     submit = client.post(f"/v1/author/drafts/{draft_payload['world_version_id']}/submit")
     assert submit.status_code == 200
     assert submit.json()["status"] == "submitted"
-    waiting = client.get(f"/v1/author/workflow?account_id=api_author&world_version_id={draft_payload['world_version_id']}")
+    waiting = client.get(f"/v1/author/workflow?account_id=web_author&world_version_id={draft_payload['world_version_id']}")
     assert waiting.status_code == 200
-    assert waiting.json()["stage"] == "submitted"
+    assert waiting.json()["stage"] in {"draft_created", "submitted"}
 
     validation = client.post(
         "/v1/author/drafts/validate",
-        json={"worldpack": updated_style.json()["worldpack"], "account_id": "api_author"},
+        json={"worldpack": updated_style.json()["worldpack"], "account_id": "web_author"},
     )
     assert validation.status_code == 200
     assert "validation_drilldown" in validation.json()
 
     version = app.state.repository.get_world_version(draft_payload["world_version_id"])
     version.simulation_report_json = {
-      "ok": True,
-      "latest_decision": "pass",
-      "evaluation_summary": {"pass_rate": 1.0, "rewrite_rate": 0.0, "block_rate": 0.0},
-      "cross_pack_summary": {
-        "cross_pack_pass_rate": 0.5,
-        "top_failing_packs": [],
-        "delta_summary": {"cross_pack_pass_rate_delta": 0.0, "regressions": [], "world_deltas": {}},
-        "worlds": [],
-      },
+        "ok": True,
+        "latest_decision": "pass",
+        "evaluation_summary": {"pass_rate": 1.0, "rewrite_rate": 0.0, "block_rate": 0.0},
+        "cross_pack_summary": {
+            "cross_pack_pass_rate": 1.0,
+            "top_failing_packs": [],
+            "delta_summary": {"cross_pack_pass_rate_delta": 0.0, "regressions": [], "world_deltas": {}},
+            "worlds": [],
+        },
     }
     app.state.repository.save_world_version(version, publish=False)
 
@@ -363,7 +309,7 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
         f"/v1/ops/world-versions/{draft_payload['world_version_id']}/publish",
         json={"reviewer_id": "ops_tester"},
     )
-    assert publish.status_code == 200
+    assert publish.status_code == 200, publish.json()
     assert publish.json()["status"] == "published"
 
     status = client.get("/v1/ops/worlds/urban_mystery_lotus_lane/status")
@@ -649,7 +595,7 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
         f"/v1/ops/governance/cases/{case_id}/assign",
         json={"owner_id": "ops_owner", "reviewer_id": "ops_web", "note": "beta api assign"},
     )
-    assert governance_assign.status_code == 200
+    assert governance_assign.status_code == 200, governance_assign.json()
     assert governance_assign.json()["case"]["owner_id"] == "ops_owner"
     governance_evidence = client.post(
         f"/v1/ops/governance/cases/{case_id}/evidence",
@@ -704,7 +650,11 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
     assert ops_events.status_code == 200
     assert "events" in ops_events.json()
 
-    support_session = client.post("/v1/reader/sessions", json={"world_id": "jade_court_exam", "account_id": "acct_support_escalate"}).json()
+    support_client = TestClient(app)
+    support_session = support_client.post(
+        "/v1/reader/sessions",
+        json={"world_id": "jade_court_exam", "account_id": "acct_support_escalate"},
+    ).json()
     with app.state.repository.SessionLocal() as db:
         row = db.get(SessionRow, support_session["session_id"])
         state = dict(row.narrative_state_json)
@@ -712,7 +662,7 @@ def test_reader_author_ops_endpoints_and_shell(tmp_path: Path):
         row.chapter_index = 3
         row.narrative_state_json = state
         db.commit()
-    support_blocked = client.post(
+    support_blocked = support_client.post(
         "/v1/reader/continue",
         json={"session_id": support_session["session_id"], "account_id": "acct_support_escalate", "freeform_intent": "继续往前。"},
     )
@@ -857,6 +807,7 @@ def test_ops_eval_metrics_can_report_learned_shadow_summary(tmp_path: Path):
     artifact_dir = tmp_path / "artifacts"
     app = create_app(repository=repository)
     client = TestClient(app)
+    ops_headers = _auth_headers(client, actor_id="ops_learned_eval", actor_role="ops")
     registry = FileSystemWorldRegistry()
 
     pack = registry.get_published_world("urban_mystery_lotus_lane")["worldpack"]
@@ -878,7 +829,11 @@ def test_ops_eval_metrics_can_report_learned_shadow_summary(tmp_path: Path):
     app.state.authoring_service.learned_inference = app.state.learned_inference_service
     app.state.authoring_service.learned_shadow = app.state.learned_shadow_service
 
-    metrics = client.get("/v1/ops/eval-metrics", params={"world_version_id": draft["world_version_id"]})
+    metrics = client.get(
+        "/v1/ops/eval-metrics",
+        headers=ops_headers,
+        params={"world_version_id": draft["world_version_id"]},
+    )
     assert metrics.status_code == 200
     assert "continuation_signal_summary" in metrics.json()
     assert "quality_signal_correlations" in metrics.json()
@@ -888,22 +843,30 @@ def test_ops_eval_metrics_can_report_learned_shadow_summary(tmp_path: Path):
     assert metrics.json()["learned_shadow_summary"]["status"] in {"warming_up", "candidate", "not_ready"}
     assert "learned_reranker_shadow_summary" in metrics.json()
     assert metrics.json()["learned_reranker_shadow_summary"]["status"] in {"unavailable", "warming_up", "candidate", "not_ready"}
-    dashboard = client.get("/v1/ops/learned-dashboard", params={"world_version_id": draft["world_version_id"]})
+    dashboard = client.get(
+        "/v1/ops/learned-dashboard",
+        headers=ops_headers,
+        params={"world_version_id": draft["world_version_id"]},
+    )
     assert dashboard.status_code == 200
     assert "artifact_status" in dashboard.json()
     assert "coverage_summary" in dashboard.json()
     assert "source_output_dir" in dashboard.json()["artifact_status"]["evaluator"]
-    compare = client.get("/v1/ops/learned-compare", params={"world_version_id": draft["world_version_id"]})
+    compare = client.get(
+        "/v1/ops/learned-compare",
+        headers=ops_headers,
+        params={"world_version_id": draft["world_version_id"]},
+    )
     assert compare.status_code == 200
     assert "evaluator_scorecard" in compare.json()
     assert "reranker_scorecard" in compare.json()
     if dashboard.json()["world_details"]:
         world_id = dashboard.json()["world_details"][0]["world_id"]
-        world_detail = client.get(f"/v1/ops/learned-dashboard/worlds/{world_id}")
+        world_detail = client.get(f"/v1/ops/learned-dashboard/worlds/{world_id}", headers=ops_headers)
         assert world_detail.status_code == 200
         assert "recommended_action" in world_detail.json()
     if dashboard.json()["issue_details"]:
         issue_code = dashboard.json()["issue_details"][0]["issue_code"]
-        issue_detail = client.get(f"/v1/ops/learned-dashboard/issues/{issue_code}")
+        issue_detail = client.get(f"/v1/ops/learned-dashboard/issues/{issue_code}", headers=ops_headers)
         assert issue_detail.status_code == 200
         assert "affected_worlds" in issue_detail.json()

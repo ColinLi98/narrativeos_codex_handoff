@@ -19,6 +19,7 @@ from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.services.authoring import AuthoringService
 from src.narrativeos.services.review import ReviewService, parse_review_notes
 from src.narrativeos.worldpacks.registry import FileSystemWorldRegistry
+from tests.ops_auth import ops_headers
 from tests.test_learned_reranker_baseline import _seed_reranker_world
 
 
@@ -40,12 +41,23 @@ def _pass_simulation(version):
         "rewrite_rate": 0.0,
         "block_rate": 0.0,
     }
-    simulation["cross_pack_summary"] = simulation.get("cross_pack_summary") or {
+    cross_pack_summary = dict(simulation.get("cross_pack_summary") or {})
+    delta_summary = dict(cross_pack_summary.get("delta_summary") or {})
+    delta_summary.update({"cross_pack_pass_rate_delta": 0.0, "regressions": [], "world_deltas": {}})
+    cross_pack_summary.update({
         "cross_pack_pass_rate": 1.0,
         "top_failing_packs": [],
-        "delta_summary": {"cross_pack_pass_rate_delta": 0.0, "regressions": [], "world_deltas": {}},
-        "worlds": [],
-    }
+        "delta_summary": delta_summary,
+        "worlds": [
+            {**dict(item), "prose_leak_rate": 0.0}
+            for item in cross_pack_summary.get("worlds", [])
+        ],
+        "phase_a_quality_gate": {"ok": True, "failed_checks": []},
+        "content_quality_contract_gate": {"ok": True, "failed_checks": []},
+    })
+    simulation["cross_pack_summary"] = cross_pack_summary
+    simulation["phase_a_quality_gate"] = {"ok": True, "failed_checks": []}
+    simulation["content_quality_contract_gate"] = {"ok": True, "failed_checks": []}
     version.simulation_report_json = simulation
     return version
 
@@ -200,8 +212,9 @@ def test_review_publish_can_be_assisted_blocked(tmp_path: Path, monkeypatch):
 def test_assisted_gate_endpoints_can_configure_and_report_summary(tmp_path: Path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "assisted_gate_api.db"))
     client = TestClient(create_app(repository=repository))
+    headers = ops_headers(client, actor_id="ops_assisted_gate")
 
-    initial = client.get("/v1/ops/learned-assisted-gate")
+    initial = client.get("/v1/ops/learned-assisted-gate", headers=headers)
     assert initial.status_code == 200
     assert initial.json()["config"]["config"]["mode"] == "shadow_only"
 
@@ -219,6 +232,7 @@ def test_assisted_gate_endpoints_can_configure_and_report_summary(tmp_path: Path
             "required_block_share": 0.5,
             "world_allowlist": ["urban_mystery_lotus_lane"],
         },
+        headers=headers,
     )
     assert configured.status_code == 200
     assert configured.json()["config"]["config"]["enabled"] is True

@@ -7,6 +7,19 @@ from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.worldpacks.registry import FileSystemWorldRegistry
 
 
+def _ops_headers(client: TestClient, *, actor_id: str = "ops_alert") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={"actor_id": actor_id, "actor_role": "ops", "password": "secret123", "account_id": actor_id},
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
+
+
 def _make_app(tmp_path: Path, name: str):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / name))
     app = create_app(repository=repository)
@@ -153,18 +166,18 @@ def test_ops_alert_endpoints_and_shell(tmp_path: Path):
 
     shell = client.get("/app")
     assert shell.status_code == 200
-    assert "Alert Center" in shell.text
     assert "主动告警与标准处置" in shell.text
-    assert "Refresh Alerts" in shell.text
-    assert "Acknowledge Alert" in shell.text
-    assert "Resolve Alert" in shell.text
+    assert "刷新告警" in shell.text
+    assert "确认告警" in shell.text
+    assert "处理完成" in shell.text
 
-    feed = client.get("/v1/ops/alerts", params={"account_id": seeded["account_id"], "limit": 20})
+    headers = _ops_headers(client)
+    feed = client.get("/v1/ops/alerts", params={"account_id": seeded["account_id"], "limit": 20}, headers=headers)
     assert feed.status_code == 200
     assert feed.json()["alerts"]
     alert_id = feed.json()["alerts"][0]["alert_id"]
 
-    detail = client.get(f"/v1/ops/alerts/{alert_id}", params={"account_id": seeded["account_id"]})
+    detail = client.get(f"/v1/ops/alerts/{alert_id}", params={"account_id": seeded["account_id"]}, headers=headers)
     assert detail.status_code == 200
     assert "alert" in detail.json()
     assert "standard_response_bundle" in detail.json()
@@ -177,6 +190,7 @@ def test_ops_alert_endpoints_and_shell(tmp_path: Path):
             "reviewer_id": "ops_alert",
             "note": "resolved in test",
         },
+        headers=headers,
     )
     assert updated.status_code == 200
     assert updated.json()["alert"]["status"] == "resolved"

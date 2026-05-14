@@ -1,4 +1,6 @@
 import subprocess
+import os
+import sys
 from pathlib import Path
 
 
@@ -20,4 +22,5 @@ def test_phase0_guardrail_script_passes():
         ["bash", "scripts/run_phase0_guardrails.sh"],
         cwd=root,
         check=True,
+        env={**os.environ, "PYTHON": sys.executable},
     )

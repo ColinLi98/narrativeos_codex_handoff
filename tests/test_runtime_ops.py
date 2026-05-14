@@ -7,6 +7,7 @@ from src.narrativeos.api import create_app
 from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.services.observability import ObservabilityService
 from src.narrativeos.services.runtime_ops import RuntimeOpsService
+from tests.ops_auth import ops_headers
 
 
 def _mock_postgres_runtime(service: RuntimeOpsService, tmp_path: Path, monkeypatch) -> None:
@@ -232,41 +233,44 @@ def test_runtime_ops_endpoints_return_runbook_backup_and_playbook(tmp_path: Path
     db_path = tmp_path / "runtime_ops_api.db"
     app = create_app(repository=SQLAlchemyRepository(database_url="sqlite:///%s" % db_path))
     client = TestClient(app)
+    headers = ops_headers(client, actor_id="ops_runtime_ops")
+    admin_headers = ops_headers(client, actor_id="admin_runtime_ops", actor_role="admin")
 
-    runbook = client.get("/v1/ops/deployment-runbook")
+    runbook = client.get("/v1/ops/deployment-runbook", headers=headers)
     assert runbook.status_code == 200
     assert "deploy_steps" in runbook.json()
     assert "recent_backups" in runbook.json()
-    gate = client.get("/v1/ops/deployment-health-gate")
+    gate = client.get("/v1/ops/deployment-health-gate", headers=headers)
     assert gate.status_code == 200
     assert "checks" in gate.json()
-    bundle = client.get("/v1/ops/preflight-verification-bundle")
+    bundle = client.get("/v1/ops/preflight-verification-bundle", headers=headers)
     assert bundle.status_code == 200
     assert "verification_commands" in bundle.json()
 
     backup = client.post(
         "/v1/ops/runtime-backups",
         json={"label": "api_backup", "output_dir": str(tmp_path / "api_backups")},
+        headers=headers,
     )
     assert backup.status_code == 200
     backup_path = backup.json()["backup"]["backup_path"]
     assert Path(backup_path).exists()
 
-    playbook = client.get("/v1/ops/incident-playbook")
+    playbook = client.get("/v1/ops/incident-playbook", headers=headers)
     assert playbook.status_code == 200
     assert "triage_steps" in playbook.json()
     assert "restore_verification_steps" in playbook.json()
 
-    drills = client.get("/v1/ops/recovery-drills")
+    drills = client.get("/v1/ops/recovery-drills", headers=headers)
     assert drills.status_code == 200
     assert "recovery_drills" in drills.json()
 
-    drill = client.post("/v1/ops/recovery-drill", json={"backup_path": backup_path})
+    drill = client.post("/v1/ops/recovery-drill", json={"backup_path": backup_path}, headers=headers)
     assert drill.status_code == 200
     assert "recovery_drill" in drill.json()
     assert drill.json()["recovery_drill"]["restore_plan"]["status"] == "planned"
 
-    restore = client.post("/v1/ops/runtime-restore", json={"backup_path": backup_path, "dry_run": True})
+    restore = client.post("/v1/ops/runtime-restore", json={"backup_path": backup_path, "dry_run": True}, headers=admin_headers)
     assert restore.status_code == 200
     assert restore.json()["restore"]["status"] == "planned"
     assert "restore_decision" in restore.json()["restore"]
@@ -277,6 +281,7 @@ def test_postgres_restore_request_endpoints_and_jobs(tmp_path: Path, monkeypatch
     app = create_app(repository=SQLAlchemyRepository(database_url="sqlite:///%s" % db_path))
     client = TestClient(app)
     _mock_postgres_runtime(app.state.runtime_ops_service, tmp_path, monkeypatch)
+    admin_headers = ops_headers(client, actor_id="admin_runtime_restore", actor_role="admin")
 
     backup = app.state.runtime_ops_service.create_backup(
         label="api_pg_backup",
@@ -300,7 +305,7 @@ def test_postgres_restore_request_endpoints_and_jobs(tmp_path: Path, monkeypatch
     assert requested.status_code == 200
     request_id = requested.json()["restore_request"]["request_id"]
 
-    listed = client.get("/v1/ops/runtime-restore-requests")
+    listed = client.get("/v1/ops/runtime-restore-requests", headers=admin_headers)
     assert listed.status_code == 200
     assert any(item["request_id"] == request_id for item in listed.json()["restore_requests"])
 
@@ -327,7 +332,7 @@ def test_postgres_restore_request_endpoints_and_jobs(tmp_path: Path, monkeypatch
     job_id = job_response.json()["job"]["job_id"]
     if job_response.json()["job"]["status"] != "succeeded":
         app.state.async_job_service.run_job(job_id)
-    job_detail = client.get(f"/v1/ops/jobs/{job_id}")
+    job_detail = client.get(f"/v1/ops/jobs/{job_id}", headers=admin_headers)
     assert job_detail.status_code == 200
     assert job_detail.json()["job"]["job_type"] == "runtime_restore"
     assert job_detail.json()["job"]["status"] == "succeeded"

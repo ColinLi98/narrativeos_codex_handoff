@@ -517,6 +517,62 @@ class OpsTraceabilityService:
                     link_tokens=[f"world_version:{world_version_id}"],
                 )
             )
+        capability = dict(status.get("author_longform_capability") or {})
+        readiness = dict(capability.get("longform_readiness") or {})
+        entries.append(
+            self._trace_entry(
+                trace_id=f"author_longform_capability::{world_version_id}",
+                occurred_at=status.get("versions", [{}])[0].get("updated_at") if status.get("versions") else None,
+                source_type="author_longform_capability",
+                category="content_release",
+                severity="info" if readiness.get("status") in {None, "ready"} else "high",
+                status=readiness.get("status") or "unknown",
+                headline="author_longform_capability",
+                summary=f"entry {capability.get('entry_mode') or '-'} · requested {capability.get('requested_target_band') or '-'} · claim {capability.get('claim_safe_band') or '-'}",
+                account_id=account_id,
+                world_version_id=world_version_id,
+                object_type="author_longform_capability",
+                object_id=world_version_id,
+                evidence_refs=[
+                    self._evidence_ref(
+                        kind="author_longform_capability",
+                        label="author_longform_capability",
+                        ref_id=world_version_id,
+                        preview=str(capability or {"claim": "not_asserted"}),
+                    )
+                ],
+                next_actions=list(readiness.get("recommended_actions") or []),
+                link_tokens=[f"world_version:{world_version_id}"],
+            )
+        )
+        if status.get("author_claim_alignment"):
+            alignment = dict(status.get("author_claim_alignment") or {})
+            entries.append(
+                self._trace_entry(
+                    trace_id=f"author_longform_claim_alignment::{world_version_id}",
+                    occurred_at=status.get("versions", [{}])[0].get("updated_at") if status.get("versions") else None,
+                    source_type="author_longform_claim_alignment",
+                    category="content_release",
+                    severity="info" if alignment.get("aligned") else "high",
+                    status="ok" if alignment.get("aligned") else "blocked",
+                    headline="author_longform_claim_alignment",
+                    summary=f"claim {alignment.get('claim_safe_band') or '-'} · ops ready {alignment.get('ops_release_ready_band') or '-'} · aligned {'yes' if alignment.get('aligned') else 'no'}",
+                    account_id=account_id,
+                    world_version_id=world_version_id,
+                    object_type="author_longform_claim_alignment",
+                    object_id=world_version_id,
+                    evidence_refs=[
+                        self._evidence_ref(
+                            kind="author_longform_claim_alignment",
+                            label="author_longform_claim_alignment",
+                            ref_id=world_version_id,
+                            preview=str(alignment),
+                        )
+                    ],
+                    next_actions=["inspect_release_evidence_bundle"] if not alignment.get("aligned") else [],
+                    link_tokens=[f"world_version:{world_version_id}"],
+                )
+            )
         for item in history.get("rollback_drilldown", []):
             entries.append(
                 self._trace_entry(
@@ -547,6 +603,25 @@ class OpsTraceabilityService:
                 )
             )
         return entries
+
+    def _longform_alignment_snapshot(self, world_version_id: Optional[str]) -> Dict[str, Any]:
+        if not world_version_id:
+            return {
+                "author_longform_capability": {},
+                "author_claim_alignment": {},
+            }
+        try:
+            version = self.repository.get_world_version(world_version_id)
+        except KeyError:
+            return {
+                "author_longform_capability": {},
+                "author_claim_alignment": {},
+            }
+        status = self.review.world_status(version.world_id)
+        return {
+            "author_longform_capability": dict(status.get("author_longform_capability") or {}),
+            "author_claim_alignment": dict(status.get("author_claim_alignment") or {}),
+        }
 
     def _runtime_trace_entries(self, *, account_id: str, world_version_id: Optional[str], limit: int) -> List[Dict[str, Any]]:
         receipts = self.observability.list_runtime_receipts(account_id=account_id, limit=max(limit * 4, 50))
@@ -629,12 +704,71 @@ class OpsTraceabilityService:
                 )
         return items
 
+    def _preserve_source_type_coverage(
+        self,
+        trace_timeline: List[Dict[str, Any]],
+        *,
+        limit: int,
+    ) -> List[Dict[str, Any]]:
+        if limit <= 0:
+            return []
+        if len(trace_timeline) <= limit:
+            return list(trace_timeline)
+        selected = list(trace_timeline[:limit])
+        present_source_types = {
+            str(trace.get("source_type") or "")
+            for trace in selected
+            if str(trace.get("source_type") or "")
+        }
+        missing_by_type: Dict[str, Dict[str, Any]] = {}
+        for trace in trace_timeline[limit:]:
+            source_type = str(trace.get("source_type") or "")
+            if source_type and source_type not in present_source_types and source_type not in missing_by_type:
+                missing_by_type[source_type] = trace
+        if not missing_by_type:
+            return selected
+        selected.extend(missing_by_type.values())
+        selected = sorted(
+            selected,
+            key=lambda item: (self._parse_timestamp(item.get("occurred_at")), -len(item.get("evidence_refs", []))),
+            reverse=True,
+        )
+        required_ids = {
+            str(trace.get("trace_id") or "")
+            for trace in missing_by_type.values()
+            if str(trace.get("trace_id") or "")
+        }
+        while len(selected) > limit:
+            source_counts: Dict[str, int] = {}
+            for trace in selected:
+                source_type = str(trace.get("source_type") or "")
+                source_counts[source_type] = source_counts.get(source_type, 0) + 1
+            removed = False
+            for index in range(len(selected) - 1, -1, -1):
+                trace = selected[index]
+                trace_id = str(trace.get("trace_id") or "")
+                source_type = str(trace.get("source_type") or "")
+                if trace_id in required_ids:
+                    continue
+                if source_counts.get(source_type, 0) <= 1:
+                    continue
+                selected.pop(index)
+                source_counts[source_type] -= 1
+                removed = True
+                break
+            if not removed:
+                selected = selected[:limit]
+                break
+        return selected[:limit]
+
     def _investigation_summary(
         self,
         *,
         trace_timeline: List[Dict[str, Any]],
         account_detail: Dict[str, Any],
         governance_snapshot: Dict[str, Any],
+        author_longform_capability: Optional[Dict[str, Any]] = None,
+        author_claim_alignment: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         category_counts: Dict[str, int] = {}
         severity_counts: Dict[str, int] = {}
@@ -652,6 +786,11 @@ class OpsTraceabilityService:
             "open_support_issue_count": int(account_detail.get("support_summary", {}).get("open_issue_count") or 0),
             "billing_retry_attempt_count": int(account_detail.get("lifecycle_history_summary", {}).get("retry_attempt_count") or 0),
             "billing_event_count": int(account_detail.get("lifecycle_history_summary", {}).get("event_count") or 0),
+            "author_entry_mode": dict(author_longform_capability or {}).get("entry_mode"),
+            "author_claim_safe_band": dict(author_longform_capability or {}).get("claim_safe_band"),
+            "author_requested_target_band": dict(author_longform_capability or {}).get("requested_target_band"),
+            "ops_release_ready_band": dict(author_claim_alignment or {}).get("ops_release_ready_band"),
+            "author_claim_alignment": bool(dict(author_claim_alignment or {}).get("aligned")) if author_claim_alignment else None,
         }
 
     def investigate_account(
@@ -666,6 +805,7 @@ class OpsTraceabilityService:
         governance_snapshot = self.governance.account_snapshot(account_id=account_id, limit=limit)
         support_issues = account_detail.get("support_issues", [])
         world_version_ids = [world_version_id] if world_version_id else self._world_versions_for_account(account_id)
+        alignment_snapshot = self._longform_alignment_snapshot(world_version_id or (world_version_ids[0] if len(world_version_ids) == 1 else None))
 
         trace_timeline = [
             *self._billing_trace_entries(account_detail),
@@ -686,7 +826,8 @@ class OpsTraceabilityService:
             trace_timeline,
             key=lambda item: (self._parse_timestamp(item.get("occurred_at")), -len(item.get("evidence_refs", []))),
             reverse=True,
-        )[:limit]
+        )
+        trace_timeline = self._preserve_source_type_coverage(trace_timeline, limit=limit)
         trace_timeline = self._link_trace_timeline(trace_timeline)
         evidence_index = self._build_evidence_index(trace_timeline)
         recommended_paths = self._recommended_paths(
@@ -707,6 +848,8 @@ class OpsTraceabilityService:
                 trace_timeline=trace_timeline,
                 account_detail=account_detail,
                 governance_snapshot=governance_snapshot,
+                author_longform_capability=alignment_snapshot.get("author_longform_capability"),
+                author_claim_alignment=alignment_snapshot.get("author_claim_alignment"),
             ),
             "linked_entities": {
                 "account_id": account_detail.get("account_id"),
@@ -716,6 +859,8 @@ class OpsTraceabilityService:
                 "world_version_ids": world_version_ids,
                 "support_issue_ids": [item.get("issue_id") for item in support_issues],
             },
+            "author_longform_capability": alignment_snapshot.get("author_longform_capability") or {},
+            "author_claim_alignment": alignment_snapshot.get("author_claim_alignment") or {},
             "trace_timeline": trace_timeline,
             "evidence_index": evidence_index,
             "recommended_paths": recommended_paths,
@@ -723,6 +868,9 @@ class OpsTraceabilityService:
                 "account_id": account_id,
                 "world_version_id": world_version_id,
                 "case_id": case_id,
+                "claim_safe_band": dict(alignment_snapshot.get("author_longform_capability") or {}).get("claim_safe_band"),
+                "ops_release_ready_band": dict(alignment_snapshot.get("author_claim_alignment") or {}).get("ops_release_ready_band"),
+                "author_claim_alignment": dict(alignment_snapshot.get("author_claim_alignment") or {}).get("aligned"),
             },
         }
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-from ..prose_linter import lint_prose
+from ..prose_linter import lint_prose, story_text_unit_count
 
 
 def lint_chapter_draft(text: str) -> Dict[str, object]:

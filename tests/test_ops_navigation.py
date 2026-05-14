@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -5,6 +6,19 @@ from fastapi.testclient import TestClient
 from src.narrativeos.api import create_app
 from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.worldpacks.registry import FileSystemWorldRegistry
+
+
+def _ops_headers(client: TestClient, *, actor_id: str = "ops_nav") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={"actor_id": actor_id, "actor_role": "ops", "password": "secret123", "account_id": actor_id},
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
 
 
 def _seed_navigation_context(app, *, account_id: str = "acct_nav") -> dict:
@@ -81,9 +95,10 @@ def test_ops_navigation_endpoint_and_shell(tmp_path: Path):
     shell = client.get("/app")
     assert shell.status_code == 200
     assert "统一导航 / 升级路径" in shell.text
-    assert "Sync Context" in shell.text
-    assert "Follow Recommendation" in shell.text
+    assert "同步上下文" in shell.text
+    assert "按建议进入" in shell.text
 
+    headers = _ops_headers(client)
     payload = client.get(
         "/v1/ops/navigation-model",
         params={
@@ -92,6 +107,7 @@ def test_ops_navigation_endpoint_and_shell(tmp_path: Path):
             "case_id": seeded["case_id"],
             "alert_id": seeded["alert_id"],
         },
+        headers=headers,
     )
     assert payload.status_code == 200
     json_payload = payload.json()
@@ -140,6 +156,7 @@ def test_ops_navigation_endpoint_soft_fails_stale_alert_id(tmp_path: Path):
             "case_id": seeded["case_id"],
             "alert_id": "support_issue::acct_nav_stale_api::stale_alert",
         },
+        headers=_ops_headers(client, actor_id="ops_nav_stale_api"),
     )
     assert payload.status_code == 200
     json_payload = payload.json()
@@ -198,27 +215,35 @@ def test_ops_navigation_soft_fails_stale_world_version_from_case(tmp_path: Path)
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "ops_navigation_stale_world_version.db"))
     app = create_app(repository=repository)
 
-    case = app.state.governance_service.create_case(
+    case_id = "govcase_stale_world_version"
+    repository.save_review_record(
         {
-            "case_type": "rights",
-            "target_type": "world_version",
-            "target_id": "missing_world@9.9.9",
-            "account_id": "acct_nav_world_version",
-            "world_version_id": "missing_world@9.9.9",
-            "severity": "high",
-            "summary": "stale world version case",
+            "asset_type": "governance_case",
+            "asset_id": case_id,
+            "status": "open",
             "reviewer_id": "ops_nav",
-            "owner_id": "ops_nav",
+            "risk_rating": "high",
+            "notes": json.dumps({
+                "case_id": case_id,
+                "case_type": "rights",
+                "target_type": "world_version",
+                "target_id": "missing_world@9.9.9",
+                "account_id": "acct_nav_world_version",
+                "world_version_id": "missing_world@9.9.9",
+                "severity": "high",
+                "summary": "stale world version case",
+                "owner_id": "ops_nav",
+            }),
         }
     )
 
     payload = app.state.ops_navigation_service.navigation_model(
         account_id="acct_nav_world_version",
-        case_id=case["case_id"],
+        case_id=case_id,
     )
 
     assert payload["active_context"]["account_id"] == "acct_nav_world_version"
-    assert payload["active_context"]["case_id"] == case["case_id"]
+    assert payload["active_context"]["case_id"] == case_id
     assert payload["active_context"]["world_version_id"] is None
     assert payload["active_context"]["world_id"] is None
     assert any(item.startswith("stale_world_version_ref:") for item in payload["context_warnings"])

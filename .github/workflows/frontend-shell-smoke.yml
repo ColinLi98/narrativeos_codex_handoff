@@ -1,0 +1,107 @@
+name: frontend-shell-smoke
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+      - name: Run frontend shell smoke
+        run: |
+          CI_HEADLESS=1 \
+          CHROME_BIN="${{ steps.setup-chrome.outputs.chrome-path }}" \
+          bash scripts/run_frontend_shell_smoke.sh
+      - name: Publish frontend shell smoke summary
+        if: always()
+        run: |
+          . .venv/bin/activate
+          python scripts/write_frontend_shell_smoke_step_summary.py \
+            --result-file artifacts/frontend_shell_smoke_result.json \
+            --server-log /tmp/frontend_shell_smoke_server.log \
+            --chrome-log /tmp/frontend_shell_smoke_chrome.log \
+            --failure-artifact artifacts/frontend_shell_smoke_failure_snapshot.json \
+            >> "$GITHUB_STEP_SUMMARY"
+          cp /tmp/frontend_shell_smoke_server.log artifacts/frontend_shell_smoke_server.log 2>/dev/null || true
+          cp /tmp/frontend_shell_smoke_chrome.log artifacts/frontend_shell_smoke_chrome.log 2>/dev/null || true
+      - name: Upload frontend shell smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-shell-smoke-artifacts
+          if-no-files-found: warn
+          path: |
+            artifacts/frontend_shell_smoke_result.json
+            artifacts/frontend_shell_smoke_failure_snapshot.json
+            artifacts/frontend_shell_smoke_failure.png
+            artifacts/frontend_shell_smoke_server.log
+            artifacts/frontend_shell_smoke_chrome.log
+
+  agent-studio-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+      - name: Run Agent Studio smoke
+        run: |
+          CI_HEADLESS=1 \
+          CHROME_BIN="${{ steps.setup-chrome.outputs.chrome-path }}" \
+          bash scripts/run_agent_studio_smoke.sh
+      - name: Publish Agent Studio smoke summary
+        if: always()
+        run: |
+          . .venv/bin/activate
+          python scripts/write_agent_studio_smoke_step_summary.py \
+            --result-file artifacts/agent_studio_smoke_result.json \
+            --server-log /tmp/agent_studio_smoke_server.log \
+            --chrome-log /tmp/agent_studio_smoke_chrome.log \
+            --failure-artifact artifacts/agent_studio_smoke_failure_snapshot.json \
+            >> "$GITHUB_STEP_SUMMARY"
+          cp /tmp/agent_studio_smoke_server.log artifacts/agent_studio_smoke_server.log 2>/dev/null || true
+          cp /tmp/agent_studio_smoke_chrome.log artifacts/agent_studio_smoke_chrome.log 2>/dev/null || true
+      - name: Upload Agent Studio smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-studio-smoke-artifacts
+          if-no-files-found: warn
+          path: |
+            artifacts/agent_studio_smoke_result.json
+            artifacts/agent_studio_smoke_failure_snapshot.json
+            artifacts/agent_studio_smoke_failure.png
+            artifacts/agent_studio_smoke_desktop.png
+            artifacts/agent_studio_smoke_mobile.png
+            artifacts/agent_studio_smoke_visual_review.md
+            artifacts/agent_studio_smoke_server.log
+            artifacts/agent_studio_smoke_chrome.log

@@ -11,10 +11,11 @@ from typing import Any, Dict, List, Optional, Sequence
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
-from .canon import hard_constraint_errors
+from .canon import effective_rating_ceiling, hard_constraint_errors
 from .models import CandidateBatch, EventAtom, NarrativeState, WorldBible
 from .prompts import get_prompt_text, render_candidate_user_prompt
 from .schemas import validate_payload
+from .scene_functions import normalize_scene_function
 
 
 class LLMBackend(ABC):
@@ -468,9 +469,19 @@ class RoutingLLMBackend(LLMBackend):
 
 class StaticCandidateProvider(CandidateProvider):
     _LONG_ROUTE_CONTINUATION_MIN_END_TURN = 10
+    _DUTY_FUNCTION_PRIORITIES: Dict[str, List[str]] = {
+        "advance_plot": ["false_peace", "truth_trial", "debt_exchange", "temptation"],
+        "advance_relationship": ["temptation", "misrecognition", "confession_window", "truth_trial"],
+        "resolve_promise": ["debt_exchange", "confession_window", "truth_trial", "karma_ripening"],
+        "expand_world": ["false_peace", "truth_trial", "karma_ripening", "debt_exchange"],
+        "pace_breath": ["confession_window", "false_peace", "misrecognition", "temptation"],
+        "deliver_climax": ["karma_ripening", "truth_trial", "humiliation", "debt_exchange"],
+    }
 
     def __init__(self, event_pool: Sequence[EventAtom]) -> None:
         self.event_pool = [EventAtom.from_dict(event.to_dict()) for event in event_pool]
+        self._batch_cache = RuntimePromptCache(max_entries=256)
+        self._continuation_template_cache = RuntimePromptCache(max_entries=256)
 
     _CONTINUATION_FUNCTIONS_BY_PHASE: Dict[str, List[str]] = {
         "setup": ["false_peace", "temptation", "confession_window"],
@@ -522,18 +533,25 @@ class StaticCandidateProvider(CandidateProvider):
     }
 
     def _continuation_functions(self, state: NarrativeState) -> List[str]:
+        duty_type = str((state.current_chapter_task or {}).get("duty_type") or "")
+        duty_functions = list(self._DUTY_FUNCTION_PRIORITIES.get(duty_type, []))
         phase_functions = list(
             self._CONTINUATION_FUNCTIONS_BY_PHASE.get(
                 state.story_phase,
                 self._CONTINUATION_FUNCTIONS_BY_PHASE["midpoint"],
             )
         )
+        combined = list(dict.fromkeys(duty_functions + phase_functions))
         recent = [
             str(scene_function)
-            for scene_function in state.recent_scene_functions[-2:]
+            for scene_function in state.recent_scene_functions[-3:]
         ]
-        preferred = [scene_function for scene_function in phase_functions if scene_function not in recent]
-        return preferred or phase_functions
+        preferred = [scene_function for scene_function in combined if scene_function not in recent]
+        if preferred:
+            rotation = max(0, int(state.chapter_index)) % len(preferred)
+            return preferred[rotation:] + preferred[:rotation]
+        rotation = max(0, int(state.chapter_index)) % len(combined) if combined else 0
+        return combined[rotation:] + combined[:rotation] if combined else phase_functions
 
     def _continuation_title(self, scene_function: str, location: str, *, index: int) -> str:
         base = self._SCENE_FUNCTION_LABELS.get(scene_function, "局势又往前推了一步")
@@ -563,24 +581,101 @@ class StaticCandidateProvider(CandidateProvider):
         scene_function: str,
         actors: Sequence[str],
     ) -> List[Dict[str, Any]]:
-        if state.chapter_index >= state.min_end_turn or len(state.open_promises) >= 3:
+        promise_actions = set(str(item) for item in list((state.current_chapter_task or {}).get("promise_actions") or []))
+        promise_targets = [str(item) for item in list((state.current_chapter_task or {}).get("promise_targets") or []) if str(item)]
+        progression = dict((state.metadata or {}).get("longform_progression") or {})
+        target_chapters = int(progression.get("series_target_chapters", 0) or 0)
+        protected_runway = target_chapters and int(state.chapter_index or 0) < int(target_chapters * 0.96)
+        if (
+            (state.chapter_index >= state.min_end_turn and not protected_runway)
+            or (len(state.open_promises) >= 3 and "open_follow_on_promise" not in promise_actions)
+        ):
             return []
         holders = list(dict.fromkeys(list(actors[:2]) or list(actors[:1])))
         if not holders:
             return []
+        promise_id = f"{event_id}__promise"
+        description = "这一步逼出来的话，迟早要在后面的章节里被真正认下。"
+        existing_promise_ids = {str(promise.promise_id) for promise in state.open_promises if str(getattr(promise, "promise_id", ""))}
+        if promise_targets:
+            preferred_promise_id = promise_targets[0]
+            if preferred_promise_id not in existing_promise_ids:
+                promise_id = preferred_promise_id
+                description = f"{preferred_promise_id} 这条线索/承诺必须在后续章节继续追上来。"
+            else:
+                promise_id = f"{event_id}__follow_on_promise"
+                description = f"{preferred_promise_id} 还没收住，需要在后续章节再打开一条新的追问。"
         return [
             {
-                "promise_id": f"{event_id}__promise",
-                "description": "这一步逼出来的话，迟早要在后面的章节里被真正认下。",
+                "promise_id": promise_id,
+                "description": description,
                 "opened_at_turn": state.turn_index,
                 "due_by_turn": state.turn_index + 2,
                 "holders": holders,
                 "fulfillment_modes": ["truth", "choice", "confession"],
                 "status": "open",
                 "stakes": "medium",
-                "tags": [scene_function, "story_thread"],
+                "tags": [scene_function, "story_thread", "runway"],
             }
         ]
+
+    def _continuation_promises_close(
+        self,
+        *,
+        state: NarrativeState,
+        scene_function: str,
+        actors: Sequence[str],
+    ) -> List[str]:
+        duty_type = str((state.current_chapter_task or {}).get("duty_type") or "")
+        promise_actions = set(str(item) for item in list((state.current_chapter_task or {}).get("promise_actions") or []))
+        actor_set = {str(actor) for actor in actors if str(actor)}
+        overdue = [
+            promise
+            for promise in state.open_promises
+            if promise.status == "open" and int(promise.due_by_turn or 0) <= int(state.turn_index or 0)
+        ]
+        if not overdue:
+            overdue = [promise for promise in state.open_promises if promise.status == "open"]
+        if not overdue:
+            return []
+        close_budget = 0
+        if duty_type in {"resolve_promise", "deliver_climax"}:
+            close_budget = 2
+        elif duty_type in {"pace_breath", "advance_relationship", "expand_world"} and (
+            len(state.open_promises) >= 5
+            or "advance_payoff" in promise_actions
+            or "close_arc_loop" in promise_actions
+        ):
+            close_budget = 1
+        if scene_function in {"debt_exchange", "karma_ripening", "confession_window", "truth_trial"}:
+            close_budget = max(close_budget, 1)
+        if close_budget <= 0:
+            return []
+
+        def sort_key(promise):
+            holder_overlap = bool(actor_set & set(promise.holders))
+            stakes = str(promise.stakes or "")
+            return (
+                0 if holder_overlap else 1,
+                0 if stakes not in {"low", "medium"} else 1,
+                int(promise.opened_at_turn or 0),
+                int(promise.due_by_turn or 0),
+                promise.promise_id,
+            )
+
+        selected = []
+        for promise in sorted(overdue, key=sort_key):
+            if promise.promise_id not in selected:
+                selected.append(promise.promise_id)
+            if len(selected) >= close_budget:
+                break
+        progression = dict((state.metadata or {}).get("longform_progression") or {})
+        target_chapters = int(progression.get("series_target_chapters", 0) or 0)
+        protected_runway = target_chapters and int(state.chapter_index or 0) < int(target_chapters * 0.8)
+        if protected_runway and (len(state.open_promises) - len(selected)) <= 0:
+            while selected and (len(state.open_promises) - len(selected)) <= 0:
+                selected.pop()
+        return selected
 
     def _continuation_seeds(
         self,
@@ -611,6 +706,118 @@ class StaticCandidateProvider(CandidateProvider):
                 "transformable_by": ["mutual_truth", "vow_payment", "public_witness"],
             }
         ]
+
+    def _continuation_blueprint_templates(
+        self,
+        base_event: EventAtom,
+        *,
+        state: NarrativeState,
+        world: WorldBible,
+        scene_functions: Sequence[str],
+        limit: int,
+    ) -> List[Dict[str, Any]]:
+        raw_blueprints = list((base_event.metadata or {}).get("continuation_blueprints") or [])
+        if limit <= 0 or not raw_blueprints:
+            return []
+        base_payload = base_event.to_dict()
+        templates: List[Dict[str, Any]] = []
+        fallback_functions = list(scene_functions) or [base_event.scene_function]
+        current_duty = str((state.current_chapter_task or {}).get("duty_type") or "")
+        current_phase = str(state.story_phase or "")
+        for blueprint_index, raw in enumerate(raw_blueprints):
+            payload = dict(raw or {})
+            duty_allowlist = {str(item) for item in list(payload.get("duty_allowlist") or []) if str(item)}
+            duty_denylist = {str(item) for item in list(payload.get("duty_denylist") or []) if str(item)}
+            phase_allowlist = {str(item) for item in list(payload.get("phase_allowlist") or []) if str(item)}
+            phase_denylist = {str(item) for item in list(payload.get("phase_denylist") or []) if str(item)}
+            if duty_allowlist and current_duty not in duty_allowlist:
+                continue
+            if duty_denylist and current_duty in duty_denylist:
+                continue
+            if phase_allowlist and current_phase not in phase_allowlist:
+                continue
+            if phase_denylist and current_phase in phase_denylist:
+                continue
+            scene_function = normalize_scene_function(
+                str(payload.get("scene_function") or fallback_functions[blueprint_index % len(fallback_functions)])
+            )
+            tags = list(
+                dict.fromkeys(
+                    list(base_event.tags)
+                    + list(payload.get("tags") or [])
+                    + list((world.creator_controls.theme_targets or [])[:2])
+                    + [scene_function]
+                )
+            )
+            metadata = dict(base_event.metadata or {})
+            metadata.pop("continuation_blueprints", None)
+            metadata.update(
+                {
+                    "continuation_variant": True,
+                    "base_event_id": base_event.event_id,
+                    "continuation_phase": payload.get("phase") or "",
+                    "continuation_blueprint_id": str(payload.get("blueprint_id") or f"{base_event.event_id}::{scene_function}::{blueprint_index}"),
+                    "generated_from_static_pool": True,
+                }
+            )
+            if payload.get("next_continuation_blueprints"):
+                metadata["continuation_blueprints"] = list(payload.get("next_continuation_blueprints") or [])
+            if payload.get("scene_quality_contract"):
+                metadata["scene_quality_contract"] = dict(payload.get("scene_quality_contract") or {})
+            if payload.get("scene_blueprint_id"):
+                metadata["scene_blueprint_id"] = str(payload.get("scene_blueprint_id") or "")
+            location = str(payload.get("location") or base_event.location or (world.locations[blueprint_index % len(world.locations)] if world.locations else ""))
+            templates.append(
+                {
+                    "base_event_id": base_event.event_id,
+                    "index": blueprint_index,
+                    "actors": list(payload.get("actors") or base_event.actors),
+                    "title": str(payload.get("title") or self._continuation_title(scene_function, location, index=blueprint_index)),
+                    "summary": str(
+                        payload.get("summary")
+                        or self._continuation_summary(
+                            scene_function=scene_function,
+                            location=location,
+                            world=world,
+                            tags=tags,
+                        )
+                    ),
+                    "scene_function": scene_function,
+                    "tags": tags,
+                    "belief_updates": dict(payload.get("belief_updates") or base_payload.get("belief_updates") or {}),
+                    "trust_deltas": list(payload.get("trust_deltas") or base_payload.get("trust_deltas") or []),
+                    "emotion_deltas": list(payload.get("emotion_deltas") or base_payload.get("emotion_deltas") or []),
+                        "rating_ceiling": str(payload.get("rating_ceiling") or base_event.rating_ceiling or world.creator_controls.darkness_ceiling or "PG13"),
+                        "tension_delta": float(payload.get("tension_delta") or self._SCENE_FUNCTION_TENSION.get(scene_function, max(0.08, float(base_event.tension_delta)))),
+                    "theme_impacts": dict(
+                        payload.get("theme_impacts")
+                        or {theme: 0.06 for theme in list((world.creator_controls.theme_targets or world.themes)[:3]) or list(tags[:2])}
+                    ),
+                        "agency_affordances": list(
+                            dict.fromkeys(
+                                list(payload.get("agency_affordances") or base_event.agency_affordances)
+                                + list(tags[:2])
+                                + ["continue_story"]
+                            )
+                        ),
+                        "promises_close": list(
+                            dict.fromkeys(
+                                list(payload.get("promises_close") or [])
+                                + self._continuation_promises_close(
+                                    state=state,
+                                    scene_function=scene_function,
+                                    actors=list(payload.get("actors") or base_event.actors),
+                                )
+                            )
+                        ),
+                        "location": location,
+                        "convergence_key": str(payload.get("convergence_key") or base_event.convergence_key or f"continuation::{scene_function}"),
+                        "metadata": metadata,
+                    }
+                )
+            if len(templates) >= limit:
+                break
+        return templates
 
     def _continuation_variant(
         self,
@@ -687,6 +894,129 @@ class StaticCandidateProvider(CandidateProvider):
         )
         return EventAtom.from_dict(payload)
 
+    def _continuation_template_cache_key(
+        self,
+        *,
+        state: NarrativeState,
+        world: WorldBible,
+        scene_functions: Sequence[str],
+        limit: int,
+    ) -> str:
+        payload = {
+            "world_id": world.world_id,
+            "story_phase": state.story_phase,
+            "duty_type": str((state.current_chapter_task or {}).get("duty_type") or ""),
+            "scene_functions": list(scene_functions),
+            "limit": int(limit),
+            "rating_ceiling": state.rating_ceiling or world.creator_controls.darkness_ceiling,
+            "theme_targets": list(world.creator_controls.theme_targets or world.themes),
+            "locations": list(world.locations or []),
+            "event_pool_ids": [event.event_id for event in self.event_pool],
+            "event_pool_continuation_blueprints": {
+                event.event_id: list((event.metadata or {}).get("continuation_blueprints") or [])
+                for event in self.event_pool
+                if (event.metadata or {}).get("continuation_blueprints")
+            },
+        }
+        return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+
+    def _continuation_variant_templates(
+        self,
+        state: NarrativeState,
+        world: WorldBible,
+        *,
+        scene_functions: Sequence[str],
+        limit: int,
+    ) -> List[Dict[str, Any]]:
+        if limit <= 0 or not self.event_pool:
+            return []
+        cache_key = self._continuation_template_cache_key(
+            state=state,
+            world=world,
+            scene_functions=scene_functions,
+            limit=limit,
+        )
+        cached = self._continuation_template_cache.get(cache_key)
+        if isinstance(cached, list):
+            return [dict(item) for item in cached]
+        templates: List[Dict[str, Any]] = []
+        for base_index, base_event in enumerate(self.event_pool):
+            blueprint_templates = self._continuation_blueprint_templates(
+                base_event,
+                state=state,
+                world=world,
+                scene_functions=scene_functions,
+                limit=max(0, limit - len(templates)),
+            )
+            if blueprint_templates:
+                templates.extend(blueprint_templates)
+                if len(templates) >= limit:
+                    self._continuation_template_cache.set(cache_key, templates)
+                    return [dict(item) for item in templates]
+                continue
+            base_payload = base_event.to_dict()
+            for function_index, scene_function in enumerate(scene_functions):
+                index = (base_index * len(scene_functions)) + function_index
+                tags = list(dict.fromkeys(list(base_event.tags) + list((world.creator_controls.theme_targets or [])[:2]) + [scene_function]))
+                metadata = dict(base_payload.get("metadata", {}))
+                for key in (
+                    "terminal",
+                    "endgame_shape",
+                    "ending_gate",
+                    "required_fate_pressure",
+                    "required_inescapable_nodes",
+                ):
+                    metadata.pop(key, None)
+                metadata.update(
+                    {
+                        "continuation_variant": True,
+                        "base_event_id": base_event.event_id,
+                        "continuation_phase": state.story_phase,
+                        "generated_from_static_pool": True,
+                    }
+                )
+                world_locations = list(world.locations or [])
+                rotated_location = world_locations[index % len(world_locations)] if world_locations else base_event.location
+                templates.append(
+                    {
+                        "base_event_id": base_event.event_id,
+                        "index": index,
+                        "actors": list(base_event.actors),
+                        "title": self._continuation_title(scene_function, rotated_location, index=index),
+                        "summary": self._continuation_summary(
+                            scene_function=scene_function,
+                            location=rotated_location,
+                            world=world,
+                            tags=tags,
+                        ),
+                        "scene_function": scene_function,
+                        "tags": tags,
+                        "belief_updates": dict(base_payload.get("belief_updates", {})),
+                        "trust_deltas": list(base_payload.get("trust_deltas", [])),
+                        "emotion_deltas": list(base_payload.get("emotion_deltas", [])),
+                        "rating_ceiling": state.rating_ceiling or world.creator_controls.darkness_ceiling or base_event.rating_ceiling,
+                        "tension_delta": self._SCENE_FUNCTION_TENSION.get(scene_function, max(0.08, float(base_event.tension_delta))),
+                        "theme_impacts": {
+                            theme: 0.06
+                            for theme in list((world.creator_controls.theme_targets or world.themes)[:3]) or list(tags[:2])
+                        },
+                        "agency_affordances": list(dict.fromkeys(list(base_event.agency_affordances) + list(tags[:2]) + ["continue_story"])),
+                        "promises_close": self._continuation_promises_close(
+                            state=state,
+                            scene_function=scene_function,
+                            actors=list(base_event.actors),
+                        ),
+                        "location": rotated_location,
+                        "convergence_key": base_event.convergence_key or f"continuation::{scene_function}",
+                        "metadata": metadata,
+                    }
+                )
+                if len(templates) >= limit:
+                    self._continuation_template_cache.set(cache_key, templates)
+                    return [dict(item) for item in templates]
+        self._continuation_template_cache.set(cache_key, templates)
+        return [dict(item) for item in templates]
+
     def _continuation_candidates(
         self,
         state: NarrativeState,
@@ -700,22 +1030,101 @@ class StaticCandidateProvider(CandidateProvider):
         event_ids = set(existing_event_ids)
         scene_functions = self._continuation_functions(state)
         variants: List[EventAtom] = []
-        for base_index, base_event in enumerate(self.event_pool):
-            for function_index, scene_function in enumerate(scene_functions):
-                variant = self._continuation_variant(
-                    base_event,
+        templates = self._continuation_variant_templates(
+            state,
+            world,
+            scene_functions=scene_functions,
+            limit=limit,
+        )
+        visited_event_ids = set(str(event_id) for event_id in state.visited_event_ids)
+        for template in templates:
+            variant_id = f"{template['base_event_id']}__continuation__{state.chapter_index + 1}_{template['index']}_{template['scene_function']}"
+            if variant_id in event_ids or variant_id in visited_event_ids:
+                continue
+            payload = {
+                "event_id": variant_id,
+                "title": template["title"],
+                "summary": template["summary"],
+                "location": template["location"],
+                "actors": list(template["actors"]),
+                "scene_function": template["scene_function"],
+                "tags": list(template["tags"]),
+                "preconditions_all": [],
+                "forbidden_if_any": [],
+                "world_fact_deltas_add": [f"continuation::{state.chapter_index + 1}::{template['scene_function']}::{template['index']}"],
+                "world_fact_deltas_remove": [],
+                "belief_updates": dict(template["belief_updates"]),
+                "trust_deltas": list(template["trust_deltas"]),
+                "emotion_deltas": list(template["emotion_deltas"]),
+                "promises_open": self._continuation_promises(
                     state=state,
-                    world=world,
-                    scene_function=scene_function,
-                    index=(base_index * len(scene_functions)) + function_index,
-                )
-                if variant.event_id in event_ids or variant.event_id in state.visited_event_ids:
-                    continue
-                event_ids.add(variant.event_id)
-                variants.append(variant)
-                if len(variants) >= limit:
-                    return variants
+                    event_id=variant_id,
+                    scene_function=str(template["scene_function"]),
+                    actors=list(template["actors"]),
+                ),
+                "promises_close": list(template.get("promises_close") or self._continuation_promises_close(
+                    state=state,
+                    scene_function=str(template["scene_function"]),
+                    actors=list(template["actors"]),
+                )),
+                "rating_ceiling": template["rating_ceiling"],
+                "tension_delta": template["tension_delta"],
+                "theme_impacts": dict(template["theme_impacts"]),
+                "agency_affordances": list(template["agency_affordances"]),
+                "karmic_seed_creations": self._continuation_seeds(
+                    event_id=variant_id,
+                    scene_function=str(template["scene_function"]),
+                    actors=list(template["actors"]),
+                    tags=list(template["tags"]),
+                ),
+                "karmic_seed_resolutions": [],
+                "convergence_key": template["convergence_key"],
+                "metadata": dict(template["metadata"]),
+            }
+            variant = EventAtom.from_dict(payload)
+            event_ids.add(variant.event_id)
+            variants.append(variant)
+            if len(variants) >= limit:
+                return variants
         return variants
+
+    def _should_use_longform_continuations(self, state: NarrativeState) -> bool:
+        if bool((state.metadata or {}).get("longform_plan_enabled")):
+            return True
+        if (state.metadata or {}).get("longform_plan", {}):
+            return True
+        return state.min_end_turn >= self._LONG_ROUTE_CONTINUATION_MIN_END_TURN
+
+    def _cache_key(
+        self,
+        state: NarrativeState,
+        *,
+        world: WorldBible,
+        depth: int,
+        min_candidates: int,
+        max_candidates: int,
+    ) -> str:
+        payload = {
+            "world_id": world.world_id,
+            "depth": int(depth),
+            "min_candidates": int(min_candidates),
+            "max_candidates": int(max_candidates),
+            "story_phase": state.story_phase,
+            "chapter_index": int(state.chapter_index or 0),
+            "min_end_turn": int(state.min_end_turn or 0),
+            "current_series_id": state.current_series_id,
+            "current_volume_id": state.current_volume_id,
+            "current_arc_id": state.current_arc_id,
+            "current_chapter_task": dict(state.current_chapter_task or {}),
+            "recent_scene_functions": list(state.recent_scene_functions[-4:]),
+            "world_facts": list(state.world_facts),
+            "visited_event_ids": list(state.visited_event_ids),
+            "open_promise_ids": sorted(promise.promise_id for promise in state.open_promises),
+            "closed_promise_ids": list((state.metadata or {}).get("closed_promise_ids", [])),
+            "scene_history": list((state.metadata or {}).get("scene_history", [])),
+            "diagnostics_mode": (state.metadata or {}).get("longform_diagnostics_mode"),
+        }
+        return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
 
     def generate(
         self,
@@ -726,26 +1135,61 @@ class StaticCandidateProvider(CandidateProvider):
         min_candidates: int = 6,
         max_candidates: int = 10,
     ) -> CandidateBatch:
+        cache_key = self._cache_key(
+            state,
+            world=world,
+            depth=depth,
+            min_candidates=min_candidates,
+            max_candidates=max_candidates,
+        )
+        cached_payload = self._batch_cache.get(cache_key)
+        if isinstance(cached_payload, dict):
+            cached_batch = CandidateBatch.from_dict(cached_payload)
+            cached_batch.debug["cache_hit"] = True
+            cached_batch.debug["cache_key"] = cache_key[:12]
+            return cached_batch
+
+        visited_event_ids = set(str(event_id) for event_id in state.visited_event_ids)
         raw_candidates = [
-            EventAtom.from_dict(event.to_dict())
+            event
             for event in self.event_pool
-            if event.event_id not in state.visited_event_ids
+            if event.event_id not in visited_event_ids
         ][:max_candidates]
+
+        constraint_context = {
+            "facts": set(state.world_facts),
+            "state_character_ids": set(state.characters.keys()),
+            "world_character_ids": {
+                (
+                    str(item)
+                    if isinstance(item, str)
+                    else str(getattr(item, "character_id", "") or "")
+                )
+                for item in list(world.characters or [])
+                if (
+                    (isinstance(item, str) and str(item))
+                    or getattr(item, "character_id", None)
+                )
+            },
+            "ceiling": effective_rating_ceiling(state, world=world),
+            "existing_promise_ids": {promise.promise_id for promise in state.open_promises},
+            "closed_promise_ids": set(state.metadata.get("closed_promise_ids", [])),
+            "recent_scene_window": [normalize_scene_function(scene_function) for scene_function in state.recent_scene_functions[-2:]],
+            "scene_history": set(state.metadata.get("scene_history", [])),
+            "forbidden_moves": list(world.forbidden_moves),
+        }
 
         legal_candidates: List[EventAtom] = []
         illegal_candidate_reasons: Dict[str, List[str]] = {}
         for candidate in raw_candidates:
-            reasons = hard_constraint_errors(state, candidate, world=world)
+            reasons = hard_constraint_errors(state, candidate, world=world, context=constraint_context)
             if reasons:
                 illegal_candidate_reasons[candidate.event_id] = reasons
             else:
                 legal_candidates.append(candidate)
 
         continuation_candidates: List[EventAtom] = []
-        if (
-            state.min_end_turn >= self._LONG_ROUTE_CONTINUATION_MIN_END_TURN
-            and len(legal_candidates) < min_candidates
-        ):
+        if self._should_use_longform_continuations(state) and len(legal_candidates) < min_candidates:
             continuation_limit = max(
                 1,
                 int(min_candidates - len(legal_candidates)),
@@ -759,13 +1203,13 @@ class StaticCandidateProvider(CandidateProvider):
             )
             for candidate in continuation_candidates:
                 raw_candidates.append(candidate)
-                reasons = hard_constraint_errors(state, candidate, world=world)
+                reasons = hard_constraint_errors(state, candidate, world=world, context=constraint_context)
                 if reasons:
                     illegal_candidate_reasons[candidate.event_id] = reasons
                 else:
                     legal_candidates.append(candidate)
 
-        return CandidateBatch(
+        batch = CandidateBatch(
             raw_candidates=raw_candidates,
             legal_candidates=legal_candidates,
             illegal_candidate_reasons=illegal_candidate_reasons,
@@ -776,8 +1220,13 @@ class StaticCandidateProvider(CandidateProvider):
                 "legal_count": len(legal_candidates),
                 "min_candidates_requested": min_candidates,
                 "continuation_candidate_count": len(continuation_candidates),
+                "continuation_mode": "longform" if self._should_use_longform_continuations(state) else "standard",
+                "cache_hit": False,
+                "cache_key": cache_key[:12],
             },
         )
+        self._batch_cache.set(cache_key, batch.to_dict())
+        return batch
 
 
 class LLMCandidateProvider(CandidateProvider):
@@ -937,6 +1386,129 @@ class LocalRuleBasedProvider(LLMBackend):
         return self.payload
 
 
+class DeepSeekProvider(LLMBackend):
+    RETRYABLE_HTTP_STATUS = {408, 409, 425, 429, 500, 502, 503, 504}
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        *,
+        base_url: Optional[str] = None,
+        timeout_seconds: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> None:
+        self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
+        self.model = model or os.getenv("NARRATIVEOS_DEEPSEEK_MODEL", "deepseek-v4-flash")
+        self.base_url = (base_url or os.getenv("NARRATIVEOS_DEEPSEEK_BASE_URL", "https://api.deepseek.com")).rstrip("/")
+        self.timeout_seconds = float(timeout_seconds or os.getenv("NARRATIVEOS_DEEPSEEK_TIMEOUT_SECONDS", "90"))
+        self.max_tokens = int(max_tokens or os.getenv("NARRATIVEOS_DEEPSEEK_MAX_TOKENS", "4096"))
+        self.provider_id = "deepseek"
+        self.last_route_debug: Dict[str, Any] = {}
+
+    def _request_body(self, *, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
+        return {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "response_format": {"type": "json_object"},
+            "thinking": {"type": "disabled"},
+            "max_tokens": self.max_tokens,
+            "stream": False,
+        }
+
+    def _parse_message_content(self, content: str) -> Any:
+        text = str(content or "").strip()
+        if text.startswith("```"):
+            text = text.strip("`").strip()
+            if text.startswith("json"):
+                text = text[4:].strip()
+        return json.loads(text)
+
+    def generate_json(self, *, system_prompt: str, user_prompt: str) -> Any:
+        if not self.api_key:
+            raise RuntimeError("DEEPSEEK_API_KEY is required for DeepSeekProvider")
+        body = self._request_body(system_prompt=system_prompt, user_prompt=user_prompt)
+        started = perf_counter()
+        req = urlrequest.Request(
+            f"{self.base_url}/chat/completions",
+            data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urlrequest.urlopen(req, timeout=self.timeout_seconds) as response:  # noqa: S310
+                raw_response = response.read().decode("utf-8")
+        except urlerror.HTTPError as exc:
+            error_body = exc.read().decode("utf-8", errors="replace")[:500]
+            retryable = int(exc.code) in self.RETRYABLE_HTTP_STATUS
+            self.last_route_debug = {
+                "provider": self.provider_id,
+                "selected_provider": self.provider_id,
+                "model": self.model,
+                "succeeded": False,
+                "backend_error": f"deepseek_http_{exc.code}",
+                "http_status": int(exc.code),
+                "retryable": retryable,
+                "latency_ms": round((perf_counter() - started) * 1000.0, 3),
+            }
+            raise ProviderExecutionError(
+                self.provider_id,
+                f"deepseek_http_{exc.code}: {error_body}",
+                retryable=retryable,
+            ) from exc
+        except (TimeoutError, urlerror.URLError) as exc:
+            self.last_route_debug = {
+                "provider": self.provider_id,
+                "selected_provider": self.provider_id,
+                "model": self.model,
+                "succeeded": False,
+                "backend_error": str(exc),
+                "retryable": True,
+                "latency_ms": round((perf_counter() - started) * 1000.0, 3),
+            }
+            raise ProviderExecutionError(self.provider_id, str(exc), retryable=True) from exc
+
+        try:
+            response_payload = json.loads(raw_response)
+            choice = (response_payload.get("choices") or [{}])[0]
+            message = choice.get("message") or {}
+            content = message.get("content") or ""
+            parsed_payload = self._parse_message_content(content) if content else response_payload
+        except Exception as exc:
+            self.last_route_debug = {
+                "provider": self.provider_id,
+                "selected_provider": self.provider_id,
+                "model": self.model,
+                "succeeded": False,
+                "backend_error": "deepseek_invalid_json",
+                "retryable": True,
+                "latency_ms": round((perf_counter() - started) * 1000.0, 3),
+            }
+            raise ProviderExecutionError(self.provider_id, f"deepseek_invalid_json: {exc}", retryable=True) from exc
+
+        usage = dict(response_payload.get("usage") or {})
+        self.last_route_debug = {
+            "provider": self.provider_id,
+            "selected_provider": self.provider_id,
+            "model": self.model,
+            "returned_model": response_payload.get("model"),
+            "finish_reason": choice.get("finish_reason") if isinstance(choice, dict) else None,
+            "usage": usage,
+            "prompt_tokens": usage.get("prompt_tokens"),
+            "completion_tokens": usage.get("completion_tokens"),
+            "cache_hit": bool(usage.get("prompt_cache_hit_tokens")),
+            "succeeded": True,
+            "latency_ms": round((perf_counter() - started) * 1000.0, 3),
+        }
+        return parsed_payload
+
+
 class OpenAIProvider(LLMBackend):
     def __init__(self, api_key: Optional[str] = None, model: str = "gpt-5") -> None:
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
@@ -1024,7 +1596,10 @@ def build_llm_backend_from_env(scope: Optional[str] = None) -> Optional[LLMBacke
     backends: List[LLMBackend] = []
     provider_ids: List[str] = []
     for provider_name in provider_order:
-        if provider_name == "openai" and os.getenv("OPENAI_API_KEY"):
+        if provider_name == "deepseek" and os.getenv("DEEPSEEK_API_KEY"):
+            backends.append(DeepSeekProvider(model=os.getenv("NARRATIVEOS_DEEPSEEK_MODEL", "deepseek-v4-flash")))
+            provider_ids.append("deepseek")
+        elif provider_name == "openai" and os.getenv("OPENAI_API_KEY"):
             backends.append(OpenAIProvider(model=os.getenv("NARRATIVEOS_OPENAI_MODEL", "gpt-5")))
             provider_ids.append("openai")
         elif provider_name == "anthropic" and os.getenv("ANTHROPIC_API_KEY"):

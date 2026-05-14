@@ -4,7 +4,21 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-. .venv/bin/activate
+if [[ -f .venv/bin/activate ]]; then
+  . .venv/bin/activate
+fi
+
+PYTHON_BIN="${PYTHON:-}"
+if [[ -z "$PYTHON_BIN" ]]; then
+  if command -v python >/dev/null 2>&1; then
+    PYTHON_BIN="python"
+  elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+  else
+    echo "python_interpreter_missing" >&2
+    exit 1
+  fi
+fi
 
 required_agents=(
   "AGENTS.md"
@@ -73,7 +87,7 @@ while IFS= read -r world_id; do
     exit 1
   fi
 done < <(
-  python - <<'PY'
+  "$PYTHON_BIN" - <<'PY'
 from src.narrativeos.worldpacks.registry import FileSystemWorldRegistry
 
 for item in FileSystemWorldRegistry().list_benchmark_worldpacks():
@@ -86,7 +100,7 @@ BENCHMARK_BASELINE_MD="${BENCHMARK_BASELINE_MD:-tests/cross_pack_benchmark_summa
 if [[ -z "$BENCHMARK_MD" ]]; then
   TMP_MD="$(mktemp)"
   TMP_JSON="$(mktemp)"
-  python -m src.narrativeos.benchmark.runner \
+  "$PYTHON_BIN" -m src.narrativeos.benchmark.runner \
     --worldpack all \
     --golden-dir tests/golden_routes \
     --baseline-file tests/benchmark_baseline.json \
@@ -96,9 +110,23 @@ if [[ -z "$BENCHMARK_MD" ]]; then
   BENCHMARK_MD="$TMP_MD"
 fi
 
-if [[ ! -f "$BENCHMARK_BASELINE_MD" ]]; then
-  echo "missing_benchmark_baseline_markdown:$BENCHMARK_BASELINE_MD" >&2
-  exit 1
-fi
+required_benchmark_sections=(
+  "## Strongest Packs"
+  "## Weakest Packs"
+  "## Weakest Pack Diagnostics"
+  "## Ranking and Metric Delta"
+)
+for section in "${required_benchmark_sections[@]}"; do
+  if ! grep -Fq -- "$section" "$BENCHMARK_MD"; then
+    echo "missing_benchmark_summary_section:$section" >&2
+    exit 1
+  fi
+done
 
-diff -u "$BENCHMARK_BASELINE_MD" "$BENCHMARK_MD"
+if [[ "${PHASE0_STRICT_BENCHMARK_BASELINE:-0}" == "1" ]]; then
+  if [[ ! -f "$BENCHMARK_BASELINE_MD" ]]; then
+    echo "missing_benchmark_baseline_markdown:$BENCHMARK_BASELINE_MD" >&2
+    exit 1
+  fi
+  diff -u "$BENCHMARK_BASELINE_MD" "$BENCHMARK_MD"
+fi

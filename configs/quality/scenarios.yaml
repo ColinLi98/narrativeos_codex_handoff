@@ -1,0 +1,22 @@
+config_version: quality_scenarios_v1
+scenarios:
+  - scenario_id: reader_continue
+    surface: reader
+    description: Reader continue flow quality evaluation.
+    default_risk_tier: L2
+    quality_policy_id: qp_reader_continue_v1
+  - scenario_id: author_generate_chapter
+    surface: author
+    description: Author generation and regeneration flow quality evaluation.
+    default_risk_tier: L2
+    quality_policy_id: qp_author_generate_v1
+  - scenario_id: author_manual_edit
+    surface: author
+    description: Manual chapter edits before persistence.
+    default_risk_tier: L2
+    quality_policy_id: qp_author_manual_edit_v1
+  - scenario_id: publish_candidate
+    surface: publish
+    description: Release / publish preflight quality evaluation.
+    default_risk_tier: L3
+    quality_policy_id: qp_publish_candidate_v1

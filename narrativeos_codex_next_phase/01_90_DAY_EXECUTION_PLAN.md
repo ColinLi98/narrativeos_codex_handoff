@@ -3,6 +3,10 @@
 ## Phase 0（第 1-2 周）
 ### 目标：建立“不要再围绕当前剧本优化”的工程护栏
 
+Phase A: 把内容质量变成真正的发布门槛。
+
+Phase F: production infra and reliability closure.
+
 交付：
 
 - core / worldpack 边界检查
@@ -90,4 +94,3 @@
 
 - 为 learned evaluator / reranker 留出明确数据出口
 - 线上与离线指标口径统一
-

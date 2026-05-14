@@ -1,0 +1,95 @@
+{
+  "config_version": "content_quality_strategy_bundles_v1",
+  "bundles": {
+    "q03_q04_scene_dialogue_cadence_task_coupling": {
+      "label": "Scene + Dialogue + Cadence + Task Coupling",
+      "issue_codes": ["Q03", "Q04"],
+      "asset_sequence": [
+        "scene_blueprint",
+        "scene_realization_contracts",
+        "emotion_action_policies",
+        "voice_profiles",
+        "response_cadence_profiles",
+        "chapter_task_coupling"
+      ],
+      "validation_sequence": ["compare", "task_linking", "continuity"],
+      "success_metrics": [
+        "early_window_q03_q04_share",
+        "mid_window_repeat_breach_rate",
+        "mid_window_exposition_breach_rate",
+        "avg_repetition_score",
+        "avg_exposition_ratio",
+        "dialogue_ratio"
+      ],
+      "stop_condition": "upgrade_to_planner_or_pack_contract_if_two_reruns_flat"
+    },
+    "q03_scene_dialogue_cadence": {
+      "label": "Scene + Dialogue + Cadence",
+      "issue_codes": ["Q03"],
+      "asset_sequence": [
+        "scene_blueprint",
+        "scene_realization_contracts",
+        "emotion_action_policies",
+        "voice_profiles",
+        "response_cadence_profiles"
+      ],
+      "validation_sequence": ["compare"],
+      "success_metrics": [
+        "avg_repetition_score",
+        "mid_window_repeat_breach_rate"
+      ],
+      "stop_condition": "upgrade_to_task_coupling_if_flat"
+    },
+    "q04_scene_dialogue_cadence": {
+      "label": "Scene + Dialogue + Cadence",
+      "issue_codes": ["Q04"],
+      "asset_sequence": [
+        "scene_blueprint",
+        "scene_realization_contracts",
+        "emotion_action_policies",
+        "character_card",
+        "response_cadence_profiles"
+      ],
+      "validation_sequence": ["compare", "continuity"],
+      "success_metrics": [
+        "avg_exposition_ratio",
+        "mid_window_exposition_breach_rate",
+        "dialogue_ratio"
+      ],
+      "stop_condition": "upgrade_to_task_coupling_if_flat"
+    },
+    "q05_scene_grounding_detail": {
+      "label": "Scene Grounding + Detail Density",
+      "issue_codes": ["Q05"],
+      "asset_sequence": [
+        "scene_blueprint",
+        "sensory_grounding_policies",
+        "emotion_action_policies",
+        "character_card"
+      ],
+      "validation_sequence": ["compare", "continuity"],
+      "success_metrics": [
+        "scene_detail_density",
+        "mid_window_detail_breach_rate",
+        "late_window_detail_breach_rate"
+      ],
+      "stop_condition": "upgrade_to_budget_and_task_balance_if_flat"
+    },
+    "q09_continuation_runway": {
+      "label": "Continuation Runway",
+      "issue_codes": ["Q09"],
+      "asset_sequence": [
+        "chapter_task",
+        "arc_plan",
+        "scene_realization_contracts"
+      ],
+      "validation_sequence": ["task_linking", "compare"],
+      "success_metrics": [
+        "late_window_q09_breach_rate",
+        "q09_incidence_rate",
+        "late_arc_pass_rate"
+      ],
+      "stop_condition": "upgrade_to_planner_contract_if_flat"
+    }
+  }
+}

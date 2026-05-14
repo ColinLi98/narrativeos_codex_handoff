@@ -10,6 +10,7 @@ from src.narrativeos.eval.learned_review_quality import (
 )
 from src.narrativeos.repository import SQLAlchemyRepository
 from src.narrativeos.services.training_signal import TrainingSignalService
+from tests.ops_auth import ops_headers
 from tests.test_learned_data_ops import _seed_ops_data
 
 
@@ -126,8 +127,9 @@ def test_learned_review_quality_endpoints_return_summary_and_world_detail(tmp_pa
     )
 
     client = TestClient(create_app(repository=repository))
-    summary = client.get("/v1/ops/learned-review-quality", params={"world_id": "jade_court_romance"})
-    detail = client.get("/v1/ops/learned-review-quality/worlds/jade_court_romance")
+    headers = ops_headers(client, actor_id="ops_learned_review_quality")
+    summary = client.get("/v1/ops/learned-review-quality", params={"world_id": "jade_court_romance"}, headers=headers)
+    detail = client.get("/v1/ops/learned-review-quality/worlds/jade_court_romance", headers=headers)
 
     assert summary.status_code == 200
     assert detail.status_code == 200

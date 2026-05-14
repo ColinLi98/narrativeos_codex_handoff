@@ -8,6 +8,7 @@ from src.narrativeos.eval.learned_training_automation import (
     run_learned_training_automation,
 )
 from src.narrativeos.repository import SQLAlchemyRepository
+from tests.ops_auth import ops_headers
 from tests.test_learned_reranker_baseline import _seed_reranker_world
 
 
@@ -55,6 +56,7 @@ def test_ops_learned_training_and_evidence_endpoints(tmp_path: Path):
     world_version_id = _seed_reranker_world(repository, world_id="urban_mystery_lotus_lane")
     app = create_app(repository=repository)
     client = TestClient(app)
+    headers = ops_headers(client, actor_id="ops_learned_training")
 
     training = client.post(
         "/v1/ops/learned-training/run",
@@ -63,6 +65,7 @@ def test_ops_learned_training_and_evidence_endpoints(tmp_path: Path):
             "world_id": "urban_mystery_lotus_lane",
             "world_version_id": world_version_id,
         },
+        headers=headers,
     )
     assert training.status_code == 200
     assert set(training.json()["summary"]["tracks_succeeded"]) == {"evaluator"}
@@ -70,6 +73,7 @@ def test_ops_learned_training_and_evidence_endpoints(tmp_path: Path):
     evaluator_evidence = client.get(
         "/v1/ops/learned-promotion-evidence",
         params={"track": "evaluator", "world_id": "urban_mystery_lotus_lane", "world_version_id": world_version_id},
+        headers=headers,
     )
     assert evaluator_evidence.status_code == 200
     assert "evidence_pack" in evaluator_evidence.json()
@@ -79,22 +83,25 @@ def test_ops_learned_training_and_evidence_endpoints(tmp_path: Path):
     approve = client.post(
         "/v1/ops/learned-promotion/approve",
         json={"reviewer_id": "ops_rollout", "reason": "准许 evaluator rollout。"},
+        headers=headers,
     )
     assert approve.status_code == 200
     rollout = client.post(
         "/v1/ops/learned-rollout/evaluator/activate",
         json={"reviewer_id": "ops_rollout", "reason": "激活 evaluator rollout。"},
+        headers=headers,
     )
     assert rollout.status_code == 200
     assert rollout.json()["tracks"]["evaluator"]["rollout_status"] == "active"
 
-    rollout_summary = client.get("/v1/ops/learned-rollout")
+    rollout_summary = client.get("/v1/ops/learned-rollout", headers=headers)
     assert rollout_summary.status_code == 200
     assert "evaluator" in rollout_summary.json()["active_tracks"]
 
     rolled_back = client.post(
         "/v1/ops/learned-rollout/evaluator/rollback",
         json={"reviewer_id": "ops_rollout", "reason": "安全回滚 evaluator。"},
+        headers=headers,
     )
     assert rolled_back.status_code == 200
     assert rolled_back.json()["tracks"]["evaluator"]["rollout_status"] == "rolled_back"
@@ -102,6 +109,7 @@ def test_ops_learned_training_and_evidence_endpoints(tmp_path: Path):
     reranker_evidence = client.get(
         "/v1/ops/learned-promotion-evidence",
         params={"track": "reranker", "world_id": "urban_mystery_lotus_lane", "world_version_id": world_version_id},
+        headers=headers,
     )
     assert reranker_evidence.status_code == 200
     assert reranker_evidence.json()["evidence_pack"]["promotion_summary"]["track"] == "reranker"

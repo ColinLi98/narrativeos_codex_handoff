@@ -9,6 +9,19 @@ from src.narrativeos.services.review import ReviewService
 from src.narrativeos.worldpacks.registry import FileSystemWorldRegistry
 
 
+def _ops_headers(client: TestClient, *, actor_id: str = "ops_release") -> dict[str, str]:
+    registered = client.post(
+        "/v1/auth/register",
+        json={"actor_id": actor_id, "actor_role": "ops", "password": "secret123", "account_id": actor_id},
+    )
+    assert registered.status_code == 200
+    login = client.post("/v1/auth/login", json={"actor_id": actor_id, "password": "secret123"})
+    assert login.status_code == 200
+    token = login.json()["token"]["access_token"]
+    client.cookies.clear()
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_ops_release_workspace_summarizes_publish_blockers_and_actions(tmp_path: Path):
     repository = SQLAlchemyRepository(database_url="sqlite:///%s" % (tmp_path / "ops_release_workspace.db"))
     registry = FileSystemWorldRegistry()
@@ -85,7 +98,7 @@ def test_ops_release_workspace_endpoint_and_shell(tmp_path: Path):
     assert "发布 / Checklist / 回滚统一处置页" in shell.text
     assert "Refresh Release Workspace" in shell.text
 
-    workspace = client.get("/v1/ops/worlds/xianxia_forgotten_vow/release-workspace")
+    workspace = client.get("/v1/ops/worlds/xianxia_forgotten_vow/release-workspace", headers=_ops_headers(client))
     assert workspace.status_code == 200
     payload = workspace.json()
     assert "release_summary" in payload

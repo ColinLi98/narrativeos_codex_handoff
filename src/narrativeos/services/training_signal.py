@@ -23,6 +23,16 @@ PHASE4_EVENT_NAMES = [
     "rollback_performed",
 ]
 ABANDON_WINDOW_HOURS = 24
+LONGFORM_250_REVIEW_WINDOWS = (
+    ("1-20", 1, 20),
+    ("80-120", 80, 120),
+    ("200-250", 200, 250),
+)
+LONGFORM_500_REVIEW_WINDOWS = (
+    ("1-40", 1, 40),
+    ("220-300", 220, 300),
+    ("460-500", 460, 500),
+)
 
 
 class TrainingSignalService:
@@ -289,6 +299,186 @@ class TrainingSignalService:
         )
         return filtered[:limit] if limit is not None else filtered
 
+    def _chapter_index_from_id(self, chapter_id: Any) -> int:
+        suffix = str(chapter_id or "").rsplit("_", 1)[-1]
+        return int(suffix) if suffix.isdigit() else 0
+
+    def _longform_review_sampling_plan(
+        self,
+        report: Dict[str, Any],
+        *,
+        world_id: str,
+        world_version_id: str,
+        windows: Sequence[Tuple[str, int, int]],
+        reason_prefix: str,
+        default_issue_focus: Sequence[str],
+    ) -> List[Dict[str, Any]]:
+        chapter_ids = [
+            str(item.get("chapter_id") or "")
+            for item in report.get("chapter_evaluations", [])
+            if isinstance(item, dict)
+        ]
+        available_indices = sorted(
+            {
+                self._chapter_index_from_id(chapter_id)
+                for chapter_id in chapter_ids
+                if self._chapter_index_from_id(chapter_id) > 0
+            }
+        )
+        max_index = max(available_indices or [0])
+        top_issue_categories = list((report.get("evaluation_summary") or {}).get("top_issue_categories", []))
+        issue_focus = [
+            str(item.get("issue_code") or "")
+            for item in top_issue_categories[:2]
+            if isinstance(item, dict) and str(item.get("issue_code") or "")
+        ]
+        plan: List[Dict[str, Any]] = []
+        for window_label, start, end in windows:
+            candidates = [index for index in available_indices if start <= index <= end]
+            if not candidates:
+                continue
+            picks = [candidates[0]]
+            if len(candidates) > 1:
+                picks.append(candidates[min(len(candidates) - 1, len(candidates) // 2)])
+            seen: Set[int] = set()
+            for priority, chapter_index in enumerate(picks, start=1):
+                if chapter_index in seen:
+                    continue
+                seen.add(chapter_index)
+                plan.append(
+                    {
+                        "world_id": world_id,
+                        "world_version_id": world_version_id,
+                        "window_label": window_label,
+                        "chapter_index": chapter_index,
+                        "issue_focus": issue_focus or list(default_issue_focus),
+                        "priority": priority,
+                        "reason": f"{reason_prefix}_window_{window_label}",
+                        "available_chapter_max": max_index,
+                    }
+                )
+        return plan
+
+    def _matching_human_review_samples_for_target(
+        self,
+        review_samples: Sequence[Dict[str, Any]],
+        *,
+        world_version_id: str,
+        chapter_index: int,
+    ) -> List[Dict[str, Any]]:
+        return [
+            dict(sample)
+            for sample in review_samples
+            if str(sample.get("world_version_id") or "") == world_version_id
+            and (
+                self._chapter_index_from_id(sample.get("chapter_id")) == int(chapter_index)
+                or self._chapter_index_from_id(dict(sample.get("source_ref") or {}).get("chapter_id")) == int(chapter_index)
+            )
+        ]
+
+    def _longform_human_review_closeout(
+        self,
+        *,
+        world_id: Optional[str],
+        world_version_id: Optional[str],
+        target_chapters: int,
+        summary_key: str,
+        windows: Sequence[Tuple[str, int, int]],
+        reason_prefix: str,
+        default_issue_focus: Sequence[str],
+        ending_window_label: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        sampling_plan: List[Dict[str, Any]] = []
+        for version_meta in self._selected_versions(world_id=world_id, world_version_id=world_version_id):
+            version = self.repository.get_world_version(version_meta["world_version_id"])
+            report = dict(version.simulation_report_json or {})
+            chapter_evaluations = report.get("chapter_evaluations") or []
+            completed_chapters = int(report.get("completed_chapters") or 0)
+            if not chapter_evaluations:
+                continue
+            if summary_key not in report and completed_chapters < target_chapters:
+                continue
+            sampling_plan.extend(
+                self._longform_review_sampling_plan(
+                    report,
+                    world_id=version.world_id,
+                    world_version_id=version.world_version_id,
+                    windows=windows,
+                    reason_prefix=reason_prefix,
+                    default_issue_focus=default_issue_focus,
+                )
+            )
+
+        review_samples = self.list_review_samples(
+            world_id=world_id,
+            world_version_id=world_version_id,
+            source="human_review",
+            limit=None,
+        )
+        human_reviewed_targets: List[Dict[str, Any]] = []
+        backlog: List[Dict[str, Any]] = []
+        window_coverage: Dict[str, Dict[str, int]] = {
+            label: {"target_count": 0, "human_reviewed_count": 0}
+            for label, _start, _end in windows
+        }
+        ending_window_target_count = 0
+        ending_window_human_reviewed_count = 0
+
+        for target in sampling_plan:
+            window_label = str(target.get("window_label") or "")
+            chapter_index = int(target.get("chapter_index") or 0)
+            bucket = window_coverage.setdefault(window_label, {"target_count": 0, "human_reviewed_count": 0})
+            bucket["target_count"] += 1
+            if ending_window_label and window_label == ending_window_label:
+                ending_window_target_count += 1
+            matching = self._matching_human_review_samples_for_target(
+                review_samples,
+                world_version_id=str(target.get("world_version_id") or ""),
+                chapter_index=chapter_index,
+            )
+            if matching:
+                bucket["human_reviewed_count"] += 1
+                human_reviewed_targets.append(dict(target))
+                if ending_window_label and window_label == ending_window_label:
+                    ending_window_human_reviewed_count += 1
+            else:
+                backlog.append(
+                    {
+                        **dict(target),
+                        "status": "needs_human_review",
+                    }
+                )
+
+        planned_target_count = len(sampling_plan)
+        human_reviewed_target_count = len(human_reviewed_targets)
+        human_closeout_ready = planned_target_count > 0 and human_reviewed_target_count >= planned_target_count
+        summary = {
+            "target_chapters": target_chapters,
+            "window_labels": [label for label, _start, _end in windows],
+            "planned_target_count": planned_target_count,
+            "human_reviewed_target_count": human_reviewed_target_count,
+            "human_reviewed_world_count": len({str(item.get("world_id") or "") for item in human_reviewed_targets}),
+            "human_closeout_ready": human_closeout_ready,
+            "human_closeout_status": "closed" if human_closeout_ready else ("partial" if human_reviewed_targets else "watch"),
+            "window_coverage": window_coverage,
+            "backlog": backlog,
+            "human_unreviewed_targets": backlog,
+            "sampling_plan": sampling_plan,
+        }
+        if ending_window_label:
+            summary.update(
+                {
+                    "ending_window_label": ending_window_label,
+                    "ending_window_target_count": ending_window_target_count,
+                    "ending_window_human_reviewed_count": ending_window_human_reviewed_count,
+                    "ending_window_human_closeout_ready": (
+                        ending_window_target_count > 0
+                        and ending_window_human_reviewed_count >= ending_window_target_count
+                    ),
+                }
+            )
+        return summary
+
     def _review_sample_from_report(self, report_payload: Dict[str, Any], *, world_id: str) -> Dict[str, Any]:
         report = EvaluationReport.from_dict(report_payload)
         sample = {
@@ -368,6 +558,20 @@ class TrainingSignalService:
         )
         return sample
 
+    def save_review_sample_from_report(self, report_payload: Dict[str, Any], *, world_id: str) -> Dict[str, Any]:
+        sample = self._review_sample_from_report(report_payload, world_id=world_id)
+        self.repository.save_review_record(
+            {
+                "review_id": "review_sample_%s" % sample["sample_id"],
+                "asset_type": "review_sample",
+                "asset_id": sample["chapter_id"],
+                "status": sample["source"],
+                "reviewer_id": sample["reviewer_id"],
+                "notes": json.dumps(sample, ensure_ascii=False),
+            }
+        )
+        return sample
+
     def list_review_samples(
         self,
         *,
@@ -414,6 +618,39 @@ class TrainingSignalService:
             since=since,
             cursor=cursor,
             limit=limit,
+        )
+
+    def longform_250_human_review_closeout(
+        self,
+        *,
+        world_id: Optional[str] = None,
+        world_version_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return self._longform_human_review_closeout(
+            world_id=world_id,
+            world_version_id=world_version_id,
+            target_chapters=250,
+            summary_key="longform_250_summary",
+            windows=LONGFORM_250_REVIEW_WINDOWS,
+            reason_prefix="longform_250",
+            default_issue_focus=["Q03", "Q05", "Q09"],
+        )
+
+    def longform_500_human_review_closeout(
+        self,
+        *,
+        world_id: Optional[str] = None,
+        world_version_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return self._longform_human_review_closeout(
+            world_id=world_id,
+            world_version_id=world_version_id,
+            target_chapters=500,
+            summary_key="longform_500_summary",
+            windows=LONGFORM_500_REVIEW_WINDOWS,
+            reason_prefix="longform_500",
+            default_issue_focus=["Q03", "Q05", "Q09"],
+            ending_window_label=LONGFORM_500_REVIEW_WINDOWS[-1][0],
         )
 
     def save_preference_sample(self, payload: Dict[str, Any]) -> Dict[str, Any]:

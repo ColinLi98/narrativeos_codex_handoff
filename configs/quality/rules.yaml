@@ -1,0 +1,26 @@
+config_version: quality_rules_v1
+rules:
+  - rule_id: chapter_quality_gate
+    rule_type: evaluator
+    severity: high
+    blocking: true
+    config_ref: src.narrativeos.eval.service:evaluate_persisted_chapter
+    reason_code: chapter_quality_guard_failed
+  - rule_id: content_quality_contract
+    rule_type: validator
+    severity: high
+    blocking: true
+    config_ref: configs/content_quality_contracts.json
+    reason_code: content_quality_contract_failed
+  - rule_id: runtime_grounding_placeholder
+    rule_type: grounding
+    severity: medium
+    blocking: false
+    config_ref: phase1_placeholder
+    reason_code: grounding_not_evaluated
+  - rule_id: review_route_on_non_pass
+    rule_type: review_routing
+    severity: medium
+    blocking: false
+    config_ref: configs/quality/review_policies.yaml
+    reason_code: quality_review_required

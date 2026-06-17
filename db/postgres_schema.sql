@@ -341,3 +341,124 @@ create index if not exists idx_usage_meters_world_version_created_at on usage_me
 create index if not exists idx_analytics_events_event_name_occurred_at on analytics_events(event_name, occurred_at);
 create index if not exists idx_analytics_events_session_occurred_at on analytics_events(session_id, occurred_at);
 create index if not exists idx_analytics_events_world_version_occurred_at on analytics_events(world_version_id, occurred_at);
+
+create table if not exists quality_policies (
+  policy_id text primary key,
+  version text not null,
+  scenario_id text not null,
+  risk_tier text not null,
+  mode text not null,
+  rule_ids_json jsonb not null,
+  policy_payload_json jsonb not null,
+  created_at timestamptz not null default CURRENT_TIMESTAMP,
+  updated_at timestamptz not null default CURRENT_TIMESTAMP
+);
+
+create index if not exists idx_quality_policies_scenario_risk_updated_at on quality_policies(scenario_id, risk_tier, updated_at);
+create index if not exists idx_quality_policies_mode_updated_at on quality_policies(mode, updated_at);
+
+create table if not exists quality_events (
+  event_id text primary key,
+  trace_id text not null,
+  event_type text not null,
+  source_surface text not null,
+  status text,
+  world_version_id text,
+  session_id text,
+  source_ref_json jsonb not null,
+  payload_json jsonb not null,
+  created_at timestamptz not null default CURRENT_TIMESTAMP
+);
+
+create index if not exists idx_quality_events_trace_created_at on quality_events(trace_id, created_at);
+create index if not exists idx_quality_events_surface_status_created_at on quality_events(source_surface, status, created_at);
+create index if not exists idx_quality_events_world_created_at on quality_events(world_version_id, created_at);
+create index if not exists idx_quality_events_session_created_at on quality_events(session_id, created_at);
+
+create table if not exists content_quality_scores (
+  score_id text primary key,
+  trace_id text,
+  source_surface text not null,
+  status text,
+  world_version_id text,
+  session_id text,
+  chapter_id text,
+  rubric_version text not null,
+  overall_score numeric not null default 0,
+  veto boolean not null default false,
+  dimension_scores_json jsonb not null,
+  reason_codes_json jsonb not null,
+  evidence_refs_json jsonb not null,
+  score_payload_json jsonb not null,
+  created_at timestamptz not null default CURRENT_TIMESTAMP
+);
+
+create index if not exists idx_content_quality_scores_trace_created_at on content_quality_scores(trace_id, created_at);
+create index if not exists idx_content_quality_scores_status_created_at on content_quality_scores(status, created_at);
+create index if not exists idx_content_quality_scores_world_created_at on content_quality_scores(world_version_id, created_at);
+create index if not exists idx_content_quality_scores_session_created_at on content_quality_scores(session_id, created_at);
+
+create table if not exists review_cases (
+  case_id text primary key,
+  trace_id text,
+  case_type text not null,
+  status text not null,
+  owner_id text,
+  source_surface text,
+  world_version_id text,
+  session_id text,
+  score_id text,
+  source_ref_json jsonb not null,
+  reason_codes_json jsonb not null,
+  evidence_refs_json jsonb not null,
+  case_payload_json jsonb not null,
+  created_at timestamptz not null default CURRENT_TIMESTAMP,
+  updated_at timestamptz not null default CURRENT_TIMESTAMP
+);
+
+create index if not exists idx_review_cases_status_updated_at on review_cases(status, updated_at);
+create index if not exists idx_review_cases_trace_updated_at on review_cases(trace_id, updated_at);
+create index if not exists idx_review_cases_world_status_updated_at on review_cases(world_version_id, status, updated_at);
+create index if not exists idx_review_cases_session_status_updated_at on review_cases(session_id, status, updated_at);
+
+create table if not exists quality_feedback_items (
+  feedback_item_id text primary key,
+  trace_id text,
+  source_event_id text,
+  feedback_type text not null,
+  signal text not null,
+  source_surface text not null,
+  account_id text,
+  world_version_id text,
+  session_id text,
+  chapter_id text,
+  source_ref_json jsonb not null,
+  payload_json jsonb not null,
+  created_at timestamptz not null default CURRENT_TIMESTAMP
+);
+
+create index if not exists idx_quality_feedback_items_trace_created_at on quality_feedback_items(trace_id, created_at);
+create index if not exists idx_quality_feedback_items_account_created_at on quality_feedback_items(account_id, created_at);
+create index if not exists idx_quality_feedback_items_session_created_at on quality_feedback_items(session_id, created_at);
+create index if not exists idx_quality_feedback_items_type_signal_created_at on quality_feedback_items(feedback_type, signal, created_at);
+
+create table if not exists grounding_checks (
+  grounding_check_id text primary key,
+  trace_id text,
+  status text not null,
+  confidence numeric not null default 0,
+  source_surface text not null,
+  world_version_id text,
+  session_id text,
+  chapter_id text,
+  evidence_refs_json jsonb not null,
+  unsupported_claims_json jsonb not null,
+  reason_codes_json jsonb not null,
+  summary text not null,
+  created_at timestamptz not null default CURRENT_TIMESTAMP
+);
+
+create index if not exists idx_grounding_checks_trace_created_at on grounding_checks(trace_id, created_at);
+create index if not exists idx_grounding_checks_status_created_at on grounding_checks(status, created_at);
+create index if not exists idx_grounding_checks_world_created_at on grounding_checks(world_version_id, created_at);
+create index if not exists idx_grounding_checks_session_created_at on grounding_checks(session_id, created_at);

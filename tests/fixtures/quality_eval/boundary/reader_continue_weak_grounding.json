@@ -1,0 +1,38 @@
+{
+  "sample_id": "reader_continue_weak_grounding",
+  "scenario": "reader_continue",
+  "risk_tier": "L2",
+  "input": {
+    "text": "她终于决定继续把这句真话说出来，但是另一段过去仍然压在心里。"
+  },
+  "context": {
+    "scene_beats": [
+      {
+        "event": {
+          "title": "她决定说出真话",
+          "summary": "她终于决定继续",
+          "scene_function": "truth_trial"
+        }
+      }
+    ],
+    "chapter_task": {
+      "objective": "继续说出真话"
+    }
+  },
+  "materials": {
+    "world_facts": ["她决定继续"],
+    "world_bible": {
+      "theme": "真话"
+    }
+  },
+  "expected_behavior": "weak_grounding",
+  "expected_veto": false,
+  "expected_reason_codes": ["grounding_missing_support"],
+  "rubric_targets": {
+    "min_overall_score": 0.4
+  },
+  "grounding_expectation": {
+    "status": "weak",
+    "max_unsupported_claims": 1
+  }
+}

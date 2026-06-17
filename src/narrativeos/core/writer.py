@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from time import perf_counter
 from typing import List
 
 from ..models import ChapterDraft, NarrativeState, SceneBeat, ScenePlan, SceneRenderSpec, WorldBible
@@ -20,6 +21,10 @@ AXIS_LABELS = {
     "xianxia": "誓愿与天命",
     "suspense": "悬疑与压迫",
     "synthetic": "试探与选择",
+    "near_future_harbor_mystery": "港城真相与失落记忆",
+    "ensemble_drama": "群像关系与互相牵制",
+    "conspiracy": "阴谋与被遮蔽的代价",
+    "memory_trade": "记忆交易与迟来的追账",
 }
 
 
@@ -67,39 +72,61 @@ def write_chapter_draft(
         scene_beats[0],
         scene_plan.chapter_goal,
         scene_plan.conflict_axes[0] if scene_plan.conflict_axes else "局势",
+        chapter_index=int(getattr(state_before, "chapter_index", 0) or 0),
     )
     paragraphs = [opening]
     previous_event_id = None
+    previous_scene_function = None
     for beat in scene_beats:
         paragraphs.append(
             realize_beat(
                 world,
                 state_before,
                 beat,
-                repeated=previous_event_id == beat.event.event_id,
+                repeated=(
+                    previous_event_id == beat.event.event_id
+                    or previous_scene_function == beat.event.scene_function
+                ),
             )
         )
         previous_event_id = beat.event.event_id
+        previous_scene_function = beat.event.scene_function
     if scene_plan.ending_hook:
-        paragraphs.append(realize_hook(world, scene_plan.ending_hook, scene_beats[-1].event.scene_function))
+        paragraphs.append(
+            realize_hook(
+                world,
+                scene_plan.ending_hook,
+                scene_beats[-1].event.scene_function,
+                chapter_index=int(getattr(state_before, "chapter_index", 0) or 0),
+            )
+        )
 
     body = "\n\n".join(paragraphs)
     draft = ChapterDraft(
         body=body,
         paragraphs=paragraphs,
         dialogue_count=body.count("“"),
-        action_count=sum(body.count(marker) for marker in ["抬", "落", "偏", "按", "推", "站", "看", "握", "停", "拢"]),
+        action_count=sum(body.count(marker) for marker in ["抬", "落", "偏", "按", "推", "站", "看", "握", "停", "拢", "压", "掠", "碰", "擦", "收", "绷", "卷", "撞", "回", "拨", "绕", "贴", "拖"]),
         detail_count=sum(body.count(marker) for marker in ["灯", "袖", "茶", "风", "窗", "案", "影", "香", "光", "声", "纸"]),
         metadata={
             "target_word_count": render_spec.target_word_count,
+            "min_target_word_count": render_spec.min_target_word_count,
+            "max_target_word_count": render_spec.max_target_word_count,
             "scene_goal": scene_plan.scene_goal,
             "beat_count": len(scene_beats),
         },
     )
-    return repair_chapter_draft(
+    repair_started = perf_counter()
+    repaired = repair_chapter_draft(
         world=world,
         state_before=state_before,
         scene_plan=scene_plan,
         scene_beats=scene_beats,
         draft=draft,
+        render_spec=render_spec,
     )
+    repair_elapsed_ms = round((perf_counter() - repair_started) * 1000.0, 3)
+    repair_timing = dict(repaired.metadata.get("quality_pass_timing_ms") or {})
+    repair_timing["total_ms"] = repair_elapsed_ms
+    repaired.metadata["quality_pass_timing_ms"] = repair_timing
+    return repaired

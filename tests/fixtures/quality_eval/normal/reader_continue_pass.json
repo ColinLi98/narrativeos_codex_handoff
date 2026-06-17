@@ -1,0 +1,42 @@
+{
+  "sample_id": "reader_continue_pass",
+  "scenario": "reader_continue",
+  "risk_tier": "L2",
+  "input": {
+    "text": "她终于决定继续把这句真话说出来，回廊里的风也像跟着停了一瞬。"
+  },
+  "context": {
+    "scene_beats": [
+      {
+        "event": {
+          "title": "她决定说出真话",
+          "summary": "她终于决定继续把真话说出来",
+          "scene_function": "truth_trial",
+          "location": "回廊"
+        }
+      }
+    ],
+    "chapter_task": {
+      "objective": "继续说出真话",
+      "summary": "她决定继续把真话说出来"
+    }
+  },
+  "materials": {
+    "world_facts": ["她决定继续把真话说出来", "回廊里的真话已经被说出"],
+    "world_bible": {
+      "theme": "真话",
+      "summary": "她决定继续把真话说出来",
+      "location": "回廊"
+    }
+  },
+  "expected_behavior": "pass_or_review_required",
+  "expected_veto": false,
+  "expected_reason_codes": [],
+  "rubric_targets": {
+    "min_overall_score": 0.5
+  },
+  "grounding_expectation": {
+    "status": "passed",
+    "max_unsupported_claims": 0
+  }
+}

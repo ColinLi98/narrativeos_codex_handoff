@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VolumePlan",
+  "type": "object",
+  "required": [
+    "volume_id",
+    "order",
+    "title",
+    "goal",
+    "target_chapters",
+    "climax_definition",
+    "end_state"
+  ],
+  "properties": {
+    "volume_id": {"type": "string"},
+    "order": {"type": "integer", "minimum": 1},
+    "title": {"type": "string"},
+    "goal": {"type": "string"},
+    "target_chapters": {"type": "integer", "minimum": 1},
+    "climax_definition": {"type": "string"},
+    "end_state": {"type": "string"},
+    "volume_promises": {
+      "type": "array",
+      "items": {"type": "object", "additionalProperties": true}
+    }
+  }
+}

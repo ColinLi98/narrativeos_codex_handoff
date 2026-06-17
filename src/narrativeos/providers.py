@@ -7,7 +7,7 @@ import os
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from time import perf_counter
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Set
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
@@ -471,6 +471,7 @@ class StaticCandidateProvider(CandidateProvider):
 
     def __init__(self, event_pool: Sequence[EventAtom]) -> None:
         self.event_pool = [EventAtom.from_dict(event.to_dict()) for event in event_pool]
+        self._seen_cache_keys: Set[str] = set()
 
     _CONTINUATION_FUNCTIONS_BY_PHASE: Dict[str, List[str]] = {
         "setup": ["false_peace", "temptation", "confession_window"],
@@ -612,6 +613,79 @@ class StaticCandidateProvider(CandidateProvider):
             }
         ]
 
+    def _continuation_blueprint(
+        self,
+        base_event: EventAtom,
+        *,
+        scene_function: str,
+        index: int,
+    ) -> Optional[Dict[str, Any]]:
+        blueprints = [
+            dict(item)
+            for item in list((base_event.metadata or {}).get("continuation_blueprints") or [])
+            if isinstance(item, dict)
+        ]
+        if not blueprints:
+            return None
+        matching = [
+            item
+            for item in blueprints
+            if str(item.get("scene_function") or "") == scene_function
+        ]
+        if not matching:
+            return None
+        return dict(matching[index % len(matching)])
+
+    def _continuation_base_priority(self, base_event: EventAtom, state: NarrativeState) -> tuple[int, int, int]:
+        blueprints = [
+            dict(item)
+            for item in list((base_event.metadata or {}).get("continuation_blueprints") or [])
+            if isinstance(item, dict)
+        ]
+        open_promise_ids = {str(promise.promise_id) for promise in state.open_promises}
+        duty_type = str((state.current_chapter_task or {}).get("duty_type") or "")
+        closes_open_promise = any(
+            str(promise_id) in open_promise_ids
+            for blueprint in blueprints
+            for promise_id in list(blueprint.get("promises_close") or [])
+        ) or any(str(promise.promise_id) in open_promise_ids for promise in base_event.promises_open)
+        phase_matches = any(
+            not list(blueprint.get("phase_allowlist") or [])
+            or state.story_phase in {str(item) for item in list(blueprint.get("phase_allowlist") or [])}
+            for blueprint in blueprints
+        )
+        duty_matches = any(
+            not list(blueprint.get("duty_allowlist") or [])
+            or (duty_type and duty_type in {str(item) for item in list(blueprint.get("duty_allowlist") or [])})
+            for blueprint in blueprints
+        )
+        return (
+            0 if closes_open_promise else 1,
+            0 if phase_matches else 1,
+            0 if duty_matches else 1,
+        )
+
+    def _continuation_promises_close(
+        self,
+        *,
+        state: NarrativeState,
+        base_event: EventAtom,
+        blueprint: Optional[Dict[str, Any]],
+    ) -> List[str]:
+        open_promise_ids = {str(promise.promise_id) for promise in state.open_promises}
+        explicit_close_ids = list(blueprint.get("promises_close") or []) if blueprint else []
+        if explicit_close_ids:
+            return [
+                str(promise_id)
+                for promise_id in explicit_close_ids
+                if str(promise_id) in open_promise_ids
+            ]
+        return [
+            str(promise.promise_id)
+            for promise in base_event.promises_open
+            if str(promise.promise_id) in open_promise_ids
+        ]
+
     def _continuation_variant(
         self,
         base_event: EventAtom,
@@ -623,7 +697,17 @@ class StaticCandidateProvider(CandidateProvider):
     ) -> EventAtom:
         payload = base_event.to_dict()
         variant_id = f"{base_event.event_id}__continuation__{state.chapter_index + 1}_{index}_{scene_function}"
-        tags = list(dict.fromkeys(list(base_event.tags) + list((world.creator_controls.theme_targets or [])[:2]) + [scene_function]))
+        blueprint = self._continuation_blueprint(base_event, scene_function=scene_function, index=index)
+        blueprint_tags = list(blueprint.get("tags") or []) if blueprint else []
+        tags = list(
+            dict.fromkeys(
+                list(blueprint_tags)
+                + list(base_event.tags)
+                + list((world.creator_controls.theme_targets or [])[:2])
+                + [scene_function]
+            )
+        )
+        actors = list(blueprint.get("actors") or base_event.actors) if blueprint else list(base_event.actors)
         metadata = dict(payload.get("metadata", {}))
         for key in (
             "terminal",
@@ -639,20 +723,26 @@ class StaticCandidateProvider(CandidateProvider):
                 "base_event_id": base_event.event_id,
                 "continuation_phase": state.story_phase,
                 "generated_from_static_pool": True,
+                **({"continuation_blueprint_id": str(blueprint.get("blueprint_id"))} if blueprint and blueprint.get("blueprint_id") else {}),
             }
         )
         world_locations = list(world.locations or [])
-        rotated_location = world_locations[index % len(world_locations)] if world_locations else base_event.location
+        rotated_location = (
+            str(blueprint.get("location"))
+            if blueprint and blueprint.get("location")
+            else (world_locations[index % len(world_locations)] if world_locations else base_event.location)
+        )
         payload.update(
             {
                 "event_id": variant_id,
-                "title": self._continuation_title(scene_function, rotated_location, index=index),
-                "summary": self._continuation_summary(
+                "title": str(blueprint.get("title")) if blueprint and blueprint.get("title") else self._continuation_title(scene_function, rotated_location, index=index),
+                "summary": str(blueprint.get("summary")) if blueprint and blueprint.get("summary") else self._continuation_summary(
                     scene_function=scene_function,
                     location=rotated_location,
                     world=world,
                     tags=tags,
                 ),
+                "actors": actors,
                 "scene_function": scene_function,
                 "tags": tags,
                 "preconditions_all": [],
@@ -663,20 +753,31 @@ class StaticCandidateProvider(CandidateProvider):
                     state=state,
                     event_id=variant_id,
                     scene_function=scene_function,
-                    actors=base_event.actors,
+                    actors=actors,
                 ),
-                "promises_close": [],
+                "promises_close": self._continuation_promises_close(
+                    state=state,
+                    base_event=base_event,
+                    blueprint=blueprint,
+                ),
                 "rating_ceiling": state.rating_ceiling or world.creator_controls.darkness_ceiling or base_event.rating_ceiling,
                 "tension_delta": self._SCENE_FUNCTION_TENSION.get(scene_function, max(0.08, float(base_event.tension_delta))),
                 "theme_impacts": {
                     theme: 0.06
                     for theme in list((world.creator_controls.theme_targets or world.themes)[:3]) or list(tags[:2])
                 },
-                "agency_affordances": list(dict.fromkeys(list(base_event.agency_affordances) + list(tags[:2]) + ["continue_story"])),
+                "agency_affordances": list(
+                    dict.fromkeys(
+                        list(base_event.agency_affordances)
+                        + list(blueprint.get("agency_affordances") or [] if blueprint else [])
+                        + list(tags[:2])
+                        + ["continue_story"]
+                    )
+                ),
                 "karmic_seed_creations": self._continuation_seeds(
                     event_id=variant_id,
                     scene_function=scene_function,
-                    actors=base_event.actors,
+                    actors=actors,
                     tags=tags,
                 ),
                 "karmic_seed_resolutions": [],
@@ -700,7 +801,14 @@ class StaticCandidateProvider(CandidateProvider):
         event_ids = set(existing_event_ids)
         scene_functions = self._continuation_functions(state)
         variants: List[EventAtom] = []
-        for base_index, base_event in enumerate(self.event_pool):
+        prioritized_pool = [
+            base_event
+            for _original_index, base_event in sorted(
+                enumerate(self.event_pool),
+                key=lambda item: (*self._continuation_base_priority(item[1], state), item[0]),
+            )
+        ]
+        for base_index, base_event in enumerate(prioritized_pool):
             for function_index, scene_function in enumerate(scene_functions):
                 variant = self._continuation_variant(
                     base_event,
@@ -717,6 +825,30 @@ class StaticCandidateProvider(CandidateProvider):
                     return variants
         return variants
 
+    def _cache_key(
+        self,
+        state: NarrativeState,
+        world: WorldBible,
+        *,
+        depth: int,
+        min_candidates: int,
+        max_candidates: int,
+    ) -> str:
+        payload = {
+            "world_id": world.world_id,
+            "state_id": state.state_id,
+            "turn_index": state.turn_index,
+            "chapter_index": state.chapter_index,
+            "story_phase": state.story_phase,
+            "visited_event_ids": list(state.visited_event_ids),
+            "min_end_turn": state.min_end_turn,
+            "depth": depth,
+            "min_candidates": min_candidates,
+            "max_candidates": max_candidates,
+            "event_pool_ids": [event.event_id for event in self.event_pool],
+        }
+        return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()[:16]
+
     def generate(
         self,
         state: NarrativeState,
@@ -726,6 +858,15 @@ class StaticCandidateProvider(CandidateProvider):
         min_candidates: int = 6,
         max_candidates: int = 10,
     ) -> CandidateBatch:
+        cache_key = self._cache_key(
+            state,
+            world,
+            depth=depth,
+            min_candidates=min_candidates,
+            max_candidates=max_candidates,
+        )
+        cache_hit = cache_key in self._seen_cache_keys
+        self._seen_cache_keys.add(cache_key)
         raw_candidates = [
             EventAtom.from_dict(event.to_dict())
             for event in self.event_pool
@@ -742,8 +883,12 @@ class StaticCandidateProvider(CandidateProvider):
                 legal_candidates.append(candidate)
 
         continuation_candidates: List[EventAtom] = []
+        longform_mode = bool(state.metadata.get("longform_plan_enabled"))
+        continuation_mode = "longform" if longform_mode else (
+            "long_route" if state.min_end_turn >= self._LONG_ROUTE_CONTINUATION_MIN_END_TURN else "off"
+        )
         if (
-            state.min_end_turn >= self._LONG_ROUTE_CONTINUATION_MIN_END_TURN
+            continuation_mode != "off"
             and len(legal_candidates) < min_candidates
         ):
             continuation_limit = max(
@@ -775,6 +920,9 @@ class StaticCandidateProvider(CandidateProvider):
                 "raw_count": len(raw_candidates),
                 "legal_count": len(legal_candidates),
                 "min_candidates_requested": min_candidates,
+                "cache_hit": cache_hit,
+                "cache_key": cache_key,
+                "continuation_mode": continuation_mode,
                 "continuation_candidate_count": len(continuation_candidates),
             },
         )

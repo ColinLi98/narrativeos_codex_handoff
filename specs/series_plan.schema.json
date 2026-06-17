@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SeriesPlan",
+  "type": "object",
+  "required": [
+    "series_id",
+    "title",
+    "total_volume_target",
+    "total_chapter_target",
+    "target_word_count"
+  ],
+  "properties": {
+    "series_id": {"type": "string"},
+    "title": {"type": "string"},
+    "total_volume_target": {"type": "integer", "minimum": 1},
+    "total_chapter_target": {"type": "integer", "minimum": 1},
+    "target_word_count": {"type": "integer", "minimum": 1000},
+    "theme_statement": {"type": "string"},
+    "series_promises": {
+      "type": "array",
+      "items": {"type": "object", "additionalProperties": true}
+    }
+  }
+}

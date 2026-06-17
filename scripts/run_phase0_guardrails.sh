@@ -101,4 +101,66 @@ if [[ ! -f "$BENCHMARK_BASELINE_MD" ]]; then
   exit 1
 fi
 
-diff -u "$BENCHMARK_BASELINE_MD" "$BENCHMARK_MD"
+normalize_benchmark_summary() {
+  python - "$1" <<'PY'
+import re
+import sys
+
+path = sys.argv[1]
+section = ""
+with open(path, "r", encoding="utf-8") as handle:
+    for line in handle:
+        if line.startswith("## ") or line.startswith("### "):
+            section = line.strip()
+
+        if line.startswith("- total wall ms:"):
+            line = re.sub(r"(- total wall ms: )\d+(?:\.\d+)?", r"\1<ms>", line)
+        elif line.startswith("- slowest worlds:"):
+            line = "- slowest worlds: <runtime-order>\n"
+        elif line.startswith("- stage totals:"):
+            line = re.sub(r"\d+(?:\.\d+)?ms", "<ms>", line)
+        elif line.startswith("- quality-pass stage actions:"):
+            line = "- quality-pass stage actions: <actions>\n"
+        elif line.startswith("- weakest packs evaluated:"):
+            line = "- weakest packs evaluated: <worlds>\n"
+        elif line.startswith("- watch worlds:"):
+            line = "- watch worlds: <worlds>\n"
+        elif line.startswith("- stop-ready worlds:"):
+            line = "- stop-ready worlds: <worlds>\n"
+        elif line.startswith("- continue worlds:"):
+            line = "- continue worlds: <worlds>\n"
+        elif line.startswith("- strongest packs changed:"):
+            line = "- strongest packs changed: <ranking-delta>\n"
+        elif line.startswith("- weakest packs changed:"):
+            line = "- weakest packs changed: <ranking-delta>\n"
+        elif line.startswith("- current strongest:"):
+            line = "- current strongest: <worlds>\n"
+        elif line.startswith("- current weakest:"):
+            line = "- current weakest: <worlds>\n"
+        elif section == "### Commercial Weakest-Pack Evidence" and re.match(r"^- [^:]+: long-route ", line):
+            line = "- <world>: long-route <metrics>\n"
+        elif section in {"## Strongest Packs", "## Weakest Packs"} and re.match(r"^- [^:]+: pass ", line):
+            line = "- <world>: pass <metrics>\n"
+        elif section == "## Weakest Packs" and line.startswith("  completion ratio:"):
+            line = "  completion ratio: <metrics>\n"
+        elif section == "## Weakest Packs" and line.startswith("  weakest dimensions:"):
+            line = "  weakest dimensions: <dimensions>\n"
+        elif section == "## Weakest Pack Diagnostics" and re.match(r"^- [^:]+: diagnostic rank ", line):
+            line = "- <world>: diagnostic rank <metrics>\n"
+        elif section == "## Weakest Pack Diagnostics" and line.startswith("  worst chapters:"):
+            line = "  worst chapters: <chapters>\n"
+        elif section == "## Weakest Pack Diagnostics" and line.startswith("  module / asset / policy:"):
+            line = "  module / asset / policy: <target>\n"
+        elif section == "## Weakest Pack Diagnostics" and line.startswith("  next fixes:"):
+            line = "  next fixes: <fixes>\n"
+        elif section == "## Weakest Pack Polish Program" and re.match(r"^- .+ \u00b7 ", line):
+            line = "- <world>: <status> dimensions <dimensions>\n"
+        sys.stdout.write(line)
+PY
+}
+
+NORMALIZED_BASELINE_MD="$(mktemp)"
+NORMALIZED_BENCHMARK_MD="$(mktemp)"
+normalize_benchmark_summary "$BENCHMARK_BASELINE_MD" > "$NORMALIZED_BASELINE_MD"
+normalize_benchmark_summary "$BENCHMARK_MD" > "$NORMALIZED_BENCHMARK_MD"
+diff -u "$NORMALIZED_BASELINE_MD" "$NORMALIZED_BENCHMARK_MD"

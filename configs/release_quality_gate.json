@@ -1,0 +1,16 @@
+{
+  "config_version": "phase_a_quality_gate_v1",
+  "cross_pack_pass_rate_min": 0.9,
+  "weakest_pack_limit": 3,
+  "weakest_pack_pass_rate_min": 0.55,
+  "commercial_long_route_chapter_budget_min": 50,
+  "commercial_long_route_weakest_long_route_quality_min": 0.5,
+  "commercial_long_route_weakest_completion_ratio_min": 0.8,
+  "commercial_long_route_weakest_mid_arc_drop_max": 0.35,
+  "weakest_pack_issue_share_max": {
+    "Q03": 0.35,
+    "Q04": 0.3,
+    "Q05": 0.3,
+    "Q09": 0.2
+  }
+}

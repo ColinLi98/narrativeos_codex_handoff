@@ -57,6 +57,46 @@
         }
       }
     },
+    "series_plan": {
+      "$ref": "series_plan.schema.json"
+    },
+    "volume_plans": {
+      "type": "array",
+      "items": {
+        "$ref": "volume_plan.schema.json"
+      }
+    },
+    "arc_plans": {
+      "type": "array",
+      "items": {
+        "$ref": "arc_plan.schema.json"
+      }
+    },
+    "chapter_budget_policy": {
+      "$ref": "chapter_budget_policy.schema.json"
+    },
+    "memory_compression_policy": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "series_storyline_contract": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "character_memory_profiles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "steering_guardrails": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object"
+    },
     "world_bible": {
       "type": "object"
     },

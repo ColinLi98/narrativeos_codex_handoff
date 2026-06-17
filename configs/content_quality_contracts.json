@@ -1,0 +1,311 @@
+{
+  "config_version": "content_quality_contracts_v1",
+  "rolling_window_size": 5,
+  "full_chain_enforcement": true,
+  "generation_hard_constraints": {
+    "config_version": "generation_hard_constraints_v1",
+    "repair_policy": "repair_once_then_fail_closed",
+    "universal_rules": {
+      "schema_complete": {
+        "issue_code": "Q10",
+        "action": "block",
+        "summary": "Reader chapter payload must include non-empty title, body, and branch choices."
+      },
+      "broken_slot": {
+        "issue_code": "Q10",
+        "action": "block",
+        "summary": "Template slot fragments cannot reach persisted reader prose."
+      },
+      "engineering_leak": {
+        "issue_code": "Q01",
+        "action": "block",
+        "summary": "Reader-visible prose cannot expose engine fields, ids, or route notation."
+      },
+      "meta_narration_leak": {
+        "issue_code": "Q02",
+        "action": "block",
+        "summary": "Reader-visible prose cannot explain chapter construction or planning intent."
+      },
+      "grounding_failed": {
+        "issue_code": "Q07",
+        "action": "block",
+        "summary": "Failed grounding cannot be persisted as a passed quality result."
+      },
+      "premature_terminal": {
+        "issue_code": "Q09",
+        "action": "block",
+        "summary": "Premature terminal chapters are blocked before the configured route runway."
+      },
+      "stock_refrain_budget": {
+        "issue_code": "Q03",
+        "action": "block",
+        "summary": "Known long-route refrain phrases must stay under deterministic budgets."
+      },
+      "choice_text_budget": {
+        "issue_code": "Q08",
+        "action": "block",
+        "summary": "Branch choices must remain non-empty and distinct within the current chapter."
+      }
+    },
+    "base_thresholds": {
+      "min_choice_count": 2,
+      "min_body_text_units": 80,
+      "stock_refrain_current_max": 2,
+      "choice_text_current_max": 1
+    },
+    "genre_profiles": {
+      "mystery": {
+        "aliases": ["urban_mystery", "detective", "suspense"],
+        "threshold_overrides": {
+          "stock_refrain_current_max": 2
+        }
+      },
+      "romance": {
+        "aliases": ["romance", "relationship"],
+        "threshold_overrides": {
+          "choice_text_current_max": 1
+        }
+      },
+      "fantasy": {
+        "aliases": ["fantasy", "xianxia", "wuxia"],
+        "threshold_overrides": {}
+      },
+      "realist": {
+        "aliases": ["realist", "contemporary", "slice_of_life"],
+        "threshold_overrides": {}
+      },
+      "light_novel": {
+        "aliases": ["light_novel", "web_serial"],
+        "threshold_overrides": {
+          "min_choice_count": 2
+        }
+      }
+    },
+    "length_profiles": {
+      "long_route_30": {
+        "min_chapters": 30,
+        "threshold_overrides": {
+          "stock_refrain_current_max": 2
+        }
+      },
+      "long_route_50": {
+        "min_chapters": 50,
+        "threshold_overrides": {
+          "stock_refrain_current_max": 2
+        }
+      }
+    }
+  },
+  "bands": {
+    "100": {
+      "enabled": true,
+      "diagnostic_enabled": true,
+      "gate_enforced": true,
+      "thresholds": {
+        "repetition_score_max": 0.2,
+        "exposition_ratio_max": 0.52,
+        "concrete_detail_density_min": 0.04,
+        "dialogue_plus_action_ratio_min": 0.42,
+        "late_window_hook_quality_min": 0.85,
+        "q09_pre_end_max": 0.08
+      },
+      "windows": {
+        "early": {
+          "start": 1,
+          "end": 10,
+          "q03_q04_combined_breach_share_max": 0.45
+        },
+        "mid": {
+          "start": 30,
+          "end": 60,
+          "repetition_breach_rate_max": 0.3,
+          "exposition_breach_rate_max": 0.3,
+          "detail_breach_rate_max": 0.35
+        },
+        "late": {
+          "start": 80,
+          "end": 100,
+          "q09_breach_rate_max": 0.08,
+          "detail_breach_rate_max": 0.35,
+          "premature_terminal_forbidden": true
+        }
+      },
+      "enforcement_policy": {
+        "Q03": "rewrite",
+        "Q04": "rewrite",
+        "Q05": "rewrite",
+        "Q09_pre_end": "block",
+        "rolling_repeat_escalation": "block",
+        "rolling_exposition_escalation": "block"
+      }
+    },
+    "200": {
+      "enabled": false,
+      "diagnostic_enabled": true,
+      "gate_enforced": false,
+      "thresholds": {
+        "repetition_score_max": 0.18,
+        "exposition_ratio_max": 0.5,
+        "concrete_detail_density_min": 0.045,
+        "dialogue_plus_action_ratio_min": 0.46,
+        "late_window_hook_quality_min": 0.86,
+        "q09_pre_end_max": 0.1
+      },
+      "windows": {
+        "early": {
+          "start": 1,
+          "end": 20,
+          "q03_q04_combined_breach_share_max": 0.4
+        },
+        "mid": {
+          "start": 60,
+          "end": 140,
+          "repetition_breach_rate_max": 0.28,
+          "exposition_breach_rate_max": 0.28,
+          "detail_breach_rate_max": 0.32
+        },
+        "late": {
+          "start": 160,
+          "end": 200,
+          "q09_breach_rate_max": 0.12,
+          "detail_breach_rate_max": 0.32,
+          "premature_terminal_forbidden": true
+        }
+      },
+      "enforcement_policy": {
+        "Q03": "rewrite",
+        "Q04": "rewrite",
+        "Q05": "rewrite",
+        "Q09_pre_end": "block",
+        "rolling_repeat_escalation": "block",
+        "rolling_exposition_escalation": "block"
+      }
+    },
+    "250": {
+      "enabled": false,
+      "diagnostic_enabled": false,
+      "gate_enforced": false,
+      "thresholds": {
+        "repetition_score_max": 0.2,
+        "exposition_ratio_max": 0.52,
+        "concrete_detail_density_min": 0.04,
+        "dialogue_plus_action_ratio_min": 0.42,
+        "late_window_hook_quality_min": 0.85,
+        "q09_pre_end_max": 0.08
+      },
+      "windows": {
+        "early": {
+          "start": 1,
+          "end": 10,
+          "q03_q04_combined_breach_share_max": 0.45
+        },
+        "mid": {
+          "start": 30,
+          "end": 60,
+          "repetition_breach_rate_max": 0.3,
+          "exposition_breach_rate_max": 0.3,
+          "detail_breach_rate_max": 0.35
+        },
+        "late": {
+          "start": 80,
+          "end": 100,
+          "q09_breach_rate_max": 0.08,
+          "detail_breach_rate_max": 0.35,
+          "premature_terminal_forbidden": true
+        }
+      },
+      "enforcement_policy": {
+        "Q03": "rewrite",
+        "Q04": "rewrite",
+        "Q05": "rewrite",
+        "Q09_pre_end": "block",
+        "rolling_repeat_escalation": "block",
+        "rolling_exposition_escalation": "block"
+      }
+    },
+    "500": {
+      "enabled": false,
+      "diagnostic_enabled": false,
+      "gate_enforced": false,
+      "thresholds": {
+        "repetition_score_max": 0.2,
+        "exposition_ratio_max": 0.52,
+        "concrete_detail_density_min": 0.04,
+        "dialogue_plus_action_ratio_min": 0.42,
+        "late_window_hook_quality_min": 0.85,
+        "q09_pre_end_max": 0.08
+      },
+      "windows": {
+        "early": {
+          "start": 1,
+          "end": 10,
+          "q03_q04_combined_breach_share_max": 0.45
+        },
+        "mid": {
+          "start": 30,
+          "end": 60,
+          "repetition_breach_rate_max": 0.3,
+          "exposition_breach_rate_max": 0.3,
+          "detail_breach_rate_max": 0.35
+        },
+        "late": {
+          "start": 80,
+          "end": 100,
+          "q09_breach_rate_max": 0.08,
+          "detail_breach_rate_max": 0.35,
+          "premature_terminal_forbidden": true
+        }
+      },
+      "enforcement_policy": {
+        "Q03": "rewrite",
+        "Q04": "rewrite",
+        "Q05": "rewrite",
+        "Q09_pre_end": "block",
+        "rolling_repeat_escalation": "block",
+        "rolling_exposition_escalation": "block"
+      }
+    },
+    "1000": {
+      "enabled": false,
+      "diagnostic_enabled": false,
+      "gate_enforced": false,
+      "thresholds": {
+        "repetition_score_max": 0.2,
+        "exposition_ratio_max": 0.52,
+        "concrete_detail_density_min": 0.04,
+        "dialogue_plus_action_ratio_min": 0.42,
+        "late_window_hook_quality_min": 0.85,
+        "q09_pre_end_max": 0.08
+      },
+      "windows": {
+        "early": {
+          "start": 1,
+          "end": 10,
+          "q03_q04_combined_breach_share_max": 0.45
+        },
+        "mid": {
+          "start": 30,
+          "end": 60,
+          "repetition_breach_rate_max": 0.3,
+          "exposition_breach_rate_max": 0.3,
+          "detail_breach_rate_max": 0.35
+        },
+        "late": {
+          "start": 80,
+          "end": 100,
+          "q09_breach_rate_max": 0.08,
+          "detail_breach_rate_max": 0.35,
+          "premature_terminal_forbidden": true
+        }
+      },
+      "enforcement_policy": {
+        "Q03": "rewrite",
+        "Q04": "rewrite",
+        "Q05": "rewrite",
+        "Q09_pre_end": "block",
+        "rolling_repeat_escalation": "block",
+        "rolling_exposition_escalation": "block"
+      }
+    }
+  }
+}

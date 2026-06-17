@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ChapterBudgetPolicy",
+  "type": "object",
+  "required": [
+    "default_target_words",
+    "min_target_words",
+    "max_target_words",
+    "default_reveal_budget",
+    "duty_cycle"
+  ],
+  "properties": {
+    "default_target_words": {"type": "integer", "minimum": 200},
+    "min_target_words": {"type": "integer", "minimum": 200},
+    "max_target_words": {"type": "integer", "minimum": 200},
+    "default_reveal_budget": {"type": "integer", "minimum": 0},
+    "duty_cycle": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "advance_plot",
+          "advance_relationship",
+          "resolve_promise",
+          "expand_world",
+          "pace_breath",
+          "deliver_climax"
+        ]
+      }
+    }
+  }
+}

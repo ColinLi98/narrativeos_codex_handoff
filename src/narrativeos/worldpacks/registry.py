@@ -22,9 +22,359 @@ from .validator import validate_worldpack_payload
 BASE_DIR = Path(__file__).resolve().parents[3]
 WORLDPACK_DIR = BASE_DIR / "examples" / "worldpacks"
 
+SCENE_FUNCTION_LABELS = {
+    "false_peace": "表面平静",
+    "temptation": "试探与诱惑",
+    "truth_trial": "真相逼近",
+    "mask_crack": "面具裂口",
+    "confession_window": "真话窗口",
+    "debt_exchange": "旧账回潮",
+    "karma_ripening": "因果回响",
+    "humiliation": "难堪代价",
+    "vow_payment": "誓言偿付",
+    "misrecognition": "误解升级",
+}
+
+
+def _clamp(value: float, lower: float = 0.0, upper: float = 1.0) -> float:
+    return max(lower, min(upper, value))
+
+
+def _ensure_variants(values: List[str], fallbacks: List[str], *, min_count: int = 5) -> List[str]:
+    enriched = [str(item).strip() for item in values if str(item).strip()]
+    for item in fallbacks:
+        candidate = str(item).strip()
+        if candidate and candidate not in enriched:
+            enriched.append(candidate)
+        if len(enriched) >= min_count:
+            break
+    return enriched[:max(min_count, len(enriched))]
+
+
+def _voice_line_fallbacks(profile_key: str, field: str, voice: Dict[str, Any]) -> List[str]:
+    sharper = float(voice.get("bluntness", 0.5)) >= 0.58
+    restrained = float(voice.get("restraint", 0.5)) >= 0.62
+    if field == "opening_style":
+        return [
+            "我先把杯沿按住，再把这句话放到明处。",
+            "门边风一过，我就不想再躲了。",
+            "案角纸页都响了，我不往回收。",
+            "这句我先认，不再装稳。",
+            "窗边那一下轻响过后，我不想再把真话按回去。",
+        ] if not sharper else [
+            "别绕，把这句话摁在桌上说。",
+            "再装也没用了，我现在就要听见。",
+            "裂口已经亮出来了，别指望我替你遮。",
+            "你要是还退，我就继续追。",
+            "这一步我不替你绕开。",
+        ]
+    if field == "pressure_style":
+        return [
+            "你要我认，我可以认，但别逼我再往后躲。",
+            "事情已经压到这里，我不拿体面挡了。",
+            "真话到嘴边了，我不想再咽回去。",
+            "再退一步，代价只会换个地方落下。",
+            "我可以先认，但不会再拿解释收场。",
+        ] if not sharper else [
+            "我不怕难听，只怕你又把退路藏回沉默里。",
+            "再往后躲，这件事只会继续裂。",
+            "你要往前走，就别指望我替你吞后果。",
+            "我可以听你认错，但不会替你把场面讲圆。",
+            "这层代价你今天得自己接。",
+        ]
+    if field == "pivot_style":
+        return [
+            "真正难的不是选路，是认自己已经偏过去了。",
+            "这一步迈出去，就装不回去了。",
+            "我不是不怕失去，只是不想再靠回避把人推远。",
+            "现在追上来的不是解释，是后果。",
+            "再装稳，伤口只会换个地方继续裂。",
+        ] if not sharper else [
+            "再绕半步，这事只会更坏。",
+            "我可以听真话，但不会替谁缝裂口。",
+            "事情拧到这里，继续装稳更像认输。",
+            "你不肯转身，后果就顺着下一章追上来。",
+            "我不会再让你拿慢半拍的解释拖过去。",
+        ]
+    if field == "aftermath_style":
+        return [
+            "话先落在这里，后面的亏欠我自己接。",
+            "这句既然说出来，余下的难看也该我担。",
+            "场面虽然停住了，可这事不会散掉。",
+            "我先把这一层留在这里，回头还得自己认账。",
+            "这句停住以后，谁也装不回刚才那副样子。",
+        ] if not sharper else [
+            "我先记着，回头你还是得把后半句带回来。",
+            "这句先放在这里，迟早还得回来算清。",
+            "我不替你收场，等你真肯认的时候再来补完。",
+            "先停在这里，不代表这件事过去了。",
+            "你今天不接，下一次它还是会追上来。",
+        ]
+    if field == "echo_style":
+        return [
+            "等下一次再开口时，我不会只带着半句真话回来。",
+            "这一回先停在这里，可真正追上来的还在后面。",
+            "下次再见时，这句话不会还只是个影子。",
+            "这层没说尽的话已经压到下一章门口了。",
+            "等人散开以后，最先回来的还是这句后劲。",
+        ] if not sharper else [
+            "下次见我时，别再只带着更圆的借口。",
+            "这一回先收住，可下一次你还是得把真相带过来。",
+            "等风声再追上来时，我不会让你再躲回原位。",
+            "我先放你走一步，但后半句你迟早得自己补回来。",
+            "这点余波不会自己散掉。",
+        ]
+    if field == "signature_replies":
+        return [
+            "我先把这句认下，剩下的我不会再推给局势。",
+            "这层后果先算在我头上，别再让我装作没看见。",
+            "该认的我会认，但我不想再靠沉默收场。",
+            "我先把这一步接住，后面那层难看也该由我自己担。",
+            "这次我不往回收了，真要疼也该先疼在明处。",
+        ] if not sharper else [
+            "我可以先不走，但你别指望我继续替你圆这层假平静。",
+            "既然你肯开口，就别只给我半句真话。",
+            "你最好现在就把话说透，别逼我下一次追得更深。",
+            "今天这层后果你得自己接，别再让我替你圆场。",
+            "这句如果还说不透，我下一次只会追得更紧。",
+        ]
+    return []
+
+
+def _response_line_fallbacks(field: str, beat_key: str, *, sharper: bool) -> List[str]:
+    if field == "reaction_lines":
+        defaults = {
+            "entry": [
+                "他没有立刻接话，只把那点迟疑先压在眼底。",
+                "她先收住了动作，反倒把场里的试探衬得更紧。",
+                "谁都没急着开口，空气却已经先替这句真话让出了位置。",
+                "灯下那一点冷光先晃了一下，谁都知道真正难说的那句已经逼近了。",
+                "手边的纸页轻轻一响，像在替谁把下一句更重的话推到明处。",
+            ],
+            "pressure": [
+                "呼吸和目光都顿了一下，像谁先动一下就会先露底。",
+                "指尖轻轻一停，细小的响动反而把场面压得更紧。",
+                "他先把那口气压回去半寸，结果连沉默都显得更重。",
+                "衣角擦过桌沿的轻响很短，却把场里的退路一下子磨薄了。",
+                "门边那点风声掠过去以后，连停顿都像在替人认错。",
+            ],
+            "pivot": [
+                "这才抬起眼来，像终于不打算再给自己留余地。",
+                "她开口时语气并不高，可每个字都落在最难回避的地方。",
+                "那一下极轻的停顿，把还能周旋的局面一下子压成了选择。",
+                "杯沿上的冷光一闪，连下一句该落到谁身上都跟着清楚了。",
+                "对面的人没再补台阶，场面就这样硬生生拧到了更难退的一侧。",
+            ],
+            "aftermath": [
+                "到收声的时候，反而比刚才更轻，也更沉。",
+                "谁都没有继续逼，可那层不肯退的意思还停在原处。",
+                "话停下以后，真正压人的反而是留在场里的余波。",
+                "灯影没动，可桌边那层静像把后面的代价一起拖了出来。",
+                "谁都先收了声，可衣袖、纸页和呼吸都还在替这句真话回响。",
+            ],
+            "echo": [
+                "没再追着补话，可那点未尽之意还挂在场里。",
+                "她先收了声，留下来的却是更明确的一层边界。",
+                "等静下来以后，最先回来的还是那句没有说尽的话。",
+                "下一次见面时，最先追上来的不会是解释，而是这层没认完的后果。",
+                "人先散开了，可窗边那点回声还把后半句留在原地。",
+            ],
+        }
+        return defaults.get(beat_key, defaults["pressure"])
+    defaults = {
+        "entry": [
+            "这句话既然已经出口，就别再往回收了。",
+            "既然都走到这里了，我不想再把这句收回去。",
+            "你既然肯开口，就别只给我半句。",
+            "这一步已经迈出来了，别再拿更轻的话压回去。",
+            "既然都照出来了，就别再装作没看见。",
+        ],
+        "pressure": [
+            "你总得先替自己承认一次。",
+            "我不是不肯认，只是不想再拿沉默糊弄过去。",
+            "你要真想往前走，就别再把退路藏在这后面。",
+            "我可以听你认，但不会替你把后果讲圆。",
+            "再躲一步，后面的账也只会换个地方继续追上来。",
+        ],
+        "pivot": [
+            "再退半步，也只是让伤口换个地方继续裂。",
+            "既然已经走到这里，我就不想再装作什么都没看见。",
+            "我可以听真话，但不会再替谁把后果吞回去。",
+            "这句真停在这里，下一次只会更难收。",
+            "别再靠一句解释往后拖了。",
+        ],
+        "aftermath": [
+            "这句先放在这里，后面的我会自己来认。",
+            "这事不会就这样过去。",
+            "回头你还是得自己把后半句带回来。",
+            "这层账先记在这里，回头还是得有人自己来结。",
+            "场面先停住了，可后面的难看不会自己消失。",
+        ],
+        "echo": [
+            "下次再来时，别只带着更圆的借口。",
+            "等下一次再说时，我会把真正该说的带过来。",
+            "下一回再见，我要听的是你的真话，不是更顺耳的解释。",
+            "下一次见面时，最先追上来的还是你今天没认完的那句。",
+            "这点余波不会自己散掉，别想让它停在这一章外面。",
+        ],
+    }
+    variants = defaults.get(beat_key, defaults["pressure"])
+    return variants if not sharper else list(reversed(variants))
+
+
+def _sensory_fallbacks(location: str, slot: str) -> List[str]:
+    if slot == "atmosphere":
+        return [
+            f"{location}里的风、灯影、门缝和衣角摩擦出的细响贴得很近，像先把每个人心里的迟疑照到了明处。",
+            f"{location}并不安静，连窗边的风声、案角的冷光和地上的回声都像在替场里的那句话压紧边界。",
+            f"{location}里先变的不是声量，而是门、窗、灯、纸和影子一起把那层没说透的情绪压出了形状。",
+            f"{location}里的空气带着潮意和旧气味，连脚边那一下轻响都像在替人把退路越收越窄。",
+            f"{location}先静了一瞬，可灯、风、窗纸和衣袖边的响动没有停，反而把最难说的那句推得更近。",
+        ]
+    if slot == "detail":
+        return [
+            f"{location}里的灯影、窗纸、门框、案角和衣袖摩擦声都变得分外清楚，把场里的犹疑照得更薄。",
+            f"{location}边上的细响、冷光、茶气、脚步和停顿一层层压上来，让人更难把这句话绕开。",
+            f"连{location}里最轻的一点回声、纸页响动、风过门缝的凉意和衣摆扫过地面的声音，都像在替这场对峙补上更细的纹理。",
+            f"{location}里那点雨味、灰尘、灯火和门边木纹一起贴上来，连呼吸都像有了能摸到的重量。",
+            f"窗边那道冷光落到杯沿和纸页上，衣角、脚步、风声和香气全都把场面压得更近。",
+        ]
+    return [
+        f"越到后面，{location}里最轻的一点灯响、风声和衣料摩擦反而把没说尽的话压得更重。",
+        f"等沉默拖长以后，{location}里的回声、纸页轻响和门边冷气像把余波一遍遍推回场中心。",
+        f"{location}没有立刻静下来，反而让那点没认下的心思顺着窗影和脚步声更难散掉。",
+        f"人虽然收声了，可{location}里的灯、门、窗和案角都还替这层后劲留着痕。",
+        f"这一层余波没有自己散掉，反而让{location}里的每一点细响都变成提醒。",
+    ]
+
+
+def _scene_opening_fallbacks(worldpack: WorldPack, scene_function: str) -> List[str]:
+    label = SCENE_FUNCTION_LABELS.get(scene_function, scene_function.replace("_", " "))
+    title = worldpack.title
+    markers = ["门影", "案角", "窗纸", "灯芯", "杯沿"]
+    return [
+        f"{title}里的{markers[0]}先把这一步{label}照到人物手边，局势从动作里收紧。",
+        f"{markers[1]}那点轻响落下后，{title}的{label}不再靠解释推进，而是逼人物当面回应。",
+        f"{markers[2]}和衣袖同时一动，{label}便从旧说法里滑出来，压住下一句真话。",
+        f"{title}里的脚步回响先响了一下，{markers[3]}把退路照得更窄。",
+        f"压到眼前的不是同一层解释，而是{markers[4]}、风声和停顿一起换出的{label}。",
+    ]
+
+
+def _scene_hook_fallbacks(worldpack: WorldPack, scene_function: str) -> List[str]:
+    label = SCENE_FUNCTION_LABELS.get(scene_function, scene_function.replace("_", " "))
+    return [
+        f"{label}先停在这处细响里，下一次回来时要追问的是谁还敢把后半句藏住。",
+        f"话先落下去了，可留下来的不是余波本身，而是下一步必须换法承担的后果。",
+        f"等下一次再开口时，人物要面对的会是这一步{label}改变过的距离。",
+        f"这句先压在这里，案角、门影和关系债已经把下一章的退路收窄。",
+        f"{label}没有真的停住，它只从声音里退开，换到人物还没做完的动作里。",
+    ]
+
+
+def _enrich_worldpack_assets(worldpack: WorldPack) -> WorldPack:
+    voice_payloads = {key: dict(value or {}) for key, value in (worldpack.voice_profiles or {}).items()}
+    if voice_payloads:
+        ordered_keys = sorted(voice_payloads, key=lambda key: (float(voice_payloads[key].get("directness", 0.5)), key))
+        count = max(1, len(ordered_keys) - 1)
+        for index, key in enumerate(ordered_keys):
+            payload = voice_payloads[key]
+            anchor = index / float(count) if count else 0.0
+            target_directness = _clamp(0.18 + 0.74 * anchor)
+            target_bluntness = _clamp(0.02 + 0.96 * anchor)
+            target_restraint = _clamp(0.99 - 0.92 * anchor)
+            target_rank_awareness = _clamp(0.86 - 0.5 * anchor)
+            payload["directness"] = round((float(payload.get("directness", 0.5)) * 0.15) + (target_directness * 0.85), 3)
+            payload["bluntness"] = round((float(payload.get("bluntness", 0.5)) * 0.1) + (target_bluntness * 0.9), 3)
+            payload["restraint"] = round((float(payload.get("restraint", 0.5)) * 0.1) + (target_restraint * 0.9), 3)
+            payload["social_rank_awareness"] = round((float(payload.get("social_rank_awareness", 0.5)) * 0.2) + (target_rank_awareness * 0.8), 3)
+            payload["opening_style"] = _ensure_variants(payload.get("opening_style", []), _voice_line_fallbacks(key, "opening_style", payload), min_count=6)
+            payload["pressure_style"] = _ensure_variants(payload.get("pressure_style", []), _voice_line_fallbacks(key, "pressure_style", payload), min_count=6)
+            payload["pivot_style"] = _ensure_variants(payload.get("pivot_style", []), _voice_line_fallbacks(key, "pivot_style", payload), min_count=6)
+            payload["aftermath_style"] = _ensure_variants(payload.get("aftermath_style", []), _voice_line_fallbacks(key, "aftermath_style", payload), min_count=6)
+            payload["echo_style"] = _ensure_variants(payload.get("echo_style", []), _voice_line_fallbacks(key, "echo_style", payload), min_count=6)
+            payload["signature_replies"] = _ensure_variants(payload.get("signature_replies", []), _voice_line_fallbacks(key, "signature_replies", payload), min_count=6)
+        worldpack.voice_profiles = voice_payloads
+
+    response_payloads = {key: dict(value or {}) for key, value in (worldpack.response_cadence_profiles or {}).items()}
+    for key, payload in response_payloads.items():
+        sharper = float(voice_payloads.get(key, {}).get("bluntness", 0.5)) >= 0.58
+        reaction_lines = {slot: list(values) for slot, values in (payload.get("reaction_lines") or {}).items()}
+        reply_lines = {slot: list(values) for slot, values in (payload.get("reply_lines") or {}).items()}
+        for beat_key in ["entry", "pressure", "pivot", "aftermath", "echo"]:
+            reaction_lines[beat_key] = _ensure_variants(reaction_lines.get(beat_key, []), _response_line_fallbacks("reaction_lines", beat_key, sharper=sharper), min_count=6)
+            reply_lines[beat_key] = _ensure_variants(reply_lines.get(beat_key, []), _response_line_fallbacks("reply_lines", beat_key, sharper=sharper), min_count=6)
+        payload["reaction_lines"] = reaction_lines
+        payload["reply_lines"] = reply_lines
+    worldpack.response_cadence_profiles = response_payloads
+
+    pressure_styles = {key: dict(value or {}) for key, value in (worldpack.pressure_response_styles or {}).items()}
+    if voice_payloads and set(pressure_styles.keys()) != set(voice_payloads.keys()):
+        existing = list(pressure_styles.values()) or [{"style_id": "default"}]
+        normalized_styles: Dict[str, Dict[str, Any]] = {}
+        for index, key in enumerate(voice_payloads.keys()):
+            base = dict(existing[min(index, len(existing) - 1)])
+            base.setdefault("under_pressure", "先稳住气息，再把更难听的话说得更实。")
+            base.setdefault("when_cornered", "不再绕路，直接把最重的那句摆到明处。")
+            base.setdefault("when_softening", "语气先松下来，但边界不往回撤。")
+            base.setdefault("when_deflecting", "把心里的真正顾虑挪开半寸，却不再装作没发生。")
+            normalized_styles[key] = base
+        pressure_styles = normalized_styles
+    worldpack.pressure_response_styles = pressure_styles
+
+    sensory_payload = dict((worldpack.sensory_grounding_policies or {}).get("default") or {})
+    location_slots = {key: {slot: list(values) for slot, values in value.items()} for key, value in (sensory_payload.get("location_slots") or {}).items()}
+    for location, slot_map in location_slots.items():
+        for slot in ["atmosphere", "detail", "repeat_detail"]:
+            slot_map[slot] = _ensure_variants(slot_map.get(slot, []), _sensory_fallbacks(location, slot), min_count=6)
+    generic_slots = {key: list(values) for key, values in (sensory_payload.get("generic_slots") or {}).items()}
+    for slot in ["atmosphere", "detail", "repeat_detail"]:
+        generic_slots[slot] = _ensure_variants(generic_slots.get(slot, []), _sensory_fallbacks(worldpack.title, slot), min_count=6)
+    if sensory_payload:
+        sensory_payload["location_slots"] = location_slots
+        sensory_payload["generic_slots"] = generic_slots
+        worldpack.sensory_grounding_policies = {"default": sensory_payload, **{key: value for key, value in (worldpack.sensory_grounding_policies or {}).items() if key != "default"}}
+
+    scene_payload = dict((worldpack.scene_realization_contracts or {}).get("default") or {})
+    scene_openings = {key: list(values) for key, values in (scene_payload.get("scene_openings") or {}).items()}
+    scene_hooks = {key: list(values) for key, values in (scene_payload.get("scene_hooks") or {}).items()}
+    scene_functions = {normalize_scene_function(scene.scene_function) for scene in worldpack.scene_blueprints}
+    for scene_function in sorted(scene_functions):
+        scene_openings[scene_function] = _ensure_variants(scene_openings.get(scene_function, []), _scene_opening_fallbacks(worldpack, scene_function), min_count=5)
+        scene_hooks[scene_function] = _ensure_variants(scene_hooks.get(scene_function, []), _scene_hook_fallbacks(worldpack, scene_function), min_count=5)
+    if scene_payload or scene_functions:
+        scene_payload["scene_openings"] = scene_openings
+        scene_payload["scene_hooks"] = scene_hooks
+        scene_payload.setdefault("contract_id", f"{worldpack.world_id}_scene_realization")
+        worldpack.scene_realization_contracts = {"default": scene_payload, **{key: value for key, value in (worldpack.scene_realization_contracts or {}).items() if key != "default"}}
+    return worldpack
+
 
 def _load_json(path: Path) -> Dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _enrich_runtime_event_atoms_with_scene_contracts(worldpack: WorldPack, event_atoms: List[EventAtom]) -> List[EventAtom]:
+    blueprint_map = {scene.scene_id: scene for scene in worldpack.scene_blueprints}
+    function_map: Dict[str, List[Any]] = {}
+    for scene in worldpack.scene_blueprints:
+        function_map.setdefault(normalize_scene_function(scene.scene_function), []).append(scene)
+
+    for event in event_atoms:
+        metadata = dict(event.metadata or {})
+        scene_id = str(metadata.get("scene_blueprint_id") or "").strip()
+        blueprint = blueprint_map.get(scene_id)
+        if blueprint is None:
+            matches = function_map.get(normalize_scene_function(event.scene_function), [])
+            if len(matches) == 1:
+                blueprint = matches[0]
+        if blueprint is None:
+            continue
+        if blueprint.quality_contract:
+            metadata["scene_quality_contract"] = dict(blueprint.quality_contract)
+        metadata.setdefault("scene_blueprint_id", blueprint.scene_id)
+        event.metadata = metadata
+    return event_atoms
 
 
 def _is_empty_style_pack(style_pack: WorldNarrativeStylePack) -> bool:
@@ -165,6 +515,7 @@ def _default_style_pack(worldpack: WorldPack) -> WorldNarrativeStylePack:
 def runtime_bundle_from_worldpack_data(bundle: Dict[str, Any]) -> RuntimeBundle:
     payload = dict(bundle.get("worldpack", bundle))
     worldpack = WorldPack.from_dict(payload)
+    worldpack = _enrich_worldpack_assets(worldpack)
     asset_style_pack = _style_pack_from_assets(worldpack)
     if not _is_empty_style_pack(asset_style_pack):
         worldpack.narrative_style_pack = asset_style_pack
@@ -175,9 +526,13 @@ def runtime_bundle_from_worldpack_data(bundle: Dict[str, Any]) -> RuntimeBundle:
         runtime_world.setdefault("creator_controls", {})
         runtime_world["creator_controls"].setdefault("metadata", {})
         runtime_world["creator_controls"]["metadata"]["narrative_style_pack"] = worldpack.narrative_style_pack.to_dict()
+        runtime_world["creator_controls"]["metadata"]["series_storyline_contract"] = dict(worldpack.series_storyline_contract or {})
+        runtime_world["creator_controls"]["metadata"]["character_memory_profiles"] = {key: dict(value) for key, value in (worldpack.character_memory_profiles or {}).items()}
+        runtime_world["creator_controls"]["metadata"]["steering_guardrails"] = dict(worldpack.steering_guardrails or {})
         world = WorldBible.from_dict(runtime_world)
         initial_state = NarrativeState.from_dict(worldpack.runtime_initial_state)
         event_atoms = [EventAtom.from_dict(item) for item in worldpack.runtime_event_atoms]
+        event_atoms = _enrich_runtime_event_atoms_with_scene_contracts(worldpack, event_atoms)
         return RuntimeBundle(
             world_version_id=bundle.get("world_version_id", "%s@%s" % (worldpack.world_id, worldpack.version)),
             worldpack=worldpack,
@@ -309,12 +664,14 @@ def _synthesize_event_from_blueprint(
         "metadata": {
             "scene_blueprint_id": blueprint.scene_id,
             "generated_from_worldpack": True,
+            **({"continuation_blueprints": [dict(item) for item in blueprint.continuation_blueprints]} if blueprint.continuation_blueprints else {}),
             **({"terminal": True, "endgame_shape": "awakening", "required_fate_pressure": 0.4, "required_inescapable_nodes": list(profile for profile in blueprint.vow_tests[:1]), "ending_gate": blueprint.ending_gate or {"min_turn": 6, "required_scene_functions": [normalize_scene_function(blueprint.scene_function)], "required_closed_promises": [], "required_tension_min": 0.35}} if is_last and blueprint.ending_gate else {}),
         },
     }
 
 
 def synthesize_runtime_bundle(worldpack: WorldPack) -> RuntimeBundle:
+    worldpack = _enrich_worldpack_assets(worldpack)
     asset_style_pack = _style_pack_from_assets(worldpack)
     if not _is_empty_style_pack(asset_style_pack):
         worldpack.narrative_style_pack = asset_style_pack
@@ -343,7 +700,12 @@ def synthesize_runtime_bundle(worldpack: WorldPack) -> RuntimeBundle:
                 "darkness_ceiling": "PG13" if "13" in worldpack.manifest.risk_rating else "PG",
                 "theme_targets": list(worldpack.manifest.genres[:3]),
                 "payoff_style": "beta_worldpack",
-                "metadata": {"narrative_style_pack": worldpack.narrative_style_pack.to_dict()},
+                "metadata": {
+                    "narrative_style_pack": worldpack.narrative_style_pack.to_dict(),
+                    "series_storyline_contract": dict(worldpack.series_storyline_contract or {}),
+                    "character_memory_profiles": {key: dict(value) for key, value in (worldpack.character_memory_profiles or {}).items()},
+                    "steering_guardrails": dict(worldpack.steering_guardrails or {}),
+                },
             },
         }
     )
@@ -398,18 +760,23 @@ def synthesize_runtime_bundle(worldpack: WorldPack) -> RuntimeBundle:
     event_atoms: List[EventAtom] = []
     for blueprint in worldpack.scene_blueprints:
         actor_ids = [
-            next(
-                (
-                    profile.character_id
-                    for profile in worldpack.characters
-                    if profile.role == role
-                ),
-                character_ids[0],
+            (
+                role
+                if role in character_ids
+                else next(
+                    (
+                        profile.character_id
+                        for profile in worldpack.characters
+                        if profile.role == role
+                    ),
+                    character_ids[0],
+                )
             )
             for role in blueprint.required_roles
         ] or character_ids[:1]
         for index in range(len(blueprint.beats_template)):
             event_atoms.append(EventAtom.from_dict(_synthesize_event_from_blueprint(worldpack, blueprint, index, actor_ids)))
+    event_atoms = _enrich_runtime_event_atoms_with_scene_contracts(worldpack, event_atoms)
     return RuntimeBundle(
         world_version_id="%s@%s" % (worldpack.world_id, worldpack.version),
         worldpack=worldpack,

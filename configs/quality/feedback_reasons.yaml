@@ -1,0 +1,9 @@
+config_version: quality_feedback_reasons_v1
+reason_codes:
+  - incorrect
+  - incomplete
+  - irrelevant
+  - unsafe
+  - bad_style
+  - unsupported_claim
+  - not_useful

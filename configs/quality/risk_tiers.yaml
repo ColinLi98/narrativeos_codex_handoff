@@ -1,0 +1,22 @@
+config_version: quality_risk_tiers_v1
+risk_tiers:
+  - risk_tier: L1
+    label: low
+    description: Low-risk diagnostic or internal-only quality events.
+    requires_human_review: false
+    blocks_on_veto_only: true
+  - risk_tier: L2
+    label: medium
+    description: User-visible content quality checks on standard runtime paths.
+    requires_human_review: false
+    blocks_on_veto_only: false
+  - risk_tier: L3
+    label: high
+    description: High-risk content or release quality checks that may require structured review.
+    requires_human_review: true
+    blocks_on_veto_only: false
+  - risk_tier: L4
+    label: critical
+    description: Critical quality incidents or policy-sensitive flows that must not bypass review.
+    requires_human_review: true
+    blocks_on_veto_only: false

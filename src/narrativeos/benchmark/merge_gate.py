@@ -6,6 +6,8 @@ import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence
 
+from .release_quality_gate import evaluate_release_quality_gate
+
 
 REQUIRED_PR_FIELDS = (
     "Lane",
@@ -72,6 +74,22 @@ def validate_benchmark_report(report: Dict[str, Any]) -> List[str]:
     regressions = list(delta_summary.get("regressions", []))
     if regressions:
         errors.append("metric_regression_detected")
+    quality_gate = dict(report.get("phase_a_quality_gate") or evaluate_release_quality_gate(report))
+    commercial_long_route_gate = dict(report.get("commercial_long_route_gate") or {})
+    errors.extend(str(item) for item in quality_gate.get("failed_checks", []))
+    benchmark_mode = str(report.get("benchmark_mode", "standard") or "standard")
+    if benchmark_mode == "longform_100":
+        signoff = dict(report.get("longform_l1_signoff", {}))
+        if not signoff:
+            errors.append("missing_longform_l1_signoff")
+        elif signoff.get("status") != "ready":
+            errors.append("longform_l1_signoff_blocked")
+    if benchmark_mode == "longform_100_interactive":
+        signoff = dict(report.get("interactive_longform_signoff", {}))
+        if not signoff:
+            errors.append("missing_interactive_longform_signoff")
+        elif signoff.get("status") != "ready":
+            errors.append("interactive_longform_signoff_blocked")
     return errors
 
 
@@ -94,14 +112,27 @@ def validate_pr_evidence(pr_body: str) -> List[str]:
 
 def build_gate_summary(report: Dict[str, Any], *, benchmark_errors: Sequence[str], pr_errors: Sequence[str]) -> str:
     delta_summary = dict(report.get("delta_summary", {}))
+    signoff = dict(report.get("longform_l1_signoff", {}))
+    interactive_signoff = dict(report.get("interactive_longform_signoff", {}))
+    quality_gate = dict(report.get("phase_a_quality_gate") or evaluate_release_quality_gate(report))
+    commercial_long_route_gate = dict(report.get("commercial_long_route_gate") or {})
     strongest = ", ".join(item.get("world_id", "-") for item in report.get("strongest_packs", [])) or "-"
     weakest = ", ".join(item.get("world_id", "-") for item in report.get("weakest_packs", [])) or "-"
     lines = [
         "## Cross-Pack Merge Gate",
+        f"- benchmark_mode: {report.get('benchmark_mode', 'standard')}",
         f"- cross_pack_pass_rate: {float(report.get('cross_pack_pass_rate', 0.0)):.3f}",
         f"- cross_pack_pass_rate_delta: {float(delta_summary.get('cross_pack_pass_rate_delta', 0.0)):+.3f}",
         f"- strongest packs: {strongest}",
         f"- weakest packs: {weakest}",
+        f"- phase_a_quality_gate: {'pass' if quality_gate.get('ok') else 'blocked'}",
+        f"- phase_a_quality_gate_config: {quality_gate.get('config_version', '-')}",
+        f"- phase_a_quality_gate_failures: {', '.join(quality_gate.get('failed_checks', [])) if quality_gate.get('failed_checks') else 'none'}",
+        f"- commercial_long_route_gate: {'pass' if commercial_long_route_gate.get('ok', True) else 'blocked'}",
+        f"- commercial_long_route_gate_applicable: {'yes' if commercial_long_route_gate.get('applicable') else 'no'}",
+        f"- longform_l1_signoff: {signoff.get('status', '-')}",
+        f"- interactive_longform_signoff: {interactive_signoff.get('status', '-')}",
+        f"- signoff_blocking_worlds: {', '.join(signoff.get('blocking_worlds', [])) if signoff.get('blocking_worlds') else '-'}",
         f"- benchmark errors: {', '.join(benchmark_errors) if benchmark_errors else 'none'}",
         f"- PR evidence errors: {', '.join(pr_errors) if pr_errors else 'none'}",
     ]

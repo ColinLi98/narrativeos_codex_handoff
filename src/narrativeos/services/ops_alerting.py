@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from ..persistence.repositories import SQLAlchemyPlatformRepository
 from .async_jobs import AsyncJobService
@@ -12,6 +12,9 @@ from .governance import GovernanceService
 from .observability import ObservabilityService
 from .ops_traceability import OpsTraceabilityService
 from .runtime_ops import RuntimeOpsService
+
+if TYPE_CHECKING:
+    from .commercial_audit import CommercialAuditService
 
 
 class OpsAlertingService:
@@ -27,6 +30,7 @@ class OpsAlertingService:
         runtime_ops_service: RuntimeOpsService,
         async_job_service: AsyncJobService,
         ops_traceability_service: OpsTraceabilityService,
+        audit_service: Optional["CommercialAuditService"] = None,
     ) -> None:
         self.repository = repository
         self.billing = billing_service
@@ -35,6 +39,7 @@ class OpsAlertingService:
         self.runtime_ops = runtime_ops_service
         self.async_jobs = async_job_service
         self.traceability = ops_traceability_service
+        self.audit = audit_service
 
     def _utcnow(self) -> str:
         return datetime.now(timezone.utc).isoformat()
@@ -496,6 +501,11 @@ class OpsAlertingService:
                 "incident_snapshot": self.async_jobs.incident_snapshot(limit=20),
                 "standard_actions": ["recover_incidents", "retry_failed_jobs", "acknowledge_alert"],
             }
+        detail["operator_audit_trail"] = self.repository.list_audit_logs(
+            object_type="ops_alert",
+            object_id=str(alert.get("alert_id") or ""),
+            limit=20,
+        )
         return detail
 
     def alert_detail(self, alert_id: str, *, account_id: Optional[str] = None) -> Dict[str, Any]:
@@ -513,13 +523,16 @@ class OpsAlertingService:
         *,
         status: str,
         reviewer_id: Optional[str] = None,
+        actor_role: Optional[str] = None,
         note: Optional[str] = None,
         account_id: Optional[str] = None,
+        source_surface: str = "ops_api",
     ) -> Dict[str, Any]:
         if status not in self.VALID_STATUSES:
             raise ValueError("invalid_alert_status")
         detail = self.alert_detail(alert_id, account_id=account_id)
         alert = dict(detail["alert"])
+        previous_status = str(alert.get("status") or "open")
         self.repository.save_review_record(
             {
                 "asset_type": "ops_alert",
@@ -540,4 +553,34 @@ class OpsAlertingService:
                 ),
             }
         )
+        if self.audit is not None:
+            action_type = {
+                "acknowledged": "ops_alert_acknowledged",
+                "resolved": "ops_alert_resolved",
+            }.get(status, "ops_alert_status_changed")
+            self.audit.record_audit_log(
+                actor_id=str(reviewer_id or "ops_unknown"),
+                actor_role=str(actor_role or "reviewer"),
+                account_id=str(alert.get("account_id") or account_id or "") or None,
+                object_type="ops_alert",
+                object_id=alert_id,
+                action_type=action_type,
+                source_surface=source_surface,
+                customer_visible_payload={
+                    "status": status,
+                    "summary": str(alert.get("summary") or alert.get("title") or "ops alert updated"),
+                    "category": alert.get("category"),
+                },
+                internal_payload={
+                    "alert_id": alert_id,
+                    "account_id": alert.get("account_id") or account_id,
+                    "category": alert.get("category"),
+                    "source_type": alert.get("source_type"),
+                    "previous_status": previous_status,
+                    "next_status": status,
+                    "note": note,
+                    "recommended_actions": list(alert.get("recommended_actions") or []),
+                    "investigation_ref": dict(alert.get("investigation_ref") or {}),
+                },
+            )
         return self.alert_detail(alert_id, account_id=account_id)

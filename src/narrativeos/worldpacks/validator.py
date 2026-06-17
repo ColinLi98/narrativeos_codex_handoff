@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from ..content_quality_contracts import asset_quality_contract_coverage
 from ..models import EventAtom, NarrativeState, WorldBible
 from ..schemas import validate_payload
 from .models import WorldPack
@@ -53,12 +54,17 @@ def validate_worldpack_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not payload.get("characters"):
         errors.append("characters_missing")
 
+    contract_coverage = asset_quality_contract_coverage(payload)
+    if contract_coverage.get("applicable") and not contract_coverage.get("ok", False):
+        errors.extend(list(contract_coverage.get("failed_checks") or []))
+
     return {
         "ok": not errors,
         "errors": errors,
         "warnings": warnings,
         "world_id": payload.get("world_id"),
         "version": payload.get("version"),
+        "content_quality_contract_coverage": contract_coverage,
     }
 
 

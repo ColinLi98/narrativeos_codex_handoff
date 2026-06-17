@@ -14,22 +14,33 @@ function parseArgs(argv) {
   return result;
 }
 
-function httpJson({ method = "GET", hostname = "127.0.0.1", port, path }) {
+function httpJson({ method = "GET", hostname = "127.0.0.1", port, path, body = undefined, headers = {} }) {
   return new Promise((resolve, reject) => {
-    const request = http.request({ method, hostname, port, path }, (response) => {
+    const request = http.request({ method, hostname, port, path, headers }, (response) => {
       let data = "";
       response.on("data", (chunk) => {
         data += chunk;
       });
       response.on("end", () => {
+        const statusCode = Number(response.statusCode || 0);
         try {
-          resolve(JSON.parse(data));
+          const parsed = JSON.parse(data);
+          if (statusCode >= 400) {
+            reject(new Error(`HTTP ${statusCode} ${path}: ${typeof parsed === "object" ? JSON.stringify(parsed) : String(parsed)}`));
+            return;
+          }
+          resolve(parsed);
         } catch (_error) {
+          if (statusCode >= 400) {
+            reject(new Error(`HTTP ${statusCode} ${path}: ${data}`));
+            return;
+          }
           reject(new Error(`Failed to parse JSON from ${path}: ${data}`));
         }
       });
     });
     request.on("error", reject);
+    if (body !== undefined) request.write(body);
     request.end();
   });
 }
@@ -44,7 +55,17 @@ async function openAppTarget(chromePort, url) {
 
 async function connectToPage(pageUrl, chromePort) {
   const targets = await httpJson({ port: chromePort, path: "/json/list" });
-  const page = targets.find((item) => item.url === pageUrl);
+  const targetUrl = new URL(pageUrl);
+  const page =
+    targets.find((item) => item.url === pageUrl) ||
+    targets.find((item) => {
+      try {
+        const candidate = new URL(item.url);
+        return candidate.origin === targetUrl.origin && candidate.pathname === targetUrl.pathname;
+      } catch (_error) {
+        return false;
+      }
+    });
   if (!page) {
     throw new Error(`App page target not found for ${pageUrl}`);
   }
@@ -139,7 +160,7 @@ async function clickFollowUpAction(evaluate, label) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const url = args.url;
+  let url = args.url;
   const chromePort = Number(args["chrome-port"] || 9223);
   const seedFile = args["seed-file"];
   const resultFile = args["result-file"];
@@ -171,13 +192,72 @@ async function main() {
   };
 
   const seed = JSON.parse(fs.readFileSync(seedFile, "utf8"));
+  const appUrl = new URL(url);
+  const reviewerId = `ops_nav_smoke_reviewer_${Date.now()}`;
+  const reviewerPassword = "ops-nav-smoke-secret";
+  await httpJson({
+    method: "POST",
+    hostname: appUrl.hostname,
+    port: Number(appUrl.port || 80),
+    path: "/v1/auth/register",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      actor_id: reviewerId,
+      actor_role: "reviewer",
+      password: reviewerPassword,
+      account_id: reviewerId,
+      display_name: "Ops Navigation Smoke Reviewer",
+    }),
+  });
+  const reviewerLogin = await httpJson({
+    method: "POST",
+    hostname: appUrl.hostname,
+    port: Number(appUrl.port || 80),
+    path: "/v1/auth/login",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      actor_id: reviewerId,
+      password: reviewerPassword,
+    }),
+  });
+  const bridgePayload = await httpJson({
+    method: "POST",
+    hostname: appUrl.hostname,
+    port: Number(appUrl.port || 80),
+    path: "/v1/auth/admin-view-session-bridge",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      actor_id: reviewerId,
+      password: reviewerPassword,
+      account_id: seed.account_id,
+      workspace: "dashboard",
+      world_id: seed.world_id,
+      world_version_id: seed.world_version_id,
+      case_id: seed.case_id,
+      alert_id: seed.stale_alert_id,
+    }),
+  });
+  appUrl.searchParams.set("debug", "1");
+  appUrl.searchParams.set("product", "ops");
+  appUrl.searchParams.set("admin_view_bridge", bridgePayload.bridge?.token || "");
+  url = appUrl.toString();
   await openAppTarget(chromePort, url);
   await sleep(1000);
   const { ws, evaluate } = await connectToPage(url, chromePort);
   const captureFailureScreenshot = async () => {
     try {
       const targets = await httpJson({ port: chromePort, path: "/json/list" });
-      const page = targets.find((item) => item.url === url);
+      const targetUrl = new URL(url);
+      const page =
+        targets.find((item) => item.url === url) ||
+        targets.find((item) => {
+          try {
+            const candidate = new URL(item.url);
+            return candidate.origin === targetUrl.origin && candidate.pathname === targetUrl.pathname;
+          } catch (_error) {
+            return false;
+          }
+        });
       if (!page) {
         return { screenshot_error: `App page target not found for ${url}` };
       }
@@ -260,22 +340,37 @@ async function main() {
     markStep("wait_for_app_bootstrap");
     await waitFor(
       evaluate,
-      "ops app bootstrap",
-      `typeof appState !== 'undefined'
-        && typeof refreshOpsSurface === 'function'
-        && typeof runDataIntegrityRepair === 'function'
-        && document.querySelector('#mode-ops')
-        && document.querySelector('#ops-sync-navigation')`,
+      "ops shell bootstrap",
+      `typeof shellState !== 'undefined'
+        && document.querySelector('#mode-ops')`,
       30000
     );
     completeStep("wait_for_app_bootstrap");
+    markStep("install_ops_identity");
+    await evaluate(`(() => {
+      authorState.authorAuthSession = ${JSON.stringify({
+        accessToken: reviewerLogin.token?.access_token || "",
+        expiresAt: reviewerLogin.token?.expires_at || "",
+        identity: reviewerLogin.identity || {},
+        tokenType: reviewerLogin.token?.token_type || "bearer",
+      })};
+      shellState.adminViewBridgeToken = ${JSON.stringify(bridgePayload.bridge?.token || "")};
+      shellState.adminViewEnabled = true;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("narrativeos_author_auth", JSON.stringify(authorState.authorAuthSession));
+        window.sessionStorage.setItem("narrativeos_admin_view_bridge", shellState.adminViewBridgeToken);
+      }
+      return true;
+    })()`);
+    completeStep("install_ops_identity");
     markStep("enter_ops_mode");
     await clickSelector(evaluate, "#mode-ops");
     await waitFor(
       evaluate,
       "ops mode active",
-      `typeof appState !== 'undefined'
-        && appState.activeProduct === 'ops'
+      `typeof shellState !== 'undefined'
+        && shellState.activeProduct === 'ops'
+        && document.querySelector('#ops-sync-navigation')
         && document.querySelector('#ops-nav-account-id')`,
       30000
     );
@@ -293,7 +388,7 @@ async function main() {
     await waitFor(
       evaluate,
       "stale alert warning",
-      `appState.opsNavigationModel && (appState.opsNavigationModel.context_warnings || []).some((item) => item.startsWith('stale_alert_ref:'))`
+      `opsState.opsNavigationModel && (opsState.opsNavigationModel.context_warnings || []).some((item) => item.startsWith('stale_alert_ref:'))`
     , 30000);
     completeStep("detect_stale_warning");
     markStep("detect_remediation_actions");
@@ -313,7 +408,7 @@ async function main() {
     await waitFor(
       evaluate,
       "stale refs cleared after resync",
-      `appState.opsNavigationModel && Object.keys(appState.opsNavigationModel.linked_context?.stale_refs || {}).length === 0`
+      `opsState.opsNavigationModel && Object.keys(opsState.opsNavigationModel.linked_context?.stale_refs || {}).length === 0`
     , 30000);
     await waitFor(
       evaluate,
@@ -329,7 +424,7 @@ async function main() {
     completeStep("resync_from_valid_context");
 
     const resyncSnapshot = await evaluate(`({
-      warnings: appState.opsNavigationModel.context_warnings || [],
+      warnings: opsState.opsNavigationModel.context_warnings || [],
       followUpText: document.querySelector('#ops-navigation-actions')?.innerText || '',
       nav: {
         account: document.querySelector('#ops-nav-account-id')?.value || '',
@@ -345,7 +440,7 @@ async function main() {
     await waitFor(
       evaluate,
       "stale alert warning restored",
-      `appState.opsNavigationModel && (appState.opsNavigationModel.context_warnings || []).some((item) => item.startsWith('stale_alert_ref:'))`
+      `opsState.opsNavigationModel && (opsState.opsNavigationModel.context_warnings || []).some((item) => item.startsWith('stale_alert_ref:'))`
     , 30000);
     completeStep("reinject_stale_alert");
 
@@ -354,7 +449,7 @@ async function main() {
     await waitFor(
       evaluate,
       "stale refs cleared after clear action",
-      `appState.opsNavigationModel && Object.keys(appState.opsNavigationModel.linked_context?.stale_refs || {}).length === 0`
+      `opsState.opsNavigationModel && Object.keys(opsState.opsNavigationModel.linked_context?.stale_refs || {}).length === 0`
     , 30000);
     await waitFor(
       evaluate,
@@ -364,8 +459,8 @@ async function main() {
     completeStep("clear_stale_refs");
 
     const clearSnapshot = await evaluate(`({
-      warnings: appState.opsNavigationModel.context_warnings || [],
-      staleRefs: appState.opsNavigationModel.linked_context?.stale_refs || {},
+      warnings: opsState.opsNavigationModel.context_warnings || [],
+      staleRefs: opsState.opsNavigationModel.linked_context?.stale_refs || {},
       nav: {
         account: document.querySelector('#ops-nav-account-id')?.value || '',
         world: document.querySelector('#ops-nav-world-id')?.value || '',

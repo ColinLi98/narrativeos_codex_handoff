@@ -18,6 +18,7 @@ from .async_job_adapters import (
     build_retry_policy_registry,
     classify_adapter_failure,
 )
+from .reader_generation_jobs import READER_GENERATION_JOB_TYPE, compact_reader_generation_result
 
 
 ASYNC_JOB_ASSET_TYPE = "async_job"
@@ -32,6 +33,12 @@ ARTIFACT_RETENTION_EXPIRING_SOON_DAYS = 3
 DEFAULT_HANDOFF_SLA_MINUTES = 240
 
 JOB_STEP_TEMPLATES: Dict[str, List[Dict[str, str]]] = {
+    READER_GENERATION_JOB_TYPE: [
+        {"key": "queued", "label": "Queued"},
+        {"key": "generate", "label": "Generate Chapter"},
+        {"key": "persist", "label": "Persist Result"},
+        {"key": "completed", "label": "Completed"},
+    ],
     "learned_training": [
         {"key": "queued", "label": "Queued"},
         {"key": "training", "label": "Train Tracks"},
@@ -692,6 +699,8 @@ class AsyncJobService:
                 "stdout_log": dict(result.get("artifacts") or {}).get("stdout_log"),
                 "stderr_log": dict(result.get("artifacts") or {}).get("stderr_log"),
             }
+        if job_type == READER_GENERATION_JOB_TYPE:
+            return compact_reader_generation_result(result)
         return result
 
     def list_jobs(

@@ -23,6 +23,7 @@ def test_ops_navigation_smoke_scripts_exist_and_are_parseable():
 
     assert "CI_HEADLESS" in run_text
     assert "CHROME_BIN" in run_text
+    assert 'APP_URL="${APP_URL:-http://127.0.0.1:${APP_PORT}/app?debug=1&product=ops}"' in run_text
     assert "ops_navigation_stale_ref_smoke_result.json" in run_text
     assert "ops_navigation_stale_ref_smoke_failure_snapshot.json" in run_text
     assert "ops_navigation_stale_ref_smoke_failure.png" in run_text
@@ -33,6 +34,15 @@ def test_ops_navigation_smoke_scripts_exist_and_are_parseable():
     assert "completed_steps" in verify_text
     assert "body_html_excerpt" in verify_text
     assert "captureScreenshot" in verify_text
+    assert "ops shell bootstrap" in verify_text
+    assert "/v1/auth/admin-view-session-bridge" in verify_text
+    assert "install_ops_identity" in verify_text
+    assert "narrativeos_author_auth" in verify_text
+    assert "admin_view_bridge" in verify_text
+    assert "typeof shellState !== 'undefined'" in verify_text
+    assert "opsState.opsNavigationModel" in verify_text
+    assert "candidate.origin === targetUrl.origin" in verify_text
+    assert "candidate.pathname === targetUrl.pathname" in verify_text
     assert "resyncSnapshot" in verify_text
     assert "clearSnapshot" in verify_text
     assert "Ops Navigation Stale-Ref Smoke" in summary_text
@@ -52,6 +62,9 @@ def test_ops_navigation_smoke_workflow_wires_headless_runner_and_artifacts():
     setup_node_step = next(step for step in steps if step.get("uses") == "actions/setup-node@v4")
     assert setup_node_step["with"]["node-version"] == "22"
 
+    install_step = next(step for step in steps if step.get("name") == "Install deps")
+    assert "sudo apt-get install -y fonts-noto-cjk" in install_step["run"]
+
     run_step = next(step for step in steps if step.get("name") == "Run ops navigation stale-ref smoke")
     run_script = run_step["run"]
     assert "CI_HEADLESS=1" in run_script
@@ -65,6 +78,8 @@ def test_ops_navigation_smoke_workflow_wires_headless_runner_and_artifacts():
     assert "ops_navigation_stale_ref_smoke_result.json" in summary_run
     assert "ops_navigation_stale_ref_smoke_failure_snapshot.json" in summary_run
     assert "$GITHUB_STEP_SUMMARY" in summary_run
+    assert "cp /tmp/ops_navigation_stale_ref_smoke_server.log artifacts/ops_navigation_stale_ref_smoke_server.log" in summary_run
+    assert "cp /tmp/ops_navigation_stale_ref_smoke_chrome.log artifacts/ops_navigation_stale_ref_smoke_chrome.log" in summary_run
 
     artifact_step = next(step for step in steps if step.get("name") == "Upload stale-ref smoke artifacts")
     assert artifact_step["if"] == "always()"
@@ -74,5 +89,7 @@ def test_ops_navigation_smoke_workflow_wires_headless_runner_and_artifacts():
     assert "artifacts/ops_navigation_stale_ref_smoke_result.json" in artifact_path
     assert "artifacts/ops_navigation_stale_ref_smoke_failure_snapshot.json" in artifact_path
     assert "artifacts/ops_navigation_stale_ref_smoke_failure.png" in artifact_path
-    assert "/tmp/ops_navigation_stale_ref_smoke_server.log" in artifact_path
-    assert "/tmp/ops_navigation_stale_ref_smoke_chrome.log" in artifact_path
+    assert "artifacts/ops_navigation_stale_ref_smoke_server.log" in artifact_path
+    assert "artifacts/ops_navigation_stale_ref_smoke_chrome.log" in artifact_path
+    assert "/tmp/ops_navigation_stale_ref_smoke_server.log" not in artifact_path
+    assert "/tmp/ops_navigation_stale_ref_smoke_chrome.log" not in artifact_path

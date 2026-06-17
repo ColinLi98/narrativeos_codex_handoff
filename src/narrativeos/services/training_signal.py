@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 from uuid import uuid4
 
 from ..models import EvaluationReport
+from ..persistence.db import SessionRow
 from ..persistence.repositories import SQLAlchemyPlatformRepository
 from ..schemas import validate_payload
 
@@ -23,6 +24,21 @@ PHASE4_EVENT_NAMES = [
     "rollback_performed",
 ]
 ABANDON_WINDOW_HOURS = 24
+LONGFORM_250_REVIEW_WINDOWS = (
+    ("1-20", 1, 20),
+    ("80-120", 80, 120),
+    ("200-250", 200, 250),
+)
+LONGFORM_500_REVIEW_WINDOWS = (
+    ("1-40", 1, 40),
+    ("220-300", 220, 300),
+    ("460-500", 460, 500),
+)
+LONGFORM_1000_REVIEW_WINDOWS = (
+    ("1-80", 1, 80),
+    ("420-580", 420, 580),
+    ("920-1000", 920, 1000),
+)
 
 
 class TrainingSignalService:
@@ -35,11 +51,21 @@ class TrainingSignalService:
     def _parse_timestamp(self, value: Optional[str]) -> datetime:
         if not value:
             return datetime.fromtimestamp(0, tz=timezone.utc)
+        if isinstance(value, datetime):
+            parsed = value
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc)
         normalized = str(value).replace("Z", "+00:00")
         parsed = datetime.fromisoformat(normalized)
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=timezone.utc)
         return parsed.astimezone(timezone.utc)
+
+    def _serialize_timestamp(self, value: Any) -> Optional[str]:
+        if value is None or value == "":
+            return None
+        return self._parse_timestamp(value).isoformat()
 
     def _selected_versions(self, *, world_id: Optional[str], world_version_id: Optional[str]) -> List[Dict[str, Any]]:
         if world_version_id:
@@ -87,6 +113,97 @@ class TrainingSignalService:
             "kind": str(source_ref.get("kind") or "manual_entry"),
             "chapter_id": str(source_ref.get("chapter_id") or chapter_id),
         }
+
+    def _chapter_index_from_id(self, chapter_id: Any) -> int:
+        suffix = str(chapter_id or "").rsplit("_", 1)[-1]
+        return int(suffix) if suffix.isdigit() else 0
+
+    def _longform_sampling_plan_from_reports(
+        self,
+        report_payloads: Sequence[Dict[str, Any]],
+        *,
+        world_id: str,
+        world_version_id: str,
+        windows: Sequence[Tuple[str, int, int]],
+        reason_prefix: str,
+    ) -> List[Dict[str, Any]]:
+        chapter_ids = [str(item.get("chapter_id") or "") for item in report_payloads]
+        available_indices = [
+            self._chapter_index_from_id(chapter_id)
+            for chapter_id in chapter_ids
+            if self._chapter_index_from_id(chapter_id) > 0
+        ]
+        max_index = max(available_indices or [0])
+        plan: List[Dict[str, Any]] = []
+        for window_label, start, end in windows:
+            candidates = [index for index in available_indices if start <= index <= end]
+            if not candidates:
+                continue
+            picks = [candidates[0]]
+            if len(candidates) > 1:
+                picks.append(candidates[min(len(candidates) - 1, len(candidates) // 2)])
+            seen = set()
+            for priority, chapter_index in enumerate(picks, start=1):
+                if chapter_index in seen:
+                    continue
+                seen.add(chapter_index)
+                plan.append(
+                    {
+                        "world_id": world_id,
+                        "world_version_id": world_version_id,
+                        "window_label": window_label,
+                        "chapter_index": chapter_index,
+                        "priority": priority,
+                        "reason": f"{reason_prefix}_{window_label}",
+                        "available_chapter_max": max_index,
+                    }
+                )
+        return plan
+
+    def _longform_250_sampling_plan_from_reports(
+        self,
+        report_payloads: Sequence[Dict[str, Any]],
+        *,
+        world_id: str,
+        world_version_id: str,
+    ) -> List[Dict[str, Any]]:
+        return self._longform_sampling_plan_from_reports(
+            report_payloads,
+            world_id=world_id,
+            world_version_id=world_version_id,
+            windows=LONGFORM_250_REVIEW_WINDOWS,
+            reason_prefix="longform_250_window",
+        )
+
+    def _longform_500_sampling_plan_from_reports(
+        self,
+        report_payloads: Sequence[Dict[str, Any]],
+        *,
+        world_id: str,
+        world_version_id: str,
+    ) -> List[Dict[str, Any]]:
+        return self._longform_sampling_plan_from_reports(
+            report_payloads,
+            world_id=world_id,
+            world_version_id=world_version_id,
+            windows=LONGFORM_500_REVIEW_WINDOWS,
+            reason_prefix="longform_500_window",
+        )
+
+    def _longform_1000_sampling_plan_from_reports(
+        self,
+        report_payloads: Sequence[Dict[str, Any]],
+        *,
+        world_id: str,
+        world_version_id: str,
+    ) -> List[Dict[str, Any]]:
+        return self._longform_sampling_plan_from_reports(
+            report_payloads,
+            world_id=world_id,
+            world_version_id=world_version_id,
+            windows=LONGFORM_1000_REVIEW_WINDOWS,
+            reason_prefix="longform_1000_window",
+        )
 
     def _review_sample_ingestion_key(self, sample: Dict[str, Any]) -> str:
         stable_fields = [
@@ -318,6 +435,14 @@ class TrainingSignalService:
         }
         validate_payload(sample, "review_sample.schema.json")
         return sample
+
+    def save_review_sample_from_report(self, report_payload: Dict[str, Any], *, world_id: str) -> Dict[str, Any]:
+        sample = self._review_sample_from_report(report_payload, world_id=world_id)
+        # Benchmarks and offline simulations do not always have a persisted
+        # session row; drop the transient session id so ingestion can validate
+        # against the world version without creating fake session records.
+        sample["session_id"] = None
+        return self.save_review_sample(sample)
 
     def save_review_sample(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         source = str(payload.get("source") or "human_review")
@@ -619,7 +744,7 @@ class TrainingSignalService:
                 "rewrite_rate": float(evaluation_summary.get("rewrite_rate", 0.0)),
                 "block_rate": float(evaluation_summary.get("block_rate", 0.0)),
                 "cross_pack_pass_rate": float(simulation.get("cross_pack_summary", {}).get("cross_pack_pass_rate", 0.0)),
-                "updated_at": version_meta.get("updated_at"),
+                "updated_at": self._serialize_timestamp(version_meta.get("updated_at")),
             }
             trends.append(trend)
         return self._apply_incremental_window(
@@ -702,6 +827,278 @@ class TrainingSignalService:
         priority_rank = {"high": 0, "medium": 1, "low": 2}
         backlog.sort(key=lambda item: (priority_rank[item["priority"]], -self._parse_timestamp(item["created_at"]).timestamp()))
         return backlog[:limit] if limit is not None else backlog
+
+    def longform_250_human_review_closeout(
+        self,
+        *,
+        world_id: Optional[str] = None,
+        world_version_id: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        versions = self._selected_versions(world_id=world_id, world_version_id=world_version_id)
+        human_samples = self.list_review_samples(
+            world_id=world_id,
+            world_version_id=world_version_id,
+            source="human_review",
+            limit=None,
+        )
+        human_targets = {
+            (str(sample.get("world_version_id") or ""), self._chapter_index_from_id(sample.get("chapter_id")))
+            for sample in human_samples
+            if self._chapter_index_from_id(sample.get("chapter_id")) > 0
+        }
+        planned_target_count = 0
+        human_reviewed_target_count = 0
+        backlog: List[Dict[str, Any]] = []
+        window_coverage: Dict[str, Dict[str, int]] = {}
+        for version_meta in versions:
+            version = self.repository.get_world_version(version_meta["world_version_id"])
+            simulation = dict(version.simulation_report_json or {})
+            if int(simulation.get("completed_chapters", 0) or 0) < 250 and not simulation.get("longform_250_summary"):
+                continue
+            chapter_reports = list(simulation.get("chapter_evaluations", []))
+            plan = self._longform_250_sampling_plan_from_reports(
+                chapter_reports,
+                world_id=version.world_id,
+                world_version_id=version.world_version_id,
+            )
+            for target in plan:
+                planned_target_count += 1
+                window_label = str(target.get("window_label") or "")
+                bucket = window_coverage.setdefault(window_label, {"target_count": 0, "human_reviewed_count": 0})
+                bucket["target_count"] += 1
+                key = (str(target.get("world_version_id") or ""), int(target.get("chapter_index", 0) or 0))
+                report_payload = next(
+                    (
+                        dict(item)
+                        for item in chapter_reports
+                        if self._chapter_index_from_id(item.get("chapter_id")) == key[1]
+                    ),
+                    {},
+                )
+                if key in human_targets:
+                    human_reviewed_target_count += 1
+                    bucket["human_reviewed_count"] += 1
+                    continue
+                backlog.append(
+                    {
+                        **dict(target),
+                        "chapter_id": report_payload.get("chapter_id"),
+                        "decision": dict(report_payload.get("decision") or {}).get("decision"),
+                        "score_overall": float(dict(report_payload.get("scores") or {}).get("overall_score", 0.0) or 0.0),
+                        "issue_codes": [
+                            issue.get("issue_code")
+                            for issue in report_payload.get("issues", [])
+                            if issue.get("issue_code")
+                        ],
+                        "summary": str(report_payload.get("summary") or ""),
+                        "recommended_action": "capture_longform_250_human_review",
+                    }
+                )
+        human_closeout_ready = planned_target_count > 0 and human_reviewed_target_count >= planned_target_count
+        human_closeout_status = "closed" if human_closeout_ready else ("partial" if human_reviewed_target_count > 0 else "watch")
+        backlog.sort(
+            key=lambda item: (
+                str(item.get("world_id") or ""),
+                str(item.get("window_label") or ""),
+                int(item.get("priority", 99) or 99),
+                int(item.get("chapter_index", 0) or 0),
+            )
+        )
+        return {
+            "planned_target_count": planned_target_count,
+            "human_reviewed_target_count": human_reviewed_target_count,
+            "human_closeout_ready": human_closeout_ready,
+            "human_closeout_status": human_closeout_status,
+            "window_coverage": window_coverage,
+            "backlog": backlog[:limit] if limit is not None else backlog,
+        }
+
+    def longform_500_human_review_closeout(
+        self,
+        *,
+        world_id: Optional[str] = None,
+        world_version_id: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        versions = self._selected_versions(world_id=world_id, world_version_id=world_version_id)
+        human_samples = self.list_review_samples(
+            world_id=world_id,
+            world_version_id=world_version_id,
+            source="human_review",
+            limit=None,
+        )
+        human_targets = {
+            (str(sample.get("world_version_id") or ""), self._chapter_index_from_id(sample.get("chapter_id")))
+            for sample in human_samples
+            if self._chapter_index_from_id(sample.get("chapter_id")) > 0
+        }
+        planned_target_count = 0
+        human_reviewed_target_count = 0
+        backlog: List[Dict[str, Any]] = []
+        window_coverage: Dict[str, Dict[str, int]] = {}
+        ending_window_label = LONGFORM_500_REVIEW_WINDOWS[-1][0]
+        ending_window_target_count = 0
+        ending_window_human_reviewed_count = 0
+        for version_meta in versions:
+            version = self.repository.get_world_version(version_meta["world_version_id"])
+            simulation = dict(version.simulation_report_json or {})
+            if int(simulation.get("completed_chapters", 0) or 0) < 500 and not simulation.get("longform_500_summary"):
+                continue
+            chapter_reports = list(simulation.get("chapter_evaluations", []))
+            plan = self._longform_500_sampling_plan_from_reports(
+                chapter_reports,
+                world_id=version.world_id,
+                world_version_id=version.world_version_id,
+            )
+            for target in plan:
+                planned_target_count += 1
+                window_label = str(target.get("window_label") or "")
+                bucket = window_coverage.setdefault(window_label, {"target_count": 0, "human_reviewed_count": 0})
+                bucket["target_count"] += 1
+                if window_label == ending_window_label:
+                    ending_window_target_count += 1
+                key = (str(target.get("world_version_id") or ""), int(target.get("chapter_index", 0) or 0))
+                report_payload = next(
+                    (
+                        dict(item)
+                        for item in chapter_reports
+                        if self._chapter_index_from_id(item.get("chapter_id")) == key[1]
+                    ),
+                    {},
+                )
+                if key in human_targets:
+                    human_reviewed_target_count += 1
+                    bucket["human_reviewed_count"] += 1
+                    if window_label == ending_window_label:
+                        ending_window_human_reviewed_count += 1
+                    continue
+                backlog.append(
+                    {
+                        **dict(target),
+                        "chapter_id": report_payload.get("chapter_id"),
+                        "decision": dict(report_payload.get("decision") or {}).get("decision"),
+                        "score_overall": float(dict(report_payload.get("scores") or {}).get("overall_score", 0.0) or 0.0),
+                        "issue_codes": [
+                            issue.get("issue_code")
+                            for issue in report_payload.get("issues", [])
+                            if issue.get("issue_code")
+                        ],
+                        "summary": str(report_payload.get("summary") or ""),
+                        "recommended_action": "capture_longform_500_human_review",
+                    }
+                )
+        human_closeout_ready = planned_target_count > 0 and human_reviewed_target_count >= planned_target_count
+        human_closeout_status = "closed" if human_closeout_ready else ("partial" if human_reviewed_target_count > 0 else "watch")
+        ending_window_human_closeout_ready = (
+            ending_window_target_count > 0 and ending_window_human_reviewed_count >= ending_window_target_count
+        )
+        backlog.sort(
+            key=lambda item: (
+                str(item.get("world_id") or ""),
+                str(item.get("window_label") or ""),
+                int(item.get("priority", 99) or 99),
+                int(item.get("chapter_index", 0) or 0),
+            )
+        )
+        return {
+            "planned_target_count": planned_target_count,
+            "human_reviewed_target_count": human_reviewed_target_count,
+            "human_closeout_ready": human_closeout_ready,
+            "human_closeout_status": human_closeout_status,
+            "ending_window_label": ending_window_label,
+            "ending_window_target_count": ending_window_target_count,
+            "ending_window_human_reviewed_count": ending_window_human_reviewed_count,
+            "ending_window_human_closeout_ready": ending_window_human_closeout_ready,
+            "window_coverage": window_coverage,
+            "backlog": backlog[:limit] if limit is not None else backlog,
+        }
+
+    def longform_1000_human_review_closeout(
+        self,
+        *,
+        world_id: Optional[str] = None,
+        world_version_id: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        versions = self._selected_versions(world_id=world_id, world_version_id=world_version_id)
+        human_samples = self.list_review_samples(
+            world_id=world_id,
+            world_version_id=world_version_id,
+            source="human_review",
+            limit=None,
+        )
+        human_targets = {
+            (str(sample.get("world_version_id") or ""), self._chapter_index_from_id(sample.get("chapter_id")))
+            for sample in human_samples
+            if self._chapter_index_from_id(sample.get("chapter_id")) > 0
+        }
+        planned_target_count = 0
+        human_reviewed_target_count = 0
+        backlog: List[Dict[str, Any]] = []
+        window_coverage: Dict[str, Dict[str, int]] = {}
+        for version_meta in versions:
+            version = self.repository.get_world_version(version_meta["world_version_id"])
+            simulation = dict(version.simulation_report_json or {})
+            if int(simulation.get("completed_chapters", 0) or 0) < 1000 and not simulation.get("longform_1000_summary"):
+                continue
+            chapter_reports = list(simulation.get("chapter_evaluations", []))
+            plan = self._longform_1000_sampling_plan_from_reports(
+                chapter_reports,
+                world_id=version.world_id,
+                world_version_id=version.world_version_id,
+            )
+            for target in plan:
+                planned_target_count += 1
+                window_label = str(target.get("window_label") or "")
+                bucket = window_coverage.setdefault(window_label, {"target_count": 0, "human_reviewed_count": 0})
+                bucket["target_count"] += 1
+                key = (str(target.get("world_version_id") or ""), int(target.get("chapter_index", 0) or 0))
+                report_payload = next(
+                    (
+                        dict(item)
+                        for item in chapter_reports
+                        if self._chapter_index_from_id(item.get("chapter_id")) == key[1]
+                    ),
+                    {},
+                )
+                if key in human_targets:
+                    human_reviewed_target_count += 1
+                    bucket["human_reviewed_count"] += 1
+                    continue
+                backlog.append(
+                    {
+                        **dict(target),
+                        "chapter_id": report_payload.get("chapter_id"),
+                        "decision": dict(report_payload.get("decision") or {}).get("decision"),
+                        "score_overall": float(dict(report_payload.get("scores") or {}).get("overall_score", 0.0) or 0.0),
+                        "issue_codes": [
+                            issue.get("issue_code")
+                            for issue in report_payload.get("issues", [])
+                            if issue.get("issue_code")
+                        ],
+                        "summary": str(report_payload.get("summary") or ""),
+                        "recommended_action": "capture_longform_1000_human_review",
+                    }
+                )
+        human_closeout_ready = planned_target_count > 0 and human_reviewed_target_count >= planned_target_count
+        human_closeout_status = "closed" if human_closeout_ready else ("partial" if human_reviewed_target_count > 0 else "watch")
+        backlog.sort(
+            key=lambda item: (
+                str(item.get("world_id") or ""),
+                str(item.get("window_label") or ""),
+                int(item.get("priority", 99) or 99),
+                int(item.get("chapter_index", 0) or 0),
+            )
+        )
+        return {
+            "planned_target_count": planned_target_count,
+            "human_reviewed_target_count": human_reviewed_target_count,
+            "human_closeout_ready": human_closeout_ready,
+            "human_closeout_status": human_closeout_status,
+            "window_coverage": window_coverage,
+            "backlog": backlog[:limit] if limit is not None else backlog,
+        }
 
     def issue_fix_pair_backlog(
         self,
@@ -1255,6 +1652,106 @@ class TrainingSignalService:
             )
         return sorted(examples, key=lambda item: item["example_id"])
 
+    def supplement_real_continuation_samples(
+        self,
+        *,
+        world_version_ids: Sequence[str],
+        target_sample_count_per_version: int = 8,
+        target_negative_samples: int = 2,
+        chapters_per_session: int = 2,
+        max_sessions_per_version: int = 12,
+        reader_id_prefix: str = "continuation_probe",
+        stale_hours: int = 48,
+    ) -> Dict[str, Any]:
+        from .billing import BillingService
+        from .sessions import ReaderContinueCommand, SessionService
+
+        billing = BillingService(self.repository)
+        session_service = SessionService(self.repository)
+        world_summaries: List[Dict[str, Any]] = []
+        stale_timestamp = (datetime.now(timezone.utc) - timedelta(hours=max(1, stale_hours))).isoformat()
+
+        for world_version_id in world_version_ids:
+            version = self.repository.get_world_version(world_version_id)
+            world_id = version.world_id
+            before_metrics = self.repository.aggregate_eval_metrics(world_version_id=world_version_id)
+            before_signal = dict(before_metrics.get("continuation_signal_summary") or {})
+            created_sessions: List[str] = []
+            session_results: List[Dict[str, Any]] = []
+            guard = 0
+            current_signal = before_signal
+            while (
+                (
+                    int(current_signal.get("sample_count", 0) or 0) < int(target_sample_count_per_version)
+                    or int(current_signal.get("negative_count", 0) or 0) < int(target_negative_samples)
+                )
+                and guard < int(max_sessions_per_version)
+            ):
+                reader_id = f"{reader_id_prefix}_{world_id}_{guard + 1}"
+                session_payload = session_service.create_session(world_id, reader_id=reader_id)
+                session_id = str(session_payload["session_id"])
+                created_sessions.append(session_id)
+                statuses: List[str] = []
+                for _ in range(max(1, int(chapters_per_session))):
+                    result = session_service.continue_story(
+                        ReaderContinueCommand(session_id=session_id, freeform_intent="继续读下去。"),
+                        reader_id=reader_id,
+                    )
+                    status = str(result.get("status") or "unknown")
+                    if status == "payment_required":
+                        billing.grant_subscription(
+                            {
+                                "account_id": reader_id,
+                                "tier_id": "play_pass",
+                                "provider": "ops_manual",
+                                "status": "active",
+                            }
+                        )
+                        result = session_service.continue_story(
+                            ReaderContinueCommand(session_id=session_id, freeform_intent="继续读下去。"),
+                            reader_id=reader_id,
+                        )
+                        status = str(result.get("status") or "unknown")
+                    statuses.append(status)
+                    if status != "ok":
+                        break
+                with self.repository.SessionLocal() as session:
+                    row = session.get(SessionRow, session_id)
+                    if row is not None:
+                        row.updated_at = stale_timestamp
+                        session.commit()
+                session_results.append(
+                    {
+                        "session_id": session_id,
+                        "reader_id": reader_id,
+                        "continue_statuses": statuses,
+                        "forced_stale_at": stale_timestamp,
+                    }
+                )
+                guard += 1
+                current_signal = dict(self.repository.aggregate_eval_metrics(world_version_id=world_version_id).get("continuation_signal_summary") or {})
+
+            after_metrics = self.repository.aggregate_eval_metrics(world_version_id=world_version_id)
+            world_summaries.append(
+                {
+                    "world_id": world_id,
+                    "world_version_id": world_version_id,
+                    "before_signal_summary": before_signal,
+                    "after_signal_summary": dict(after_metrics.get("continuation_signal_summary") or {}),
+                    "after_calibration": dict(after_metrics.get("q03_q09_calibration") or {}),
+                    "created_session_count": len(created_sessions),
+                    "created_sessions": created_sessions,
+                    "session_results": session_results,
+                }
+            )
+
+        return {
+            "target_sample_count_per_version": int(target_sample_count_per_version),
+            "target_negative_samples": int(target_negative_samples),
+            "chapters_per_session": int(chapters_per_session),
+            "world_summaries": world_summaries,
+        }
+
     def _split_leakage_warning(self, examples: Sequence[Dict[str, Any]], stable_key: str) -> bool:
         seen: Dict[str, str] = {}
         for item in examples:
@@ -1342,7 +1839,7 @@ class TrainingSignalService:
                 "world_version_id": event.get("world_version_id") or "",
                 "chapter_index": payload_json.get("chapter_index"),
                 "access_tier": payload_json.get("access_tier"),
-                "occurred_at": event.get("occurred_at"),
+                "occurred_at": self._serialize_timestamp(event.get("occurred_at")),
                 "payload_json": payload_json,
             }
             validate_payload(normalized_event, "continue_churn_event.schema.json")
